@@ -1,0 +1,15 @@
+*.log
+*.swp
+.env
+.envrc
+.env.prod
+build/*
+!build/.gitkeep
+*.bak
+data/*
+!data/.gitkeep
+ssh_data
+.storage
+__debug_bin
+.bin
+/public/
