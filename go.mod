@@ -6,11 +6,13 @@ require (
 	github.com/charmbracelet/soft-serve v0.7.4
 	github.com/charmbracelet/ssh v0.0.0-20240301204039-e79ff702f5b3
 	github.com/charmbracelet/wish v1.3.2
-	github.com/picosh/ptun v0.0.0-20240313192814-d0ca401937fe
+	github.com/picosh/send v0.0.0-20240217194807-77b972121e63
 )
 
 require (
+	github.com/DavidGamba/go-getoptions v0.29.0 // indirect
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
+	github.com/antoniomika/go-rsync-receiver v0.0.0-20231110145728-c94949e1ab7d // indirect
 	github.com/aymanbagabas/git-module v1.8.4-0.20231101154130-8d27204ac6d2 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/caarlos0/env/v10 v10.0.0 // indirect
@@ -31,6 +33,7 @@ require (
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/golang-jwt/jwt/v5 v5.1.0 // indirect
+	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.4.0 // indirect
 	github.com/jmoiron/sqlx v1.3.5 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
@@ -40,10 +43,12 @@ require (
 	github.com/mattn/go-localereader v0.0.1 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/mcuadros/go-version v0.0.0-20190308113854-92cdf37c5b75 // indirect
+	github.com/mmcloughlin/md4 v0.1.2 // indirect
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/termenv v0.15.2 // indirect
+	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rubyist/tracerx v0.0.0-20170927163412-787959303086 // indirect
