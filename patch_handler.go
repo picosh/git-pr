@@ -24,6 +24,7 @@ func NewUploadHandler(cfg *GitCfg, logger *slog.Logger) *UploadHandler {
 }
 
 func (h *UploadHandler) Read(s ssh.Session, entry *utils.FileEntry) (os.FileInfo, utils.ReaderAtCloser, error) {
+	fmt.Println("read")
 	cleanFilename := filepath.Base(entry.Filepath)
 
 	if cleanFilename == "" || cleanFilename == "." {
@@ -34,6 +35,7 @@ func (h *UploadHandler) Read(s ssh.Session, entry *utils.FileEntry) (os.FileInfo
 }
 
 func (h *UploadHandler) List(s ssh.Session, fpath string, isDir bool, recursive bool) ([]os.FileInfo, error) {
+	fmt.Println("list")
 	var fileList []os.FileInfo
 	cleanFilename := filepath.Base(fpath)
 
@@ -58,16 +60,20 @@ func (h *UploadHandler) GetLogger() *slog.Logger {
 }
 
 func (h *UploadHandler) Validate(s ssh.Session) error {
+	fmt.Println("validate")
 	return nil
 }
 
 func (h *UploadHandler) Write(s ssh.Session, entry *utils.FileEntry) (string, error) {
+	fmt.Println("write")
 	logger := h.GetLogger()
 	user := s.User()
 
 	filename := filepath.Base(entry.Filepath)
 	logger = logger.With(
 		"user", user,
+		"filepath", entry.Filepath,
+		"size", entry.Size,
 		"filename", filename,
 	)
 
@@ -76,7 +82,7 @@ func (h *UploadHandler) Write(s ssh.Session, entry *utils.FileEntry) (string, er
 		text = b
 	}
 
-	fmt.Println(text)
+	fmt.Println(string(text))
 
 	return "", nil
 }
