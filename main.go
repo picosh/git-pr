@@ -1,39 +1,26 @@
-package main
+package git
 
 import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
+	"github.com/charmbracelet/soft-serve/pkg/git"
+	"github.com/charmbracelet/soft-serve/pkg/utils"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
-	"github.com/picosh/ptun"
 )
 
 func authHandler(ctx ssh.Context, key ssh.PublicKey) bool {
 	return true
 }
 
-func serveMux(ctx ssh.Context) http.Handler {
-	clientName := ctx.User()
-	router := http.NewServeMux()
-
-	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		_, err := w.Write([]byte(fmt.Sprintf("Hello %s!", clientName)))
-		if err != nil {
-			fmt.Println(err)
-		}
-	})
-
-	return router
-}
-
-func GitServerMiddleware() wish.Middleware {
+func GitServerMiddleware(cfg *GitCfg) wish.Middleware {
 	return func(next ssh.Handler) ssh.Handler {
 		return func(sesh ssh.Session) {
 			_, _, activePty := sesh.Pty()
@@ -43,12 +30,57 @@ func GitServerMiddleware() wish.Middleware {
 			}
 
 			args := sesh.Command()
+			cmd := args[0]
 			fmt.Println(args)
+
+			name := utils.SanitizeRepo(args[1])
+			// git bare repositories should end in ".git"
+			// https://git-scm.com/docs/gitrepository-layout
+			repoDir := name + ".git"
+			reposDir := filepath.Join(cfg.DataPath, "repos")
+			err := git.EnsureWithin(reposDir, repoDir)
+			if err != nil {
+				wish.Fatal(sesh, err.Error())
+			}
+			repoPath := filepath.Join(reposDir, repoDir)
+			serviceCmd := git.ServiceCommand{
+				Stdin:  sesh,
+				Stdout: sesh,
+				Stderr: sesh.Stderr(),
+				Dir:    repoPath,
+				Env:    sesh.Environ(),
+			}
+
+			if cmd == "git-receive-pack" {
+				err := git.ReceivePack(sesh.Context(), serviceCmd)
+				if err != nil {
+					wish.Fatal(sesh, err.Error())
+					return
+				}
+				return
+			} else if cmd == "git-upload-pack" {
+				err := git.UploadPack(sesh.Context(), serviceCmd)
+				if err != nil {
+					wish.Fatal(sesh, err.Error())
+					return
+				}
+				return
+			}
 		}
 	}
 }
 
-func main() {
+type GitCfg struct {
+	DataPath string
+}
+
+func NewGitCfg() *GitCfg {
+	return &GitCfg{
+		DataPath: "ssh_data",
+	}
+}
+
+func GitSshServer() {
 	host := os.Getenv("SSH_HOST")
 	if host == "" {
 		host = "0.0.0.0"
@@ -58,13 +90,14 @@ func main() {
 		port = "2222"
 	}
 
+	cfg := NewGitCfg()
 	logger := slog.Default()
+
 	s, err := wish.NewServer(
 		wish.WithAddress(fmt.Sprintf("%s:%s", host, port)),
-		wish.WithHostKeyPath("ssh_data/term_info_ed25519"),
+		wish.WithHostKeyPath(filepath.Join(cfg.DataPath, "term_info_ed25519")),
 		wish.WithPublicKeyAuth(authHandler),
-		ptun.WithWebTunnel(ptun.NewWebTunnelHandler(serveMux, logger)),
-		wish.WithMiddleware(GitServerMiddleware()),
+		wish.WithMiddleware(GitServerMiddleware(cfg)),
 	)
 
 	if err != nil {
