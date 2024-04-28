@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"syscall"
 	"time"
 
@@ -20,6 +21,11 @@ func authHandler(ctx ssh.Context, key ssh.PublicKey) bool {
 	return true
 }
 
+var cmdAllowlist = []string{
+	"git-receive-pack",
+	"git-upload-pack",
+}
+
 func GitServerMiddleware(cfg *GitCfg) wish.Middleware {
 	return func(next ssh.Handler) ssh.Handler {
 		return func(sesh ssh.Session) {
@@ -31,7 +37,11 @@ func GitServerMiddleware(cfg *GitCfg) wish.Middleware {
 
 			args := sesh.Command()
 			cmd := args[0]
-			fmt.Println(args)
+
+			if !slices.Contains(cmdAllowlist, cmd) {
+				wish.Fatalf(sesh, "%s not a valid command", cmd)
+				return
+			}
 
 			name := utils.SanitizeRepo(args[1])
 			// git bare repositories should end in ".git"
