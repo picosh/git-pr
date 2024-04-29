@@ -109,11 +109,48 @@ cat my_comment.md | git.sh comment noice/1
 # rinse and repeat
 ```
 
+The fundamental collaboration tool here is `format-patch`. Whether you a
+submitting code changes or you are reviewing code changes, it all happens in
+code. Both contributor and owner are simply creating new commits and generating
+patches on top of each other. This obviates the need to have a web viewer where
+the reviewing can "comment" on a line of code block. There's no need, apply the
+contributor's patches, write comments or code changes, generate a new patch,
+send the patch to the git server as a "review." This flow also works the exact
+same if two users are collaborating on a set of changes.
+
+This also solves the problem of sending multiple patchsets for the same code
+change. There's a single, central Patch Request where all changes and
+collaboration happens.
+
+We could figure out a way to leverage `git notes` for reviews / comments, but
+honestly, that solution feels brutal and outside the comfort level of most git
+users. Just send reviews as code and write comments in the programming language
+you are using. It's the job of the contributor to "address" those comments and
+then remove them in subsequent patches.
+
 ## branch workflow
 
 It's definitely possible for us to figure out a way to let the contributor
 simply push a branch and create a patch request automatically, but there are
 some rough edges to figure out there in order for it to work well.
+
+The flow would be virtually the same as `format-patch` except the contributor
+would push a branch and we would automatically create a `format-patch` against
+the base branch and then funnel it into the Patch Request. We don't want
+external contributors to be able to push branches into the owner's git remote
+because that has all sorts of opportunities for abuse. Instead we need to figure
+out how to either fork the owner's repo and let the contributor push to that
+fork seamlessly, or we just generate patchsets based on the contributor's branch
+and the owner's base branch.
+
+This flow probably feels the most comfortable for Github users, but technically
+more difficult to implement. Right out of the gate we need to know what base
+branch the contributor wants to merge into. Then we need to figure out how to
+perform reviews and followup code changes.
+
+This feels feasible, but technically more difficult. Further, I still want to
+support patchsets via `format-patch` because it is a very elegant solution for
+simpler changes.
 
 # web interface
 
