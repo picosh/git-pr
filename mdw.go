@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	ssgit "github.com/charmbracelet/soft-serve/git"
 	"github.com/charmbracelet/soft-serve/pkg/git"
 	"github.com/charmbracelet/soft-serve/pkg/utils"
 	"github.com/charmbracelet/ssh"
@@ -44,7 +45,22 @@ func gitServiceCommands(sesh ssh.Session, cfg *GitCfg, cmd, repo string) error {
 	return nil
 }
 
-func GitServerMiddleware(cfg *GitCfg) wish.Middleware {
+func createRepo(cfg *GitCfg, rawName string) (*Repo, error) {
+	name := utils.SanitizeRepo(rawName)
+	if err := utils.ValidateRepo(name); err != nil {
+		return nil, err
+	}
+	reposDir := filepath.Join(cfg.DataPath, "repos")
+
+	repo := name + ".git"
+	rp := filepath.Join(reposDir, repo)
+	_, err := ssgit.Init(rp, true)
+	if err != nil {
+		return nil, err
+	}
+}
+
+func GitServerMiddleware(cfg *GitCfg, dbh *DB) wish.Middleware {
 	return func(next ssh.Handler) ssh.Handler {
 		return func(sesh ssh.Session) {
 			args := sesh.Command()
@@ -60,6 +76,14 @@ func GitServerMiddleware(cfg *GitCfg) wish.Middleware {
 				}
 			} else if cmd == "help" {
 				wish.Println(sesh, "commands: [help, git-receive-pack, git-upload-pack]")
+			} else if cmd == "pr" {
+				repoName := args[1]
+				fmt.Println(repoName)
+				// dbpool.GetRepoByName(repoName)
+				// pr, err := dbpool.InsertPatchRequest(userID, repoID, name)
+				// dbpool.InsertPatches(userID, pr.ID, patches)
+				// id := fmt.Sprintf("%s/%s", repoName, pr.ID)
+				// wish.Printf("Patch Request ID: %s", id)
 			} else {
 				fmt.Println("made it here")
 				next(sesh)

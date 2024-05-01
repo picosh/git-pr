@@ -1,65 +1,114 @@
 package git
 
 import (
-	"database/sql"
-	"time"
+	"log/slog"
+
+	"github.com/jmoiron/sqlx"
+	_ "modernc.org/sqlite" // sqlite driver
 )
 
-// User is the entity repesenting a pubkey authenticated user
-// A user and a single ssh key-pair are synonymous in this context
-type User struct {
-	ID        int64     `db:"id"`
-	Name      string    `db:"name"`
-	Pubkey    string    `db:"pubkey"`
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
+// DB is the interface for a pico/git database.
+type DB struct {
+	*sqlx.DB
+	logger *slog.Logger
 }
 
-// PatchRequest is a database model for patches submitted to a Repo
-type PatchRequest struct {
-	ID        int64     `db:"id"`
-	UserID    int64     `db:"user_id"`
-	RepoID    int64     `db:"repo_id"`
-	Name      string    `db:"name"`
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
+var schema = `
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  admin BOOLEAN NOT NULL,
+  public_key TEXT NOT NULL UNIQUE,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS repos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  description TEXT NOT NULL UNIQUE,
+  private BOOLEAN NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS patch_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  repo_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL,
+  CONSTRAINT user_id_fk
+  FOREIGN KEY(user_id) REFERENCES users(id)
+  ON DELETE CASCADE
+  ON UPDATE CASCADE,
+  CONSTRAINT repo_id_fk
+  FOREIGN KEY(repo_id) REFERENCES repos(id)
+  ON DELETE CASCADE
+  ON UPDATE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS patches (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  patch_request_id INTEGER NOT NULL,
+  from_name TEXT NOT NULL,
+  from_email TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  text TEXT NOT NULL,
+  date DATETIME NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT user_id_fk
+  FOREIGN KEY(user_id) REFERENCES users(id)
+  ON DELETE CASCADE
+  ON UPDATE CASCADE,
+  CONSTRAINT pr_id_fk
+  FOREIGN KEY(patch_request_id) REFERENCES patch_requests(id)
+  ON DELETE CASCADE
+  ON UPDATE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS comments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  patch_request_id INTEGER NOT NULL,
+  text TEXT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL,
+  CONSTRAINT user_id_fk
+  FOREIGN KEY(user_id) REFERENCES users(id)
+  ON DELETE CASCADE
+  ON UPDATE CASCADE,
+  CONSTRAINT pr_id_fk
+  FOREIGN KEY(patch_request_id) REFERENCES patch_requests(id)
+  ON DELETE CASCADE
+  ON UPDATE CASCADE
+);
+`
+
+// Open opens a database connection.
+func Open(dsn string, logger *slog.Logger) (*DB, error) {
+	db, err := sqlx.Connect("sqlite", dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	d := &DB{
+		DB:     db,
+		logger: logger,
+	}
+
+	return d, nil
 }
 
-// Patch is a database model for a single entry in a patchset
-// This usually corresponds to a git commit.
-type Patch struct {
-	ID             int64     `db:"id"`
-	UserID         int64     `db:"user_id"`
-	PatchRequestID int64     `db:"patch_request_id"`
-	FromName       string    `db:"from_name"`
-	FromEmail      string    `db:"from_email"`
-	Subject        string    `db:"subject"`
-	Text           string    `db:"text"`
-	Date           time.Time `db:"date"`
-	CreatedAt      time.Time `db:"created_at"`
+func (d *DB) Migrate() {
+	// exec the schema or fail; multi-statement Exec behavior varies between
+	// database drivers;  pq will exec them all, sqlite3 won't, ymmv
+	d.DB.MustExec(schema)
 }
 
-// Comment is a database model for a non-patch comment within a PatchRequest
-type Comment struct {
-	ID             int64     `db:"id"`
-	UserID         int64     `db:"user_id"`
-	PatchRequestID int64     `db:"patch_request_id"`
-	Text           string    `db:"text"`
-	CreatedAt      time.Time `db:"created_at"`
-	UpdatedAt      time.Time `db:"updated_at"`
-}
-
-// Repo is a database model for a repository.
-type Repo struct {
-	ID          int64         `db:"id"`
-	Name        string        `db:"name"`
-	ProjectName string        `db:"project_name"`
-	Description string        `db:"description"`
-	Private     bool          `db:"private"`
-	UserID      sql.NullInt64 `db:"user_id"`
-	CreatedAt   time.Time     `db:"created_at"`
-	UpdatedAt   time.Time     `db:"updated_at"`
-}
-
-type GitDB interface {
+// Close implements db.DB.
+func (d *DB) Close() error {
+	return d.DB.Close()
 }
