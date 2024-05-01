@@ -76,20 +76,18 @@ git add -A && git commit -m "fix: some bugs"
 
 # Contributor runs:
 git format-patch --stdout | ssh git.sh pr noice
-# (-or-) Contributor runs 
-git format-patch && rsync *.patch git.sh:/noice/
 # > Patch Request has been created (ID: noice/1)
 
 # Contributor can copy down patch request metadata:
-rsync git.sh:/noice/pr_1.md .
+rsync git.sh:/noice/1.md .
 # Contributor edits patch request metadata, then runs:
-rsync pr_1.md git.sh:/noice/
+rsync 1.md git.sh:/noice/
 
 # Owner can checkout patch:
 ssh git.sh pr noice/1 | git am -3
 # Owner can comment in code, then commit, then send another format-patch
 # on top of it:
-git format-patch --stdout | ssh git.sh pr noice/1
+git format-patch --stdout | ssh git.sh pr noice/1 --review
 # We do some magic in the UI to make this look like comments or someway to
 # clearly mark as a review
 
@@ -101,10 +99,8 @@ ssh git.sh pr noice/1 --squash-n-merge
 # Contributor can checkout reviews
 ssh git.sh pr noice/1 | git am -3
 
-# Contributor/Owner could also submit a one-off comment:
-rsync my_comment.md git.sh:/noice/1
-# (-or-)
-cat my_comment.md | git.sh comment noice/1
+# Commenting
+cat my_comment.md | git.sh txt noice/1
 
 # rinse and repeat
 ```

@@ -25,11 +25,26 @@ type PatchRequest struct {
 	UpdatedAt time.Time `db:"updated_at"`
 }
 
-// Comment is a database model for a reply to a PatchRequest
+// Patch is a database model for a single entry in a patchset
+// This usually corresponds to a git commit.
+type Patch struct {
+	ID             int64     `db:"id"`
+	UserID         int64     `db:"user_id"`
+	PatchRequestID int64     `db:"patch_request_id"`
+	FromName       string    `db:"from_name"`
+	FromEmail      string    `db:"from_email"`
+	Subject        string    `db:"subject"`
+	Text           string    `db:"text"`
+	Date           time.Time `db:"date"`
+	CreatedAt      time.Time `db:"created_at"`
+}
+
+// Comment is a database model for a non-patch comment within a PatchRequest
 type Comment struct {
 	ID             int64     `db:"id"`
 	UserID         int64     `db:"user_id"`
-	PatchRequestID int64     `db:"comment"`
+	PatchRequestID int64     `db:"patch_request_id"`
+	Text           string    `db:"text"`
 	CreatedAt      time.Time `db:"created_at"`
 	UpdatedAt      time.Time `db:"updated_at"`
 }

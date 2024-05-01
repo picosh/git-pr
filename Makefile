@@ -1,5 +1,6 @@
 fmt:
 	go fmt ./...
+	deno fmt README.md
 .PHONY: fmt
 
 build:
