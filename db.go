@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS patches (
   body TEXT NOT NULL,
   commit_sha TEXT NOT NULL,
   commit_date DATETIME NOT NULL,
+  review BOOLEAN NOT NULL DEFAULT false,
   raw_text TEXT NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT pr_id_fk

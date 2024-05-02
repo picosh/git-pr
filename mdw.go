@@ -2,6 +2,7 @@ package git
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -56,6 +57,12 @@ func try(sesh ssh.Session, err error) {
 	}
 }
 
+func flagSet(sesh ssh.Session, cmdName string) *flag.FlagSet {
+	cmd := flag.NewFlagSet(cmdName, flag.ContinueOnError)
+	cmd.SetOutput(sesh)
+	return cmd
+}
+
 func GitServerMiddleware(be *Backend) wish.Middleware {
 	return func(next ssh.Handler) ssh.Handler {
 		return func(sesh ssh.Session) {
@@ -81,14 +88,14 @@ func GitServerMiddleware(be *Backend) wish.Middleware {
 					}
 				}
 			} else if cmd == "pr" {
-				if len(args) < 2 {
-					wish.Fatal(sesh, "must provide repo name")
-					return
-				}
+				prCmd := flagSet(sesh, "pr")
+				repo := prCmd.String("repo", "", "repository to target")
+				out := prCmd.Bool("stdout", false, "print patchset to stdout")
+				id := prCmd.Int("id", 0, "patch request id")
 
-				repoName := utils.SanitizeRepo(args[1])
+				repoName := utils.SanitizeRepo(*repo)
 
-				if len(args) > 2 {
+				if *out == true {
 					prID, err := strconv.ParseInt(args[2], 10, 64)
 					try(sesh, err)
 
@@ -99,7 +106,7 @@ func GitServerMiddleware(be *Backend) wish.Middleware {
 						prID,
 					)
 					if len(patches) == 0 {
-						wish.Printf(sesh, "No patches found for Patch Request ID: %d\n", prID)
+						wish.Printf(sesh, "no patches found for Patch Request ID: %d\n", prID)
 						return
 					}
 
@@ -111,6 +118,45 @@ func GitServerMiddleware(be *Backend) wish.Middleware {
 					for _, patch := range patches {
 						wish.Printf(sesh, "%s\n\n\n", patch.RawText)
 					}
+				} else if *id != 0 {
+					prID := *id
+					pr := PatchRequest{}
+					be.DB.Get(&pr, "SELECT * FROM patch_requests WHERE id=?", prID)
+					if pr.ID == 0 {
+						wish.Fatalln(sesh, "patch request does not exist")
+						return
+					}
+
+					review := false
+					if pr.Pubkey != pubkey {
+						review = true
+					}
+
+					// need to read io.Reader from session twice
+					var buf bytes.Buffer
+					tee := io.TeeReader(sesh, &buf)
+
+					_, preamble, err := gitdiff.Parse(tee)
+					try(sesh, err)
+					header, err := gitdiff.ParsePatchHeader(preamble)
+					try(sesh, err)
+
+					_, err = be.DB.Exec(
+						"INSERT INTO patches (pubkey, patch_request_id, author_name, author_email, title, body, commit_sha, commit_date, review, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+						pubkey,
+						prID,
+						header.Author.Name,
+						header.Author.Email,
+						header.Title,
+						header.Body,
+						header.SHA,
+						header.CommitterDate,
+						review,
+						buf.String(),
+					)
+					try(sesh, err)
+
+					wish.Printf(sesh, "submitted review!\n")
 				} else {
 					err := git.EnsureWithin(be.ReposDir(), be.RepoName(repoName))
 					try(sesh, err)
@@ -163,7 +209,7 @@ func GitServerMiddleware(be *Backend) wish.Middleware {
 
 					wish.Printf(
 						sesh,
-						"Create Patch Request!\nID: %d\nTitle: %s\n",
+						"created patch request!\nID: %d\nTitle: %s\n",
 						prID,
 						prName,
 					)
