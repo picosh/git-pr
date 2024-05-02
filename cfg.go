@@ -1,11 +1,13 @@
 package git
 
 type GitCfg struct {
-	DataPath string
+	DataPath     string
+	AdminPubkeys []string
 }
 
 func NewGitCfg() *GitCfg {
 	return &GitCfg{
-		DataPath: "ssh_data",
+		DataPath:     "ssh_data",
+		AdminPubkeys: []string{},
 	}
 }

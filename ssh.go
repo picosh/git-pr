@@ -34,7 +34,7 @@ func GitSshServer() {
 	cfg := NewGitCfg()
 	logger := slog.Default()
 	handler := NewUploadHandler(cfg, logger)
-	dbh, err := Open(":memory", logger)
+	dbh, err := Open(":memory:", logger)
 	if err != nil {
 		panic(err)
 	}

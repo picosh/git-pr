@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/bluekeyes/go-gitdiff/gitdiff"
@@ -66,63 +68,106 @@ func GitServerMiddleware(be *Backend) wish.Middleware {
 				err := gitServiceCommands(sesh, be, cmd, repoName)
 				try(sesh, err)
 			} else if cmd == "help" {
-				wish.Println(sesh, "commands: [help, git-receive-pack, git-upload-pack]")
+				wish.Println(sesh, "commands: [help, pr, ls, git-receive-pack, git-upload-pack]")
+			} else if cmd == "ls" {
+				entries, err := os.ReadDir(be.ReposDir())
+				if err != nil {
+					wish.Fatal(sesh, err)
+				}
+
+				for _, e := range entries {
+					if e.IsDir() {
+						wish.Println(sesh, utils.SanitizeRepo(e.Name()))
+					}
+				}
 			} else if cmd == "pr" {
 				if len(args) < 2 {
 					wish.Fatal(sesh, "must provide repo name")
 					return
 				}
+
 				repoName := utils.SanitizeRepo(args[1])
-				err := git.EnsureWithin(be.ReposDir(), be.RepoName(repoName))
-				try(sesh, err)
 
-				// need to read io.Reader from session twice
-				var buf bytes.Buffer
-				tee := io.TeeReader(sesh, &buf)
+				if len(args) > 2 {
+					prID, err := strconv.ParseInt(args[2], 10, 64)
+					try(sesh, err)
 
-				_, preamble, err := gitdiff.Parse(tee)
-				try(sesh, err)
-				header, err := gitdiff.ParsePatchHeader(preamble)
-				try(sesh, err)
-				prName := header.Title
-				prDesc := header.Body
+					patches := []*Patch{}
+					be.DB.Select(
+						&patches,
+						"SELECT * FROM patches WHERE patch_request_id=?",
+						prID,
+					)
+					if len(patches) == 0 {
+						wish.Printf(sesh, "No patches found for Patch Request ID: %d\n", prID)
+						return
+					}
 
-				var prID int64
-				row := be.DB.QueryRow(
-					"INSERT INTO patch_requests (pubkey, repo_id, name, text, updated_at) VALUES(?, ?, ?, ?, ?) RETURNING id",
-					pubkey,
-					repoName,
-					prName,
-					prDesc,
-					time.Now(),
-				)
-				row.Scan(&prID)
-				if prID == 0 {
-					wish.Fatal(sesh, "could not create patch request")
-					return
+					if len(patches) == 1 {
+						wish.Println(sesh, patches[0].RawText)
+						return
+					}
+
+					for _, patch := range patches {
+						wish.Printf(sesh, "%s\n\n\n", patch.RawText)
+					}
+				} else {
+					err := git.EnsureWithin(be.ReposDir(), be.RepoName(repoName))
+					try(sesh, err)
+					_, err = os.Stat(filepath.Join(be.ReposDir(), be.RepoName(repoName)))
+					if os.IsNotExist(err) {
+						wish.Fatalln(sesh, "repo does not exist")
+						return
+					}
+
+					// need to read io.Reader from session twice
+					var buf bytes.Buffer
+					tee := io.TeeReader(sesh, &buf)
+
+					_, preamble, err := gitdiff.Parse(tee)
+					try(sesh, err)
+					header, err := gitdiff.ParsePatchHeader(preamble)
+					try(sesh, err)
+					prName := header.Title
+					prDesc := header.Body
+
+					var prID int64
+					row := be.DB.QueryRow(
+						"INSERT INTO patch_requests (pubkey, repo_id, name, text, updated_at) VALUES(?, ?, ?, ?, ?) RETURNING id",
+						pubkey,
+						repoName,
+						prName,
+						prDesc,
+						time.Now(),
+					)
+					row.Scan(&prID)
+					if prID == 0 {
+						wish.Fatal(sesh, "could not create patch request")
+						return
+					}
+					try(sesh, err)
+
+					_, err = be.DB.Exec(
+						"INSERT INTO patches (pubkey, patch_request_id, author_name, author_email, title, body, commit_sha, commit_date, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+						pubkey,
+						prID,
+						header.Author.Name,
+						header.Author.Email,
+						header.Title,
+						header.Body,
+						header.SHA,
+						header.CommitterDate,
+						buf.String(),
+					)
+					try(sesh, err)
+
+					wish.Printf(
+						sesh,
+						"Create Patch Request!\nID: %d\nTitle: %s\n",
+						prID,
+						prName,
+					)
 				}
-				try(sesh, err)
-
-				_, err = be.DB.Exec(
-					"INSERT INTO patches (pubkey, patch_request_id, author_name, author_email, title, body, commit_sha, commit_date, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-					pubkey,
-					prID,
-					header.Author.Name,
-					header.Author.Email,
-					header.Title,
-					header.Body,
-					header.SHA,
-					header.CommitterDate,
-					buf.String(),
-				)
-				try(sesh, err)
-
-				wish.Printf(
-					sesh,
-					"Create Patch Request!\nID: %d\nTitle: %s\n",
-					prID,
-					prName,
-				)
 
 				return
 			} else {
