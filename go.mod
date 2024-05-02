@@ -15,6 +15,7 @@ require (
 	github.com/antoniomika/go-rsync-receiver v0.0.0-20231110145728-c94949e1ab7d // indirect
 	github.com/aymanbagabas/git-module v1.8.4-0.20231101154130-8d27204ac6d2 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
+	github.com/bluekeyes/go-gitdiff v0.7.2 // indirect
 	github.com/caarlos0/env/v10 v10.0.0 // indirect
 	github.com/charmbracelet/bubbletea v0.25.0 // indirect
 	github.com/charmbracelet/git-lfs-transfer v0.1.1-0.20231027181609-f7ff6baf2ed0 // indirect

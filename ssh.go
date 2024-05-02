@@ -34,11 +34,16 @@ func GitSshServer() {
 	cfg := NewGitCfg()
 	logger := slog.Default()
 	handler := NewUploadHandler(cfg, logger)
-	dbh, err := Open(":memory:", logger)
+	dbh, err := Open(":memory", logger)
 	if err != nil {
 		panic(err)
 	}
 	dbh.Migrate()
+	be := &Backend{
+		DB:     dbh,
+		Logger: logger,
+		Cfg:    cfg,
+	}
 
 	s, err := wish.NewServer(
 		wish.WithAddress(
@@ -52,7 +57,7 @@ func GitSshServer() {
 		wish.WithMiddleware(
 			scp.Middleware(handler),
 			wishrsync.Middleware(handler),
-			GitServerMiddleware(cfg, dbh),
+			GitServerMiddleware(be),
 		),
 	)
 
