@@ -55,7 +55,7 @@ func gitServiceCommands(sesh ssh.Session, be *Backend, cmd, repo string) error {
 
 func try(sesh ssh.Session, err error) {
 	if err != nil {
-		wish.Fatal(sesh, err)
+		wish.Fatalln(sesh, err)
 	}
 }
 
@@ -65,60 +65,67 @@ func flagSet(sesh ssh.Session, cmdName string) *flag.FlagSet {
 	return cmd
 }
 
-type PrCmd struct {
-	Session ssh.Session
-	Backend *Backend
-	Repo    string
-	Pubkey  string
+type GitPatchRequest interface {
+	GetPatchesByPrID(prID int64) ([]*Patch, error)
+	SubmitPatch(pubkey string, prID int64, patch io.Reader) (*Patch, error)
+	SubmitPatchRequest(pubkey string, repoName string, patches io.Reader) (*PatchRequest, error)
 }
 
-func (pr *PrCmd) PrintPatches(prID int64) {
+type PrCmd struct {
+	Backend *Backend
+}
+
+var _ GitPatchRequest = PrCmd{}
+var _ GitPatchRequest = (*PrCmd)(nil)
+
+func (pr PrCmd) GetPatchesByPrID(prID int64) ([]*Patch, error) {
 	patches := []*Patch{}
-	pr.Backend.DB.Select(
+	err := pr.Backend.DB.Select(
 		&patches,
 		"SELECT * FROM patches WHERE patch_request_id=?",
 		prID,
 	)
+	if err != nil {
+		return patches, err
+	}
 	if len(patches) == 0 {
-		wish.Printf(pr.Session, "no patches found for Patch Request ID: %d\n", prID)
-		return
+		return patches, fmt.Errorf("no patches found for Patch Request ID: %d", prID)
 	}
-
-	if len(patches) == 1 {
-		wish.Println(pr.Session, patches[0].RawText)
-		return
-	}
-
-	for _, patch := range patches {
-		wish.Printf(pr.Session, "%s\n\n\n", patch.RawText)
-	}
+	return patches, nil
 }
 
-func (cmd *PrCmd) SubmitPatch(prID int64) {
+func (cmd PrCmd) SubmitPatch(pubkey string, prID int64, patch io.Reader) (*Patch, error) {
 	pr := PatchRequest{}
-	cmd.Backend.DB.Get(&pr, "SELECT * FROM patch_requests WHERE id=?", prID)
+	err := cmd.Backend.DB.Get(&pr, "SELECT * FROM patch_requests WHERE id=?", prID)
+	if err != nil {
+		return nil, err
+	}
 	if pr.ID == 0 {
-		wish.Fatalln(cmd.Session, "patch request does not exist")
-		return
+		return nil, fmt.Errorf("patch request (ID: %d) does not exist", prID)
 	}
 
 	review := false
-	if pr.Pubkey != cmd.Pubkey {
+	if pr.Pubkey != pubkey {
 		review = true
 	}
 
 	// need to read io.Reader from session twice
 	var buf bytes.Buffer
-	tee := io.TeeReader(cmd.Session, &buf)
+	tee := io.TeeReader(patch, &buf)
 
 	_, preamble, err := gitdiff.Parse(tee)
-	try(cmd.Session, err)
+	if err != nil {
+		return nil, err
+	}
 	header, err := gitdiff.ParsePatchHeader(preamble)
-	try(cmd.Session, err)
+	if err != nil {
+		return nil, err
+	}
 
-	_, err = cmd.Backend.DB.Exec(
-		"INSERT INTO patches (pubkey, patch_request_id, author_name, author_email, title, body, commit_sha, commit_date, review, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		cmd.Pubkey,
+	patchID := 0
+	row := cmd.Backend.DB.QueryRow(
+		"INSERT INTO patches (pubkey, patch_request_id, author_name, author_email, title, body, commit_sha, commit_date, review, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+		pubkey,
 		prID,
 		header.Author.Name,
 		header.Author.Email,
@@ -129,50 +136,61 @@ func (cmd *PrCmd) SubmitPatch(prID int64) {
 		review,
 		buf.String(),
 	)
-	try(cmd.Session, err)
+	err = row.Scan(&patchID)
+	if err != nil {
+		return nil, err
+	}
 
-	wish.Printf(cmd.Session, "submitted review!\n")
+	var patchRec Patch
+	err = cmd.Backend.DB.Get(&patchRec, "SELECT * FROM patches WHERE id=?")
+	return &patchRec, err
 }
 
-func (cmd *PrCmd) SubmitPatchRequest(repoName string) {
+func (cmd PrCmd) SubmitPatchRequest(pubkey string, repoName string, patches io.Reader) (*PatchRequest, error) {
 	err := git.EnsureWithin(cmd.Backend.ReposDir(), cmd.Backend.RepoName(repoName))
-	try(cmd.Session, err)
+	if err != nil {
+		return nil, err
+	}
 	_, err = os.Stat(filepath.Join(cmd.Backend.ReposDir(), cmd.Backend.RepoName(repoName)))
 	if os.IsNotExist(err) {
-		wish.Fatalln(cmd.Session, "repo does not exist")
-		return
+		return nil, fmt.Errorf("repo does not exist: %s", repoName)
 	}
 
 	// need to read io.Reader from session twice
 	var buf bytes.Buffer
-	tee := io.TeeReader(cmd.Session, &buf)
+	tee := io.TeeReader(patches, &buf)
 
 	_, preamble, err := gitdiff.Parse(tee)
-	try(cmd.Session, err)
+	if err != nil {
+		return nil, err
+	}
 	header, err := gitdiff.ParsePatchHeader(preamble)
-	try(cmd.Session, err)
+	if err != nil {
+		return nil, err
+	}
 	prName := header.Title
 	prDesc := header.Body
 
 	var prID int64
 	row := cmd.Backend.DB.QueryRow(
 		"INSERT INTO patch_requests (pubkey, repo_id, name, text, updated_at) VALUES(?, ?, ?, ?, ?) RETURNING id",
-		cmd.Pubkey,
+		pubkey,
 		repoName,
 		prName,
 		prDesc,
 		time.Now(),
 	)
-	row.Scan(&prID)
-	if prID == 0 {
-		wish.Fatal(cmd.Session, "could not create patch request")
-		return
+	err = row.Scan(&prID)
+	if err != nil {
+		return nil, err
 	}
-	try(cmd.Session, err)
+	if prID == 0 {
+		return nil, fmt.Errorf("could not create patch request")
+	}
 
 	_, err = cmd.Backend.DB.Exec(
 		"INSERT INTO patches (pubkey, patch_request_id, author_name, author_email, title, body, commit_sha, commit_date, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		cmd.Pubkey,
+		pubkey,
 		prID,
 		header.Author.Name,
 		header.Author.Email,
@@ -182,17 +200,16 @@ func (cmd *PrCmd) SubmitPatchRequest(repoName string) {
 		header.CommitterDate,
 		buf.String(),
 	)
-	try(cmd.Session, err)
+	if err != nil {
+		return nil, err
+	}
 
-	wish.Printf(
-		cmd.Session,
-		"created patch request!\nID: %d\nTitle: %s\n",
-		prID,
-		prName,
-	)
+	var pr PatchRequest
+	err = cmd.Backend.DB.Get(&pr, "SELECT * FROM patch_requests WHERE id=?", prID)
+	return &pr, err
 }
 
-func GitPatchRequestMiddleware(be *Backend) wish.Middleware {
+func GitPatchRequestMiddleware(be *Backend, pr GitPatchRequest) wish.Middleware {
 	isNumRe := regexp.MustCompile(`^\d+$`)
 
 	return func(next ssh.Handler) ssh.Handler {
@@ -209,9 +226,7 @@ func GitPatchRequestMiddleware(be *Backend) wish.Middleware {
 				wish.Println(sesh, "commands: [help, pr, ls, git-receive-pack, git-upload-pack]")
 			} else if cmd == "ls" {
 				entries, err := os.ReadDir(be.ReposDir())
-				if err != nil {
-					wish.Fatal(sesh, err)
-				}
+				try(sesh, err)
 
 				for _, e := range entries {
 					if e.IsDir() {
@@ -246,20 +261,33 @@ func GitPatchRequestMiddleware(be *Backend) wish.Middleware {
 				}
 				out := prCmd.Bool("stdout", false, "print patchset to stdout")
 
-				pr := &PrCmd{
-					Session: sesh,
-					Backend: be,
-					Pubkey:  pubkey,
-				}
+				if *out {
+					patches, err := pr.GetPatchesByPrID(prID)
+					try(sesh, err)
 
-				if *out == true {
-					pr.PrintPatches(prID)
+					if len(patches) == 0 {
+						wish.Println(sesh, patches[0].RawText)
+						return
+					}
+
+					for _, patch := range patches {
+						wish.Printf(sesh, "%s\n\n\n", patch.RawText)
+					}
 				} else if prID != 0 {
-					pr.SubmitPatch(prID)
+					patch, err := pr.SubmitPatch(pubkey, prID, sesh)
+					if err != nil {
+						wish.Fatalln(sesh, err)
+						return
+					}
+					wish.Printf(sesh, "Patch submitted! (ID:%d)\n", patch.ID)
 				} else if subCmd == "ls" {
 					wish.Println(sesh, "list all patch requests")
 				} else if repoName != "" {
-					pr.SubmitPatchRequest(repoName)
+					request, err := pr.SubmitPatchRequest(pubkey, repoName, sesh)
+					if err != nil {
+						wish.Fatalln(sesh, err)
+					}
+					wish.Printf(sesh, "Patch Request submitted! (ID:%d)\n", request.ID)
 				}
 
 				return

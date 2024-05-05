@@ -8,7 +8,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// PatchRequest is a database model for patches submitted to a Repo
+// PatchRequest is a database model for patches submitted to a Repo.
 type PatchRequest struct {
 	ID        int64     `db:"id"`
 	Pubkey    string    `db:"pubkey"`
@@ -19,7 +19,7 @@ type PatchRequest struct {
 	UpdatedAt time.Time `db:"updated_at"`
 }
 
-// Patch is a database model for a single entry in a patchset
+// Patch is a database model for a single entry in a patchset.
 // This usually corresponds to a git commit.
 type Patch struct {
 	ID             int64     `db:"id"`
@@ -36,7 +36,7 @@ type Patch struct {
 	CreatedAt      time.Time `db:"created_at"`
 }
 
-// Comment is a database model for a non-patch comment within a PatchRequest
+// Comment is a database model for a non-patch comment within a PatchRequest.
 type Comment struct {
 	ID             int64     `db:"id"`
 	Pubkey         string    `db:"pubkey"`

@@ -40,6 +40,9 @@ func GitSshServer() {
 		Logger: logger,
 		Cfg:    cfg,
 	}
+	prCmd := &PrCmd{
+		Backend: be,
+	}
 
 	s, err := wish.NewServer(
 		wish.WithAddress(
@@ -50,7 +53,7 @@ func GitSshServer() {
 		),
 		wish.WithPublicKeyAuth(authHandler),
 		wish.WithMiddleware(
-			GitPatchRequestMiddleware(be),
+			GitPatchRequestMiddleware(be, prCmd),
 		),
 	)
 
