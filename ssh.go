@@ -12,9 +12,6 @@ import (
 
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
-	wishrsync "github.com/picosh/send/send/rsync"
-	"github.com/picosh/send/send/scp"
-	"github.com/picosh/send/send/sftp"
 )
 
 func authHandler(ctx ssh.Context, key ssh.PublicKey) bool {
@@ -33,7 +30,6 @@ func GitSshServer() {
 
 	cfg := NewGitCfg()
 	logger := slog.Default()
-	handler := NewUploadHandler(cfg, logger)
 	dbh, err := Open(":memory:", logger)
 	if err != nil {
 		panic(err)
@@ -53,11 +49,8 @@ func GitSshServer() {
 			filepath.Join(cfg.DataPath, "term_info_ed25519"),
 		),
 		wish.WithPublicKeyAuth(authHandler),
-		sftp.SSHOption(handler),
 		wish.WithMiddleware(
-			scp.Middleware(handler),
-			wishrsync.Middleware(handler),
-			GitServerMiddleware(be),
+			GitPatchRequestMiddleware(be),
 		),
 	)
 

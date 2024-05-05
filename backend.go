@@ -6,8 +6,6 @@ import (
 
 	"github.com/charmbracelet/ssh"
 	gossh "golang.org/x/crypto/ssh"
-	// ssgit "github.com/charmbracelet/soft-serve/git"
-	// "github.com/charmbracelet/soft-serve/pkg/utils"
 )
 
 type Backend struct {
