@@ -65,10 +65,20 @@ func flagSet(sesh ssh.Session, cmdName string) *flag.FlagSet {
 	return cmd
 }
 
+// ssh git.sh ls
+// git format-patch --stdout | ssh git.sh pr test
+// git format-patch --stdout | ssh git.sh pr 123
+// ssh git.sh pr ls
+// ssh git.sh pr 123 --stdout | git am -3
+// ssh git.sh pr 123 --approve # or --close
+// echo "here is a comment" | ssh git.sh pr 123 --comment
+
 type GitPatchRequest interface {
-	GetPatchesByPrID(prID int64) ([]*Patch, error)
-	SubmitPatch(pubkey string, prID int64, patch io.Reader) (*Patch, error)
 	SubmitPatchRequest(pubkey string, repoName string, patches io.Reader) (*PatchRequest, error)
+	SubmitPatch(pubkey string, prID int64, patch io.Reader, review bool) (*Patch, error)
+	GetPatchRequests() ([]*PatchRequest, error)
+	GetPatchesByPrID(prID int64) ([]*Patch, error)
+	UpdatePatchRequest(prID int64, status string) error
 }
 
 type PrCmd struct {
@@ -94,7 +104,24 @@ func (pr PrCmd) GetPatchesByPrID(prID int64) ([]*Patch, error) {
 	return patches, nil
 }
 
-func (cmd PrCmd) SubmitPatch(pubkey string, prID int64, patch io.Reader) (*Patch, error) {
+func (cmd PrCmd) GetPatchRequests() ([]*PatchRequest, error) {
+	prs := []*PatchRequest{}
+	err := cmd.Backend.DB.Select(
+		&prs,
+		"SELECT * FROM patch_requests",
+	)
+	return prs, err
+}
+
+// status types: open, close, accept, review
+func (cmd PrCmd) UpdatePatchRequest(prID int64, status string) error {
+	_, err := cmd.Backend.DB.Exec(
+		"UPDATE patch_requests SET status=? WHERE id=?", status, prID,
+	)
+	return err
+}
+
+func (cmd PrCmd) SubmitPatch(pubkey string, prID int64, patch io.Reader, review bool) (*Patch, error) {
 	pr := PatchRequest{}
 	err := cmd.Backend.DB.Get(&pr, "SELECT * FROM patch_requests WHERE id=?", prID)
 	if err != nil {
@@ -102,11 +129,6 @@ func (cmd PrCmd) SubmitPatch(pubkey string, prID int64, patch io.Reader) (*Patch
 	}
 	if pr.ID == 0 {
 		return nil, fmt.Errorf("patch request (ID: %d) does not exist", prID)
-	}
-
-	review := false
-	if pr.Pubkey != pubkey {
-		review = true
 	}
 
 	// need to read io.Reader from session twice
@@ -234,20 +256,6 @@ func GitPatchRequestMiddleware(be *Backend, pr GitPatchRequest) wish.Middleware 
 					}
 				}
 			} else if cmd == "pr" {
-				// PATCH REQUEST STATUS:
-				// APPROVED
-				// CLOSED
-				// REVIEWED
-
-				// ssh git.sh ls
-				// git format-patch --stdout | ssh git.sh pr test
-				// git format-patch --stdout | ssh git.sh pr 123
-				// ssh git.sh pr ls
-				// ssh git.sh pr 123 --approve
-				// ssh git.sh pr 123 --close
-				// ssh git.sh pr 123 --stdout | git am -3
-				// echo "here is a comment" | ssh git.sh pr 123 --comment
-
 				prCmd := flagSet(sesh, "pr")
 				subCmd := strings.TrimSpace(args[2])
 				repoName := ""
@@ -259,9 +267,15 @@ func GitPatchRequestMiddleware(be *Backend, pr GitPatchRequest) wish.Middleware 
 				} else {
 					repoName = utils.SanitizeRepo(subCmd)
 				}
+				help := prCmd.Bool("help", false, "print patch request help")
 				out := prCmd.Bool("stdout", false, "print patchset to stdout")
+				accept := prCmd.Bool("accept", false, "mark patch request as accepted")
+				closed := prCmd.Bool("close", false, "mark patch request as closed")
+				review := prCmd.Bool("review", false, "mark patch request as reviewed")
 
-				if *out {
+				if *help {
+					wish.Println(sesh, "commands: [pr ls, pr {id}]")
+				} else if prID != 0 && *out {
 					patches, err := pr.GetPatchesByPrID(prID)
 					try(sesh, err)
 
@@ -274,14 +288,53 @@ func GitPatchRequestMiddleware(be *Backend, pr GitPatchRequest) wish.Middleware 
 						wish.Printf(sesh, "%s\n\n\n", patch.RawText)
 					}
 				} else if prID != 0 {
-					patch, err := pr.SubmitPatch(pubkey, prID, sesh)
-					if err != nil {
-						wish.Fatalln(sesh, err)
-						return
+					if *accept {
+						if !be.IsAdmin(sesh.PublicKey()) {
+							wish.Fatalln(sesh, "must be admin to accept PR")
+							return
+						}
+						err := pr.UpdatePatchRequest(prID, "accept")
+						try(sesh, err)
+					} else if *closed {
+						if !be.IsAdmin(sesh.PublicKey()) {
+							wish.Fatalln(sesh, "must be admin to close PR")
+							return
+						}
+						err := pr.UpdatePatchRequest(prID, "close")
+						try(sesh, err)
+					} else {
+						rv := *review
+						isAdmin := be.IsAdmin(sesh.PublicKey())
+						if !isAdmin {
+							rv = false
+						}
+						var req PatchRequest
+						err = be.DB.Get(&req, "SELECT * FROM patch_requests WHERE id=?", prID)
+						try(sesh, err)
+						isOwner := req.Pubkey != be.Pubkey(sesh.PublicKey())
+						if !isAdmin || isOwner {
+							wish.Fatalln(sesh, "unauthorized, you are not the owner of this Patch Request")
+							return
+						}
+
+						patch, err := pr.SubmitPatch(pubkey, prID, sesh, rv)
+						if err != nil {
+							wish.Fatalln(sesh, err)
+							return
+						}
+						if *review {
+							err = pr.UpdatePatchRequest(prID, "review")
+							try(sesh, err)
+						}
+						wish.Printf(sesh, "Patch submitted! (ID:%d)\n", patch.ID)
 					}
-					wish.Printf(sesh, "Patch submitted! (ID:%d)\n", patch.ID)
 				} else if subCmd == "ls" {
-					wish.Println(sesh, "list all patch requests")
+					prs, err := pr.GetPatchRequests()
+					try(sesh, err)
+					wish.Printf(sesh, "Name\tID\n")
+					for _, req := range prs {
+						wish.Printf(sesh, "%s\t%d\n", req.Name, req.ID)
+					}
 				} else if repoName != "" {
 					request, err := pr.SubmitPatchRequest(pubkey, repoName, sesh)
 					if err != nil {

@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS patch_requests (
   repo_id TEXT NOT NULL,
   name TEXT NOT NULL,
   text TEXT NOT NULL,
+  status TEXT NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL
 );

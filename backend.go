@@ -25,3 +25,12 @@ func (be *Backend) RepoName(name string) string {
 func (be *Backend) Pubkey(pk ssh.PublicKey) string {
 	return gossh.FingerprintSHA256(pk)
 }
+
+func (be *Backend) IsAdmin(pk ssh.PublicKey) bool {
+	for _, apk := range be.Cfg.Admins {
+		if ssh.KeysEqual(pk, apk) {
+			return true
+		}
+	}
+	return false
+}
