@@ -74,7 +74,8 @@ func flagSet(sesh ssh.Session, cmdName string) *flag.FlagSet {
 // echo "here is a comment" | ssh git.sh pr 123 --comment
 
 type GitPatchRequest interface {
-	SubmitPatchRequest(pubkey string, repoName string, patches io.Reader) (*PatchRequest, error)
+	GetRepos() ([]string, error)
+	SubmitPatchRequest(pubkey string, repoID string, patches io.Reader) (*PatchRequest, error)
 	SubmitPatch(pubkey string, prID int64, patch io.Reader, review bool) (*Patch, error)
 	GetPatchRequests() ([]*PatchRequest, error)
 	GetPatchesByPrID(prID int64) ([]*Patch, error)
@@ -87,6 +88,20 @@ type PrCmd struct {
 
 var _ GitPatchRequest = PrCmd{}
 var _ GitPatchRequest = (*PrCmd)(nil)
+
+func (pr PrCmd) GetRepos() ([]string, error) {
+	repos := []string{}
+	entries, err := os.ReadDir(pr.Backend.ReposDir())
+	if err != nil {
+		return repos, err
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			repos = append(repos, entry.Name())
+		}
+	}
+	return repos, nil
+}
 
 func (pr PrCmd) GetPatchesByPrID(prID int64) ([]*Patch, error) {
 	patches := []*Patch{}
@@ -168,14 +183,15 @@ func (cmd PrCmd) SubmitPatch(pubkey string, prID int64, patch io.Reader, review 
 	return &patchRec, err
 }
 
-func (cmd PrCmd) SubmitPatchRequest(pubkey string, repoName string, patches io.Reader) (*PatchRequest, error) {
-	err := git.EnsureWithin(cmd.Backend.ReposDir(), cmd.Backend.RepoName(repoName))
+func (cmd PrCmd) SubmitPatchRequest(pubkey string, repoID string, patches io.Reader) (*PatchRequest, error) {
+	err := git.EnsureWithin(cmd.Backend.ReposDir(), repoID)
 	if err != nil {
 		return nil, err
 	}
-	_, err = os.Stat(filepath.Join(cmd.Backend.ReposDir(), cmd.Backend.RepoName(repoName)))
+	loc := filepath.Join(cmd.Backend.ReposDir(), repoID)
+	_, err = os.Stat(loc)
 	if os.IsNotExist(err) {
-		return nil, fmt.Errorf("repo does not exist: %s", repoName)
+		return nil, fmt.Errorf("repo does not exist: %s", loc)
 	}
 
 	// need to read io.Reader from session twice
@@ -195,11 +211,12 @@ func (cmd PrCmd) SubmitPatchRequest(pubkey string, repoName string, patches io.R
 
 	var prID int64
 	row := cmd.Backend.DB.QueryRow(
-		"INSERT INTO patch_requests (pubkey, repo_id, name, text, updated_at) VALUES(?, ?, ?, ?, ?) RETURNING id",
+		"INSERT INTO patch_requests (pubkey, repo_id, name, text, status, updated_at) VALUES(?, ?, ?, ?, ?, ?) RETURNING id",
 		pubkey,
-		repoName,
+		repoID,
 		prName,
 		prDesc,
+		"open",
 		time.Now(),
 	)
 	err = row.Scan(&prID)
@@ -247,48 +264,72 @@ func GitPatchRequestMiddleware(be *Backend, pr GitPatchRequest) wish.Middleware 
 			} else if cmd == "help" {
 				wish.Println(sesh, "commands: [help, pr, ls, git-receive-pack, git-upload-pack]")
 			} else if cmd == "ls" {
-				entries, err := os.ReadDir(be.ReposDir())
+				repos, err := pr.GetRepos()
 				try(sesh, err)
-
-				for _, e := range entries {
-					if e.IsDir() {
-						wish.Println(sesh, utils.SanitizeRepo(e.Name()))
-					}
+				wish.Printf(sesh, "Name\tDir\n")
+				for _, repo := range repos {
+					wish.Printf(
+						sesh,
+						"%s\t%s\n",
+						utils.SanitizeRepo(repo),
+						filepath.Join(be.ReposDir(), repo),
+					)
 				}
 			} else if cmd == "pr" {
 				prCmd := flagSet(sesh, "pr")
-				subCmd := strings.TrimSpace(args[2])
-				repoName := ""
-				var prID int64
-				var err error
-				if isNumRe.MatchString(subCmd) {
-					prID, err = strconv.ParseInt(args[2], 10, 64)
-					try(sesh, err)
-				} else {
-					repoName = utils.SanitizeRepo(subCmd)
-				}
-				help := prCmd.Bool("help", false, "print patch request help")
 				out := prCmd.Bool("stdout", false, "print patchset to stdout")
 				accept := prCmd.Bool("accept", false, "mark patch request as accepted")
 				closed := prCmd.Bool("close", false, "mark patch request as closed")
 				review := prCmd.Bool("review", false, "mark patch request as reviewed")
 
-				if *help {
-					wish.Println(sesh, "commands: [pr ls, pr {id}]")
-				} else if prID != 0 && *out {
-					patches, err := pr.GetPatchesByPrID(prID)
-					try(sesh, err)
+				fmt.Println(args)
+				subCmd := strings.TrimSpace(args[1])
 
-					if len(patches) == 0 {
-						wish.Println(sesh, patches[0].RawText)
+				repoID := ""
+				var prID int64
+				var err error
+				// figure out subcommand based on what was passed in
+				if subCmd == "ls" {
+					// skip proccessing
+				} else if isNumRe.MatchString(subCmd) {
+					// we probably have a patch request id
+					prID, err = strconv.ParseInt(subCmd, 10, 64)
+					try(sesh, err)
+					subCmd = "patchRequest"
+				} else {
+					// we probably have a repo name
+					repoID = be.RepoID(subCmd)
+					subCmd = "submitPatchRequest"
+				}
+
+				if subCmd == "ls" {
+					prs, err := pr.GetPatchRequests()
+					try(sesh, err)
+					wish.Printf(sesh, "Name\tID\n")
+					for _, req := range prs {
+						wish.Printf(sesh, "%s\t%d\n", req.Name, req.ID)
+					}
+				} else if subCmd == "submitPatchRequest" {
+					request, err := pr.SubmitPatchRequest(pubkey, repoID, sesh)
+					if err != nil {
+						wish.Fatalln(sesh, err)
 						return
 					}
+					wish.Printf(sesh, "Patch Request submitted! (ID:%d)\n", request.ID)
+				} else if subCmd == "patchRequest" {
+					if *out {
+						patches, err := pr.GetPatchesByPrID(prID)
+						try(sesh, err)
 
-					for _, patch := range patches {
-						wish.Printf(sesh, "%s\n\n\n", patch.RawText)
-					}
-				} else if prID != 0 {
-					if *accept {
+						if len(patches) == 0 {
+							wish.Println(sesh, patches[0].RawText)
+							return
+						}
+
+						for _, patch := range patches {
+							wish.Printf(sesh, "%s\n\n\n", patch.RawText)
+						}
+					} else if *accept {
 						if !be.IsAdmin(sesh.PublicKey()) {
 							wish.Fatalln(sesh, "must be admin to accept PR")
 							return
@@ -328,24 +369,10 @@ func GitPatchRequestMiddleware(be *Backend, pr GitPatchRequest) wish.Middleware 
 						}
 						wish.Printf(sesh, "Patch submitted! (ID:%d)\n", patch.ID)
 					}
-				} else if subCmd == "ls" {
-					prs, err := pr.GetPatchRequests()
-					try(sesh, err)
-					wish.Printf(sesh, "Name\tID\n")
-					for _, req := range prs {
-						wish.Printf(sesh, "%s\t%d\n", req.Name, req.ID)
-					}
-				} else if repoName != "" {
-					request, err := pr.SubmitPatchRequest(pubkey, repoName, sesh)
-					if err != nil {
-						wish.Fatalln(sesh, err)
-					}
-					wish.Printf(sesh, "Patch Request submitted! (ID:%d)\n", request.ID)
 				}
 
 				return
 			} else {
-				fmt.Println("made it here")
 				next(sesh)
 				return
 			}

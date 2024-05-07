@@ -12,9 +12,10 @@ import (
 type PatchRequest struct {
 	ID        int64     `db:"id"`
 	Pubkey    string    `db:"pubkey"`
-	RepoID    int64     `db:"repo_id"`
+	RepoID    string    `db:"repo_id"`
 	Name      string    `db:"name"`
 	Text      string    `db:"text"`
+	Status    string    `db:"status"`
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
 }
