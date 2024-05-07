@@ -353,7 +353,7 @@ func GitPatchRequestMiddleware(be *Backend, pr GitPatchRequest) wish.Middleware 
 						err = be.DB.Get(&req, "SELECT * FROM patch_requests WHERE id=?", prID)
 						try(sesh, err)
 						isOwner := req.Pubkey != be.Pubkey(sesh.PublicKey())
-						if !isAdmin || isOwner {
+						if !isAdmin && !isOwner {
 							wish.Fatalln(sesh, "unauthorized, you are not the owner of this Patch Request")
 							return
 						}
