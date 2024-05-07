@@ -67,7 +67,7 @@ func flagSet(sesh ssh.Session, cmdName string) *flag.FlagSet {
 
 // ssh git.sh ls
 // git format-patch --stdout | ssh git.sh pr test
-// git format-patch --stdout | ssh git.sh pr 123
+// git format-patch --stdout | ssh git.sh pr 123 --review
 // ssh git.sh pr ls
 // ssh git.sh pr 123 --stdout | git am -3
 // ssh git.sh pr 123 --approve # or --close
