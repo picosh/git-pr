@@ -28,10 +28,11 @@ type Patch struct {
 	PatchRequestID int64     `db:"patch_request_id"`
 	AuthorName     string    `db:"author_name"`
 	AuthorEmail    string    `db:"author_email"`
+	AuthorDate     time.Time `db:"author_date"`
 	Title          string    `db:"title"`
 	Body           string    `db:"body"`
+	BodyAppendix   string    `db:"body_appendix"`
 	CommitSha      string    `db:"commit_sha"`
-	CommitDate     time.Time `db:"commit_date"`
 	Review         bool      `db:"review"`
 	RawText        string    `db:"raw_text"`
 	CreatedAt      time.Time `db:"created_at"`
@@ -74,10 +75,11 @@ CREATE TABLE IF NOT EXISTS patches (
   patch_request_id INTEGER NOT NULL,
   author_name TEXT NOT NULL,
   author_email TEXT NOT NULL,
+  author_date DATETIME NOT NULL,
   title TEXT NOT NULL,
   body TEXT NOT NULL,
+  body_appendix TEXT NOT NULL,
   commit_sha TEXT NOT NULL,
-  commit_date DATETIME NOT NULL,
   review BOOLEAN NOT NULL DEFAULT false,
   raw_text TEXT NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -71,6 +71,7 @@ type GitPatchRequest interface {
 	GetRepos() ([]string, error)
 	SubmitPatchRequest(pubkey string, repoID string, patches io.Reader) (*PatchRequest, error)
 	SubmitPatch(pubkey string, prID int64, review bool, patch io.Reader) (*Patch, error)
+	GetPatchRequestByID(prID int64) (*PatchRequest, error)
 	GetPatchRequests() ([]*PatchRequest, error)
 	GetPatchesByPrID(prID int64) ([]*Patch, error)
 	UpdatePatchRequest(prID int64, status string) error
@@ -122,6 +123,16 @@ func (cmd PrCmd) GetPatchRequests() ([]*PatchRequest, error) {
 	return prs, err
 }
 
+func (cmd PrCmd) GetPatchRequestByID(prID int64) (*PatchRequest, error) {
+	pr := PatchRequest{}
+	err := cmd.Backend.DB.Get(
+		&pr,
+		"SELECT * FROM patch_requests WHERE id=?",
+		prID,
+	)
+	return &pr, err
+}
+
 // status types: open, close, accept, review
 func (cmd PrCmd) UpdatePatchRequest(prID int64, status string) error {
 	_, err := cmd.Backend.DB.Exec(
@@ -152,15 +163,16 @@ func (cmd PrCmd) SubmitPatch(pubkey string, prID int64, review bool, patch io.Re
 
 	patchID := 0
 	row := cmd.Backend.DB.QueryRow(
-		"INSERT INTO patches (pubkey, patch_request_id, author_name, author_email, title, body, commit_sha, commit_date, review, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+		"INSERT INTO patches (pubkey, patch_request_id, author_name, author_email, author_date, title, body, body_appendix, commit_sha, review, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
 		pubkey,
 		prID,
 		header.Author.Name,
 		header.Author.Email,
+		header.AuthorDate,
 		header.Title,
 		header.Body,
+		header.BodyAppendix,
 		header.SHA,
-		header.CommitterDate,
 		review,
 		buf.String(),
 	)
@@ -219,15 +231,16 @@ func (cmd PrCmd) SubmitPatchRequest(pubkey string, repoID string, patches io.Rea
 	}
 
 	_, err = cmd.Backend.DB.Exec(
-		"INSERT INTO patches (pubkey, patch_request_id, author_name, author_email, title, body, commit_sha, commit_date, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		"INSERT INTO patches (pubkey, patch_request_id, author_name, author_email, author_date, title, body, body_appendix, commit_sha, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		pubkey,
 		prID,
 		header.Author.Name,
 		header.Author.Email,
+		header.AuthorDate,
 		header.Title,
 		header.Body,
+		header.BodyAppendix,
 		header.SHA,
-		header.CommitterDate,
 		buf.String(),
 	)
 	if err != nil {
@@ -333,6 +346,42 @@ func GitPatchRequestMiddleware(be *Backend, pr GitPatchRequest) wish.Middleware 
 					}
 					wish.Printf(sesh, "Patch Request submitted! Use the ID for interacting with this Patch Request.\nID\tName\n%d\t%s\n", request.ID, request.Name)
 				} else if subCmd == "patchRequest" {
+					if *stats {
+						request, err := pr.GetPatchRequestByID(prID)
+						if err != nil {
+							wish.Fatalln(sesh, err)
+							return
+						}
+
+						wish.Printf(sesh, "%s\t[%s]\n%s\n%s\n%s\n", request.Name, request.Status, request.CreatedAt.Format(time.RFC3339Nano), request.Pubkey, request.Text)
+
+						patches, err := pr.GetPatchesByPrID(prID)
+						if err != nil {
+							wish.Fatalln(sesh, err)
+							return
+						}
+
+						for _, patch := range patches {
+							reviewTxt := ""
+							if patch.Review {
+								reviewTxt = "[review]"
+							}
+							wish.Printf(
+								sesh,
+								"%s %s %s\n%s <%s>\n%s\n\n---\n%s\n%s\n",
+								patch.Title,
+								reviewTxt,
+								patch.CommitSha,
+								patch.AuthorName,
+								patch.AuthorEmail,
+								patch.AuthorDate.Format(time.RFC3339Nano),
+								patch.BodyAppendix,
+								patch.Body,
+							)
+						}
+						return
+					}
+
 					if *out {
 						patches, err := pr.GetPatchesByPrID(prID)
 						if err != nil {
@@ -340,34 +389,14 @@ func GitPatchRequestMiddleware(be *Backend, pr GitPatchRequest) wish.Middleware 
 							return
 						}
 
-						if *stats {
-							for _, patch := range patches {
-								reviewTxt := ""
-								if patch.Review {
-									reviewTxt = "[R]"
-								}
-								wish.Printf(
-									sesh,
-									"%s %s\n%s <%s>\n%s\n%s\n---\n",
-									patch.Title,
-									reviewTxt,
-									patch.AuthorName,
-									patch.AuthorEmail,
-									patch.CommitDate.Format(time.RFC3339Nano),
-									patch.Body,
-								)
-							}
-						} else {
-							if len(patches) == 1 {
-								wish.Println(sesh, patches[0].RawText)
-								return
-							}
-
-							for _, patch := range patches {
-								wish.Printf(sesh, "%s\n\n\n", patch.RawText)
-							}
+						if len(patches) == 1 {
+							wish.Println(sesh, patches[0].RawText)
+							return
 						}
 
+						for _, patch := range patches {
+							wish.Printf(sesh, "%s\n\n\n", patch.RawText)
+						}
 					} else if *accept {
 						if !be.IsAdmin(sesh.PublicKey()) {
 							wish.Fatalln(sesh, "must be admin to accept PR")
