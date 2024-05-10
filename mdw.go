@@ -246,7 +246,10 @@ func GitPatchRequestMiddleware(be *Backend, pr GitPatchRequest) wish.Middleware 
 		return func(sesh ssh.Session) {
 			pubkey := be.Pubkey(sesh.PublicKey())
 			args := sesh.Command()
-			cmd := args[0]
+			cmd := "help"
+			if len(args) > 0 {
+				cmd = args[0]
+			}
 
 			if cmd == "git-receive-pack" || cmd == "git-upload-pack" {
 				repoName := args[1]
@@ -278,6 +281,12 @@ func GitPatchRequestMiddleware(be *Backend, pr GitPatchRequest) wish.Middleware 
 				accept := prCmd.Bool("accept", false, "mark patch request as accepted")
 				closed := prCmd.Bool("close", false, "mark patch request as closed")
 				review := prCmd.Bool("review", false, "mark patch request as reviewed")
+				stats := prCmd.Bool("stats", false, "return summary instead of patches")
+
+				if len(args) < 2 {
+					wish.Fatalln(sesh, "must provide repo name or patch request ID")
+					return
+				}
 
 				var err error
 				err = prCmd.Parse(args[2:])
@@ -322,7 +331,7 @@ func GitPatchRequestMiddleware(be *Backend, pr GitPatchRequest) wish.Middleware 
 						wish.Fatalln(sesh, err)
 						return
 					}
-					wish.Printf(sesh, "Patch Request submitted! (ID:%d)\n", request.ID)
+					wish.Printf(sesh, "Patch Request submitted! Use the ID for interacting with this Patch Request.\nID\tName\n%d\t%s\n", request.ID, request.Name)
 				} else if subCmd == "patchRequest" {
 					if *out {
 						patches, err := pr.GetPatchesByPrID(prID)
@@ -331,14 +340,34 @@ func GitPatchRequestMiddleware(be *Backend, pr GitPatchRequest) wish.Middleware 
 							return
 						}
 
-						if len(patches) == 1 {
-							wish.Println(sesh, patches[0].RawText)
-							return
+						if *stats {
+							for _, patch := range patches {
+								reviewTxt := ""
+								if patch.Review {
+									reviewTxt = "[R]"
+								}
+								wish.Printf(
+									sesh,
+									"%s %s\n%s <%s>\n%s\n%s\n---\n",
+									patch.Title,
+									reviewTxt,
+									patch.AuthorName,
+									patch.AuthorEmail,
+									patch.CommitDate.Format(time.RFC3339Nano),
+									patch.Body,
+								)
+							}
+						} else {
+							if len(patches) == 1 {
+								wish.Println(sesh, patches[0].RawText)
+								return
+							}
+
+							for _, patch := range patches {
+								wish.Printf(sesh, "%s\n\n\n", patch.RawText)
+							}
 						}
 
-						for _, patch := range patches {
-							wish.Printf(sesh, "%s\n\n\n", patch.RawText)
-						}
 					} else if *accept {
 						if !be.IsAdmin(sesh.PublicKey()) {
 							wish.Fatalln(sesh, "must be admin to accept PR")

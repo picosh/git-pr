@@ -30,7 +30,7 @@ func GitSshServer() {
 
 	cfg := NewGitCfg()
 	logger := slog.Default()
-	dbh, err := Open(":memory:", logger)
+	dbh, err := Open("./test.db", logger)
 	if err != nil {
 		panic(err)
 	}
