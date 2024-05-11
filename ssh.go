@@ -35,6 +35,14 @@ func GitSshServer() {
 		panic(err)
 	}
 	dbh.Migrate()
+
+	keys, err := getAuthorizedKeys(filepath.Join(cfg.DataPath, "authorized_keys"))
+	if err == nil {
+		cfg.Admins = keys
+	} else {
+		logger.Error("could not parse authorized keys file", "err", err)
+	}
+
 	be := &Backend{
 		DB:     dbh,
 		Logger: logger,

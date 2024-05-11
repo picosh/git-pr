@@ -100,6 +100,18 @@ func GitPatchRequestMiddleware(be *Backend, pr GitPatchRequest) wish.Middleware 
 				}
 				writer.Flush()
 			} else if cmd == "pr" {
+				/*
+					ssh git.sh ls
+					ssh git.sh pr ls
+					git format-patch -1 HEAD~1 --stdout | ssh git.sh pr create
+					ssh git.sh pr print 1
+					ssh git.sh pr print 1 --summary
+					ssh git.sh pr print 1 --ls
+					ssh git.sh pr accept 1
+					ssh git.sh pr close 1
+					git format-patch -1 HEAD~1 --stdout | ssh git.sh pr review 1
+					echo "my feedback" | ssh git.sh pr comment 1
+				*/
 				prCmd := flagSet(sesh, "pr")
 				out := prCmd.Bool("stdout", false, "print patchset to stdout")
 				accept := prCmd.Bool("accept", false, "mark patch request as accepted")
