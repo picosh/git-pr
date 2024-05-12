@@ -76,7 +76,7 @@ Here's how it works:
 						return err
 					}
 					writer := NewTabWriter(sesh)
-					fmt.Fprintln(writer, "Name\tDir")
+					fmt.Fprintln(writer, "ID\tDir")
 					for _, repo := range repos {
 						fmt.Fprintf(
 							writer,
