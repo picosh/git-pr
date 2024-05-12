@@ -24,10 +24,28 @@ func getPrID(str string) (int64, error) {
 }
 
 func NewCli(sesh ssh.Session, be *Backend, pr GitPatchRequest) *cli.App {
+	desc := `Patch requests (PR) are the simplest way to submit, review, and accept changes to your git repository.
+Here's how it works:
+	- External contributor clones repo (git-clone)
+	- External contributor makes a code change (git-add & git-commit)
+	- External contributor generates patches (git-format-patch)
+	- External contributor submits a PR to SSH server
+	- Owner receives RSS notification that there's a new PR
+	- Owner applies patches locally (git-am) from SSH server
+	- Owner makes suggestions in code! (git-add & git-commit)
+	- Owner submits review by piping patch to SSH server (git-format-patch)
+	- External contributor receives RSS notification of the PR review
+	- External contributor re-applies patches (git-am)
+	- External contributor reviews and removes comments in code!
+	- External contributor submits another patch (git-format-patch)
+	- Owner applies patches locally (git-am)
+	- Owner marks PR as accepted and pushes code to main (git-push)`
+
 	pubkey := be.Pubkey(sesh.PublicKey())
 	app := &cli.App{
 		Name:        "ssh",
-		Description: "A companion SSH server to allow external collaboration",
+		Description: desc,
+		Usage:       "Collaborate with external contributors to your project",
 		Writer:      sesh,
 		ErrWriter:   sesh,
 		Commands: []*cli.Command{
@@ -51,7 +69,7 @@ func NewCli(sesh ssh.Session, be *Backend, pr GitPatchRequest) *cli.App {
 			},
 			{
 				Name:  "ls",
-				Usage: "list all git repos",
+				Usage: "List all git repos",
 				Action: func(cCtx *cli.Context) error {
 					repos, err := pr.GetRepos()
 					if err != nil {
@@ -73,11 +91,11 @@ func NewCli(sesh ssh.Session, be *Backend, pr GitPatchRequest) *cli.App {
 			},
 			{
 				Name:  "pr",
-				Usage: "manage patch requests",
+				Usage: "Manage Patch Requests (PR)",
 				Subcommands: []*cli.Command{
 					{
 						Name:  "ls",
-						Usage: "list all patch requests",
+						Usage: "List all PRs",
 						Action: func(cCtx *cli.Context) error {
 							prs, err := pr.GetPatchRequests()
 							if err != nil {
@@ -102,7 +120,7 @@ func NewCli(sesh ssh.Session, be *Backend, pr GitPatchRequest) *cli.App {
 					},
 					{
 						Name:  "create",
-						Usage: "submit a new patch request",
+						Usage: "Submit a new PR",
 						Action: func(cCtx *cli.Context) error {
 							repoID := cCtx.Args().First()
 							request, err := pr.SubmitPatchRequest(pubkey, repoID, sesh)
@@ -111,7 +129,7 @@ func NewCli(sesh ssh.Session, be *Backend, pr GitPatchRequest) *cli.App {
 							}
 							wish.Printf(
 								sesh,
-								"Patch Request submitted! Use the ID for interacting with this Patch Request.\nID\tName\n%d\t%s\n",
+								"PR submitted! Use the ID for interacting with this PR.\nID\tName\n%d\t%s\n",
 								request.ID,
 								request.Name,
 							)
@@ -120,7 +138,7 @@ func NewCli(sesh ssh.Session, be *Backend, pr GitPatchRequest) *cli.App {
 					},
 					{
 						Name:  "print",
-						Usage: "print the patches for a patch request",
+						Usage: "Print the patches for a PR",
 						Action: func(cCtx *cli.Context) error {
 							prID, err := getPrID(cCtx.Args().First())
 							if err != nil {
@@ -146,7 +164,7 @@ func NewCli(sesh ssh.Session, be *Backend, pr GitPatchRequest) *cli.App {
 					},
 					{
 						Name:  "stats",
-						Usage: "print patch request with patch stats",
+						Usage: "Print PR with diff stats",
 						Action: func(cCtx *cli.Context) error {
 							prID, err := getPrID(cCtx.Args().First())
 							if err != nil {
@@ -197,7 +215,7 @@ func NewCli(sesh ssh.Session, be *Backend, pr GitPatchRequest) *cli.App {
 					},
 					{
 						Name:  "summary",
-						Usage: "list patches in patch request",
+						Usage: "List patches in PRs",
 						Action: func(cCtx *cli.Context) error {
 							prID, err := getPrID(cCtx.Args().First())
 							if err != nil {
@@ -248,7 +266,7 @@ func NewCli(sesh ssh.Session, be *Backend, pr GitPatchRequest) *cli.App {
 					},
 					{
 						Name:  "accept",
-						Usage: "accept a patch request",
+						Usage: "Accept a PR",
 						Action: func(cCtx *cli.Context) error {
 							prID, err := getPrID(cCtx.Args().First())
 							if err != nil {
@@ -263,7 +281,7 @@ func NewCli(sesh ssh.Session, be *Backend, pr GitPatchRequest) *cli.App {
 					},
 					{
 						Name:  "close",
-						Usage: "close a patch request",
+						Usage: "Close a PR",
 						Action: func(cCtx *cli.Context) error {
 							prID, err := getPrID(cCtx.Args().First())
 							if err != nil {
@@ -278,7 +296,7 @@ func NewCli(sesh ssh.Session, be *Backend, pr GitPatchRequest) *cli.App {
 					},
 					{
 						Name:  "reopen",
-						Usage: "reopen a patch request",
+						Usage: "Reopen a PR",
 						Action: func(cCtx *cli.Context) error {
 							prID, err := getPrID(cCtx.Args().First())
 							if err != nil {
@@ -293,7 +311,7 @@ func NewCli(sesh ssh.Session, be *Backend, pr GitPatchRequest) *cli.App {
 					},
 					{
 						Name:  "add",
-						Usage: "append a patch to the patch request",
+						Usage: "Append a patch to a PR",
 						Flags: []cli.Flag{
 							&cli.BoolFlag{
 								Name:  "review",
@@ -314,7 +332,7 @@ func NewCli(sesh ssh.Session, be *Backend, pr GitPatchRequest) *cli.App {
 							}
 							isPrOwner := req.Pubkey == be.Pubkey(sesh.PublicKey())
 							if !isAdmin && !isPrOwner {
-								return fmt.Errorf("unauthorized, you are not the owner of this Patch Request")
+								return fmt.Errorf("unauthorized, you are not the owner of this PR")
 							}
 
 							patch, err := pr.SubmitPatch(pubkey, prID, isReview, sesh)
@@ -349,7 +367,7 @@ func NewCli(sesh ssh.Session, be *Backend, pr GitPatchRequest) *cli.App {
 					},
 					{
 						Name:  "comment",
-						Usage: "comment on a patch request",
+						Usage: "Comment on a PR",
 						Action: func(cCtx *cli.Context) error {
 							return nil
 						},
