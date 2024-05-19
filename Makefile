@@ -8,5 +8,6 @@ lint:
 .PHONY: lint
 
 build:
-	go build -o ./build/git ./cmd/git
+	go build -o ./build/ssh ./cmd/ssh
+	go build -o ./build/web ./cmd/web
 .PHONY: build
