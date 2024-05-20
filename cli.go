@@ -81,8 +81,8 @@ Here's how it works:
 						fmt.Fprintf(
 							writer,
 							"%s\t%s\n",
-							utils.SanitizeRepo(repo),
-							filepath.Join(be.ReposDir(), repo),
+							utils.SanitizeRepo(repo.ID),
+							filepath.Join(be.ReposDir(), repo.ID),
 						)
 					}
 					writer.Flush()

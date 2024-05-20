@@ -4,20 +4,18 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/bluekeyes/go-gitdiff/gitdiff"
-	"github.com/charmbracelet/soft-serve/pkg/git"
 )
 
 type GitPatchRequest interface {
-	GetRepos() ([]string, error)
+	GetRepos() ([]Repo, error)
 	SubmitPatchRequest(pubkey string, repoID string, patches io.Reader) (*PatchRequest, error)
 	SubmitPatch(pubkey string, prID int64, review bool, patch io.Reader) (*Patch, error)
 	GetPatchRequestByID(prID int64) (*PatchRequest, error)
 	GetPatchRequests() ([]*PatchRequest, error)
+	GetPatchRequestsByRepoID(repoID string) ([]*PatchRequest, error)
 	GetPatchesByPrID(prID int64) ([]*Patch, error)
 	UpdatePatchRequest(prID int64, status string) error
 }
@@ -29,18 +27,8 @@ type PrCmd struct {
 var _ GitPatchRequest = PrCmd{}
 var _ GitPatchRequest = (*PrCmd)(nil)
 
-func (pr PrCmd) GetRepos() ([]string, error) {
-	repos := []string{}
-	entries, err := os.ReadDir(pr.Backend.ReposDir())
-	if err != nil {
-		return repos, err
-	}
-	for _, entry := range entries {
-		if entry.IsDir() {
-			repos = append(repos, entry.Name())
-		}
-	}
-	return repos, nil
+func (pr PrCmd) GetRepos() ([]Repo, error) {
+	return pr.Backend.Cfg.Repos, nil
 }
 
 func (pr PrCmd) GetPatchesByPrID(prID int64) ([]*Patch, error) {
@@ -64,6 +52,16 @@ func (cmd PrCmd) GetPatchRequests() ([]*PatchRequest, error) {
 	err := cmd.Backend.DB.Select(
 		&prs,
 		"SELECT * FROM patch_requests",
+	)
+	return prs, err
+}
+
+func (cmd PrCmd) GetPatchRequestsByRepoID(repoID string) ([]*PatchRequest, error) {
+	prs := []*PatchRequest{}
+	err := cmd.Backend.DB.Select(
+		&prs,
+		"SELECT * FROM patch_requests WHERE repo_id=?",
+		repoID,
 	)
 	return prs, err
 }
@@ -132,16 +130,6 @@ func (cmd PrCmd) SubmitPatch(pubkey string, prID int64, review bool, patch io.Re
 }
 
 func (cmd PrCmd) SubmitPatchRequest(pubkey string, repoID string, patches io.Reader) (*PatchRequest, error) {
-	err := git.EnsureWithin(cmd.Backend.ReposDir(), repoID)
-	if err != nil {
-		return nil, err
-	}
-	loc := filepath.Join(cmd.Backend.ReposDir(), repoID)
-	_, err = os.Stat(loc)
-	if os.IsNotExist(err) {
-		return nil, fmt.Errorf("repo does not exist: %s", loc)
-	}
-
 	// need to read io.Reader from session twice
 	var buf bytes.Buffer
 	tee := io.TeeReader(patches, &buf)
