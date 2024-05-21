@@ -49,7 +49,7 @@ services:
 networks:
   git:
     driver_opts:
-      com.docker.network.bridge.name: pico
+      com.docker.network.bridge.name: pr
     ipam:
       config:
         - subnet: 172.25.0.0/16
