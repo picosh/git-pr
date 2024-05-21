@@ -1,0 +1,41 @@
+services:
+  caddy:
+    image: ghcr.io/picosh/pico/caddy:latest
+    restart: always
+    networks:
+      - git
+    env_file:
+      - .env.prod
+    environment:
+      APP_DOMAIN: pr.pico.sh
+      APP_EMAIL: hello@pico.sh
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./data/git-caddy/data:/data
+      - ./data/git-caddy/config:/config
+    ports:
+      - "${GIT_HTTPS_V4:-443}:443"
+      - "${GIT_HTTP_V4:-80}:80"
+      - "${GIT_HTTPS_V6:-[::1]:443}:443"
+      - "${GIT_HTTP_V6:-[::1]:80}:80"
+  web:
+    networks:
+      git:
+        aliases:
+          - web
+    env_file:
+      - .env.prod
+  ssh:
+    networks:
+      git:
+        aliases:
+          - ssh
+    env_file:
+      - .env.prod
+networks:
+  git:
+    driver_opts:
+      com.docker.network.bridge.name: pr
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
