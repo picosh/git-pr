@@ -29,11 +29,6 @@ services:
       - ./data/git-pr/data:/app/ssh_data
     env_file:
       - .env.prod
-    ports:
-      - "${GIT_HTTPS_V4:-443}:443"
-      - "${GIT_HTTP_V4:-80}:80"
-      - "${GIT_HTTPS_V6:-[::1]:443}:443"
-      - "${GIT_HTTP_V6:-[::1]:80}:80"
   ssh:
     image: ghcr.io/picosh/pico/git-ssh:latest
     restart: always
