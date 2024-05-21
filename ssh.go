@@ -19,11 +19,11 @@ func authHandler(ctx ssh.Context, key ssh.PublicKey) bool {
 }
 
 func GitSshServer() {
-	host := os.Getenv("SSH_HOST")
+	host := os.Getenv("GIT_HOST")
 	if host == "" {
 		host = "0.0.0.0"
 	}
-	port := os.Getenv("SSH_PORT")
+	port := os.Getenv("GIT_SSH_PORT")
 	if port == "" {
 		port = "2222"
 	}

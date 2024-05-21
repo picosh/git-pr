@@ -50,11 +50,11 @@ func prHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func StartWebServer() {
-	host := os.Getenv("WEB_HOST")
+	host := os.Getenv("GIT_HOST")
 	if host == "" {
 		host = "0.0.0.0"
 	}
-	port := os.Getenv("WEB_PORT")
+	port := os.Getenv("GIT_WEB_PORT")
 	if port == "" {
 		port = "3000"
 	}
