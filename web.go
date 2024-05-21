@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"path/filepath"
 )
 
 type ctxPr struct{}
@@ -61,7 +62,8 @@ func StartWebServer() {
 	addr := fmt.Sprintf("%s:%s", host, port)
 	logger := slog.Default()
 
-	dbh, err := Open("./test.db", logger)
+	cfg := NewGitCfg()
+	dbh, err := Open(filepath.Join(cfg.DataPath, "pr.db"), logger)
 	if err != nil {
 		logger.Error("could not open db", "err", err)
 		return

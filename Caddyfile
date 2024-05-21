@@ -49,6 +49,5 @@
 
 :443 {
 	reverse_proxy web:3000
-	tls {$APP_EMAIL}
 	encode zstd gzip
 }
