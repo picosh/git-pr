@@ -1,6 +1,6 @@
-module github.com/picosh/pico-git
+module github.com/picosh/git-pr
 
-go 1.21.9
+go 1.22
 
 require (
 	github.com/alecthomas/chroma/v2 v2.13.0
