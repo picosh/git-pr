@@ -6,11 +6,8 @@ import (
 	"errors"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 
-	"github.com/charmbracelet/soft-serve/pkg/git"
-	"github.com/charmbracelet/soft-serve/pkg/utils"
 	"github.com/charmbracelet/ssh"
 )
 
@@ -47,7 +44,7 @@ func getAuthorizedKeys(path string) ([]ssh.PublicKey, error) {
 	return keys, nil
 }
 
-func gitServiceCommands(sesh ssh.Session, be *Backend, cmd, repoName string) error {
+/* func gitServiceCommands(sesh ssh.Session, be *Backend, cmd, repoName string) error {
 	name := utils.SanitizeRepo(repoName)
 	// git bare repositories should end in ".git"
 	// https://git-scm.com/docs/gitrepository-layout
@@ -79,4 +76,4 @@ func gitServiceCommands(sesh ssh.Session, be *Backend, cmd, repoName string) err
 	}
 
 	return nil
-}
+} */

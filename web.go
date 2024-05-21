@@ -39,7 +39,7 @@ func setWebCtx(ctx context.Context, web *WebCtx) context.Context {
 	return context.WithValue(ctx, ctxWeb{}, web)
 }
 
-// converts contents of files in git tree to pretty formatted code
+// converts contents of files in git tree to pretty formatted code.
 func parseText(formatter *formatterHtml.Formatter, theme *chroma.Style, text string) (string, error) {
 	lexer := lexers.Get("diff")
 	iterator, err := lexer.Tokenise(nil, text)

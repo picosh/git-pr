@@ -49,7 +49,7 @@ Here's how it works:
 		Writer:      sesh,
 		ErrWriter:   sesh,
 		Commands: []*cli.Command{
-			{
+			/* {
 				Name:  "git-receive-pack",
 				Usage: "Receive what is pushed into the repository",
 				Action: func(cCtx *cli.Context) error {
@@ -66,7 +66,7 @@ Here's how it works:
 					err := gitServiceCommands(sesh, be, "git-upload-patch", repoName)
 					return err
 				},
-			},
+			}, */
 			{
 				Name:  "ls",
 				Usage: "List all git repos",
@@ -369,6 +369,7 @@ Here's how it works:
 						Name:  "comment",
 						Usage: "Comment on a PR",
 						Action: func(cCtx *cli.Context) error {
+							wish.Println(sesh, "Commenting is not currently implemented :(")
 							return nil
 						},
 					},

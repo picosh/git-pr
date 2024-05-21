@@ -32,6 +32,9 @@ services:
           - ssh
     env_file:
       - .env.prod
+    ports:
+      - "${GIT_SSH_V4:-22}:2222"
+      - "${GIT_SSH_V6:-[::1]:22}:2222"
 networks:
   git:
     driver_opts:
