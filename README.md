@@ -1,4 +1,14 @@
-# rfc: `pico/git` a self-hosted git server
+# `pico/git-pr` a self-hosted git collaboration server
+
+We are trying to build the simplest git collaboration tool. The goal is to make
+self-hosting a git server as simple as running an SSH server and hosting static
+web assets -- all without sacrificing external collaborators.
+
+> `git format-patch` isn't the problem and pull requests aren't the solution.
+
+We are combining mailing list and pull request workflows. In order to build the
+simplest collaboration tool, we needed something as simple as generating patches
+but the ease-of-use of pull requests.
 
 The goal is not to create another code forge here. The goal is to create a very
 simple self-hosted git solution with the ability to collaborate with external
@@ -12,97 +22,95 @@ All an external contributor needs is:
 - An SSH keypair
 - An SSH client
 
-# patch requests
+# the problem
 
 Email is great as a decentralized system to send and receive changes (patchsets)
-to a git repo. However, setting up your email client and understanding the
-potential gotchas during that flow cannot be understated. Further, because we
-are leveraging the email protocol for communication and collaboration, we are
-limited by its feature-set. In particular, it is not possible to make edits to
-emails, so if there are typos or the contributor forgot to include some code or
-a line in the cover letter, there is a lot of back-and-forth noise to make those
-corrections.
-
-Further, when a contributor provides a patchset and receives feedback, the
-contributor must submit another patchset via email. These are completely
-separate and the only way to correlate them is via naming convention (e.g.
-[PATCH] xxx v2). Now when reviewing patchsets submitted to a project, the user
-must search for all versions of that particular patchset. These are separate
-conversations with potentially very different patches spanning across the time
-of a project. Maybe that's ok, but people are very used to a PR containing all
-changes and reviews across time, and I think it makes a lot of sense to have a
-single view of all conversations related to a change request.
-
-Another issue with the email workflow is knowing how to properly reply to a
-patchset. There is a lot of education on "doing patchsets right via email."
+to a git repo. However, onboarding a new user to a mailing list, properly
+setting up their email client, and then finally submitting the code contribution
+is enough to make many developers give up. Further, because we are leveraging
+the email protocol for collaboration, we are limited by its feature-set. For
+example, it is not possible to make edits to emails, everyone has a different
+client, those clients have different limitations around plain text email and
+downloading patches from it.
 
 Github pull requests are easy to use, easy to edit, and easy to manage. The
 downside is it forces the user to be inside their website to perform reviews.
 For quick changes, this is great, but when you start reading code within a web
 browser, there are quite a few downsides. At a certain point, it makes more
 sense to review code inside your local development environment, IDE, etc.
-Further, self-hosted solutions that mimick a pull request require a lot of
-infrastructure in order to manage it. For example, before an external user who
-wants to contribute to a repo, they first need to create an account and then
-login. This adds quite a bit of friction for a self-hosted solution, not only
-for an external contributor, but also for the code owner who has to provision
-the infra.
 
-Instead, I want to create a self-hosted git "server" that can handle sending and
-receiving patches without the cumbersome nature of setting up email or the
-limitations imposed by the email protocol. Further, I want the primary workflow
+Further, self-hosted solutions that mimic a pull request require a lot of
+infrastructure in order to manage it. A database, a web site connected to git,
+admin management, and services to manage it all. Another big point of friction:
+before an external user submits a code change, they first need to create an
+account and then login. This adds quite a bit of friction for a self-hosted
+solution, not only for an external contributor, but also for the code owner who
+has to provision the infra. Often times they also have to fork the repo within
+the code forge before submitting a PR. Then they never make a contribution ever
+again and keep a forked repo around forever. That seems silly.
+
+# introducing patch requests (PR)
+
+Instead, we want to create a self-hosted git "server" that can handle sending
+and receiving patches without the cumbersome nature of setting up email or the
+limitations imposed by the email protocol. Further, we want the primary workflow
 to surround the local development environment. Github is bringing the IDE to the
-browser in order to support their workflow, I want to bring the workflow to the
+browser in order to support their workflow, we want to bring the workflow to the
 local dev environment.
 
-I see this as a hybrid between the github workflow of a pull request and sending
-and receiving patches over email.
+We see this as a hybrid between the github workflow of a pull request and
+sending and receiving patches over email.
 
 The basic idea is to leverage an SSH app to handle most of the interaction
 between contributor and owner of a project. Everything can be done completely
 within the terminal, in a way that is ergonomic and fully featured.
 
+Notifications would happen with RSS and all state mutations would result in the
+generation of static web assets so it can all be hosted using a simple file web
+server.
+
 ## format-patch workflow
 
 ```bash
-# Owner hosts repo `noice.git` using pico/git
+# Owner hosts repo `noice.git` using github
 
 # Contributor clones repo
-git clone git.sh:/noice.git
+git clone git@github.com:user/noice.git
 
 # Contributor wants to make a change
 # Contributor makes changes via commits
 git add -A && git commit -m "fix: some bugs"
 
 # Contributor runs:
-git format-patch --stdout | ssh git.sh pr noice
-# > Patch Request has been created (ID: noice/1)
-
-# Contributor can copy down patch request metadata:
-rsync git.sh:/noice/1.md .
-# Contributor edits patch request metadata, then runs:
-rsync 1.md git.sh:/noice/
+git format-patch --stdout | ssh pr.pico.sh pr create noice
+# > Patch Request has been created (ID: 1)
 
 # Owner can checkout patch:
-ssh git.sh pr noice/1 | git am -3
-# Owner can comment in code, then commit, then send another format-patch
-# on top of it:
-git format-patch --stdout | ssh git.sh pr noice/1 --review
-# We do some magic in the UI to make this look like comments or someway to
-# clearly mark as a review
-
-# Owner can reject a pr:
-ssh git.sh pr noice/1 --close
-# (-maybe-) Owner can merge a pr:
-ssh git.sh pr noice/1 --squash-n-merge
+ssh pr.pico.sh pr print 1 | git am -3 -i
+# Owner can comment (IN CODE), commit, then send another format-patch
+# on top of the PR:
+git format-patch HEAD~1 --stdout | ssh pr.pico.sh pr review 1
+# UI clearly marks patch as a review
 
 # Contributor can checkout reviews
-ssh git.sh pr noice/1 | git am -3
+ssh pr.pico.sh pr print 1 | git am -3 -i
 
 # Commenting
-cat my_comment.md | git.sh txt noice/1
+cat my_comment.md | pr.pico.sh comment 1
 
-# rinse and repeat
+# Owner can reject a pr:
+ssh pr.pico.sh pr close 1
+
+# Owner can accept a pr:
+ssh pr.pico.sh pr accept 1
+
+# Owner can cleanup PR:
+ssh pr.pico.sh pr print 1 | git am -3 -i
+
+# Then push to upstream
+git push origin main
+
+# Done!
 ```
 
 The fundamental collaboration tool here is `format-patch`. Whether you a
@@ -123,43 +131,6 @@ honestly, that solution feels brutal and outside the comfort level of most git
 users. Just send reviews as code and write comments in the programming language
 you are using. It's the job of the contributor to "address" those comments and
 then remove them in subsequent patches.
-
-## branch workflow
-
-It's definitely possible for us to figure out a way to let the contributor
-simply push a branch and create a patch request automatically, but there are
-some rough edges to figure out there in order for it to work well.
-
-The flow would be virtually the same as `format-patch` except the contributor
-would push a branch and we would automatically create a `format-patch` against
-the base branch and then funnel it into the Patch Request. We don't want
-external contributors to be able to push branches into the owner's git remote
-because that has all sorts of opportunities for abuse. Instead we need to figure
-out how to either fork the owner's repo and let the contributor push to that
-fork seamlessly, or we just generate patchsets based on the contributor's branch
-and the owner's base branch.
-
-This flow probably feels the most comfortable for Github users, but technically
-more difficult to implement. Right out of the gate we need to know what base
-branch the contributor wants to merge into. Then we need to figure out how to
-perform reviews and followup code changes.
-
-This feels feasible, but technically more difficult. Further, I still want to
-support patchsets via `format-patch` because it is a very elegant solution for
-simpler changes.
-
-# web interface
-
-The other idea is to make the git web viewer completely static. Whenever an
-owner pushes code, we generate all the static assets for that branch. We already
-have a working prototype [pgit](https://github.com/picosh/pgit) that mostly
-works. Further, any patch request that gets submitted would also be statically
-generated. If we don't have a web portal with authentication and the ability to
-manage a repo / patch request inside the web viewer, then a static site becomes
-possible. This makes the web component of a git server much simpler, since it is
-just static assets. All we need to do is install a git hook that properly
-generates the static assets. For patch requests, everything comes through our
-SSH app so we can generate the assets when those commands are being run.
 
 # research
 
