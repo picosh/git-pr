@@ -11,6 +11,7 @@ import (
 
 type GitPatchRequest interface {
 	GetRepos() ([]Repo, error)
+	GetRepoByID(repoID string) (*Repo, error)
 	SubmitPatchRequest(pubkey string, repoID string, patches io.Reader) (*PatchRequest, error)
 	SubmitPatch(pubkey string, prID int64, review bool, patch io.Reader) (*Patch, error)
 	GetPatchRequestByID(prID int64) (*PatchRequest, error)
@@ -29,6 +30,21 @@ var _ GitPatchRequest = (*PrCmd)(nil)
 
 func (pr PrCmd) GetRepos() ([]Repo, error) {
 	return pr.Backend.Cfg.Repos, nil
+}
+
+func (pr PrCmd) GetRepoByID(repoID string) (*Repo, error) {
+	repos, err := pr.GetRepos()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, repo := range repos {
+		if repo.ID == repoID {
+			return &repo, nil
+		}
+	}
+
+	return nil, fmt.Errorf("repo not found: %s", repoID)
 }
 
 func (pr PrCmd) GetPatchesByPrID(prID int64) ([]*Patch, error) {

@@ -11,6 +11,10 @@ import (
 	"github.com/charmbracelet/ssh"
 )
 
+func truncateSha(sha string) string {
+	return sha[:7]
+}
+
 func getAuthorizedKeys(path string) ([]ssh.PublicKey, error) {
 	keys := []ssh.PublicKey{}
 	f, err := os.Open(path)

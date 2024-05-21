@@ -89,7 +89,7 @@ func repoListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	str := `<h1 class="text-2xl">Repos</h1>`
+	str := `<h1 class="text-2xl">repos</h1>`
 	repos, err := web.Pr.GetRepos()
 	if err != nil {
 		web.Pr.Backend.Logger.Error("cannot get repos", "err", err)
@@ -118,7 +118,7 @@ func repoListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func prListHandler(w http.ResponseWriter, r *http.Request) {
+func repoHandler(w http.ResponseWriter, r *http.Request) {
 	repoID := r.PathValue("id")
 
 	web, err := getWebCtx(r)
@@ -128,12 +128,28 @@ func prListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	str := `<h1 class="text-2xl">Patch Requests</h1>`
-	prs, err := web.Pr.GetPatchRequestsByRepoID(repoID)
+	repo, err := web.Pr.GetRepoByID(repoID)
 	if err != nil {
-		web.Pr.Backend.Logger.Error("cannot get prs", "err", err)
+		web.Logger.Error("fetch repo", "err", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
+	}
+
+	str := fmt.Sprintf(`<h1 class="text-2xl"><a href="/">repos</a> / %s</h1>`, repo.ID)
+	str += `<div class="group">`
+	str += fmt.Sprintf(`<div><code>git clone %s</code></div>`, repo.CloneAddr)
+	str += fmt.Sprintf(`<div>Submit patch request: <code>git format-patch --stdout | ssh pr.pico.sh pr create %s</code></div>`, repo.ID)
+	str += `<div class="group"></div>`
+
+	prs, err := web.Pr.GetPatchRequestsByRepoID(repoID)
+	if err != nil {
+		web.Logger.Error("cannot get prs", "err", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if len(prs) == 0 {
+		str += "No PRs found for repo"
 	}
 
 	for _, curpr := range prs {
@@ -163,14 +179,16 @@ func prListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func header(pr *PatchRequest, page string) string {
-	str := fmt.Sprintf(`<h1 class="text-2xl">%s</h1>`, pr.Name)
+func header(repo *Repo, pr *PatchRequest, page string) string {
+	str := fmt.Sprintf(`<h1 class="text-2xl"><a href="/repos/%s">%s</a> / %s</h1>`, repo.ID, repo.ID, pr.Name)
 	str += fmt.Sprintf("<div>[%s] %s %s</div>", pr.Status, pr.CreatedAt.Format(time.DateTime), pr.Pubkey)
 	if page == "pr" {
 		str += fmt.Sprintf(`<div><strong>summary</strong> &middot; <a href="/prs/%d/patches">patches</a></div>`, pr.ID)
 	} else {
 		str += fmt.Sprintf(`<div><a href="/prs/%d">summary</a> &middot; <strong>patches</strong></div>`, pr.ID)
 	}
+
+	str += fmt.Sprintf(`<div>Submit change to patch: <code>git format-patch HEAD~1 --stdout | ssh pr.pico.sh pr add %d</code></div>`, pr.ID)
 	return str
 }
 
@@ -197,8 +215,38 @@ func prHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	str := header(pr, "pr")
+	repo, err := web.Pr.GetRepoByID(pr.RepoID)
+	if err != nil {
+		web.Logger.Error("cannot get repo", "err", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	str := header(repo, pr, "pr")
 	str += fmt.Sprintf("<p>%s</p>", pr.Text)
+
+	patches, err := web.Pr.GetPatchesByPrID(int64(prID))
+	if err != nil {
+		web.Logger.Error("cannot get patches", "err", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	for _, patch := range patches {
+		reviewTxt := ""
+		if patch.Review {
+			reviewTxt = "[review]"
+		}
+		str += fmt.Sprintf(
+			"<div>%s\t%s\t%s\t%s <%s>\t%s\n</div>",
+			reviewTxt,
+			patch.Title,
+			truncateSha(patch.CommitSha),
+			patch.AuthorName,
+			patch.AuthorEmail,
+			patch.AuthorDate.Format(time.RFC3339Nano),
+		)
+	}
 
 	w.Header().Set("content-type", "text/html")
 	tmpl := getTemplate()
@@ -234,7 +282,14 @@ func prPatchesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	str := header(pr, "patches")
+	repo, err := web.Pr.GetRepoByID(pr.RepoID)
+	if err != nil {
+		web.Logger.Error("cannot get repo", "err", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	str := header(repo, pr, "patches")
 
 	patches, err := web.Pr.GetPatchesByPrID(int64(prID))
 	if err != nil {
@@ -259,7 +314,7 @@ func prPatchesHandler(w http.ResponseWriter, r *http.Request) {
 <div>%s</div>`
 		str += fmt.Sprintf(
 			row,
-			patch.Title, rev,
+			rev, patch.Title,
 			diffStr,
 		)
 	}
@@ -334,7 +389,7 @@ func StartWebServer() {
 	// GODEBUG=httpmuxgo121=0
 	http.HandleFunc("GET /prs/{id}/patches", ctxMdw(ctx, prPatchesHandler))
 	http.HandleFunc("GET /prs/{id}", ctxMdw(ctx, prHandler))
-	http.HandleFunc("GET /repos/{id}", ctxMdw(ctx, prListHandler))
+	http.HandleFunc("GET /repos/{id}", ctxMdw(ctx, repoHandler))
 	http.HandleFunc("GET /", ctxMdw(ctx, repoListHandler))
 	http.HandleFunc("GET /syntax.css", ctxMdw(ctx, chromaStyleHandler))
 
