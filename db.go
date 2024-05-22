@@ -28,7 +28,7 @@ type Patch struct {
 	PatchRequestID int64     `db:"patch_request_id"`
 	AuthorName     string    `db:"author_name"`
 	AuthorEmail    string    `db:"author_email"`
-	AuthorDate     time.Time `db:"author_date"`
+	AuthorDate     string    `db:"author_date"`
 	Title          string    `db:"title"`
 	Body           string    `db:"body"`
 	BodyAppendix   string    `db:"body_appendix"`

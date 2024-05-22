@@ -204,7 +204,7 @@ Here's how it works:
 									patch.CommitSha,
 									patch.AuthorName,
 									patch.AuthorEmail,
-									patch.AuthorDate.Format(time.RFC3339Nano),
+									patch.AuthorDate,
 									patch.BodyAppendix,
 									patch.Body,
 								)
@@ -256,7 +256,7 @@ Here's how it works:
 									patch.CommitSha,
 									patch.AuthorName,
 									patch.AuthorEmail,
-									patch.AuthorDate.Format(time.RFC3339Nano),
+									patch.AuthorDate,
 								)
 							}
 							w.Flush()

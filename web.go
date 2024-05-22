@@ -244,7 +244,7 @@ func prHandler(w http.ResponseWriter, r *http.Request) {
 			truncateSha(patch.CommitSha),
 			patch.AuthorName,
 			patch.AuthorEmail,
-			patch.AuthorDate.Format(time.RFC3339Nano),
+			patch.AuthorDate,
 		)
 	}
 

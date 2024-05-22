@@ -146,6 +146,18 @@ func (cmd PrCmd) SubmitPatch(pubkey string, prID int64, review bool, patch io.Re
 }
 
 func (cmd PrCmd) SubmitPatchRequest(pubkey string, repoID string, patches io.Reader) (*PatchRequest, error) {
+	tx, err := cmd.Backend.DB.Beginx()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		err := tx.Rollback()
+		if err != nil {
+			cmd.Backend.Logger.Error("rollback", "err", err)
+		}
+	}()
+
 	// need to read io.Reader from session twice
 	var buf bytes.Buffer
 	tee := io.TeeReader(patches, &buf)
@@ -162,7 +174,7 @@ func (cmd PrCmd) SubmitPatchRequest(pubkey string, repoID string, patches io.Rea
 	prDesc := header.Body
 
 	var prID int64
-	row := cmd.Backend.DB.QueryRow(
+	row := tx.QueryRow(
 		"INSERT INTO patch_requests (pubkey, repo_id, name, text, status, updated_at) VALUES(?, ?, ?, ?, ?, ?) RETURNING id",
 		pubkey,
 		repoID,
@@ -179,19 +191,31 @@ func (cmd PrCmd) SubmitPatchRequest(pubkey string, repoID string, patches io.Rea
 		return nil, fmt.Errorf("could not create patch request")
 	}
 
-	_, err = cmd.Backend.DB.Exec(
+	authorName := ""
+	authorEmail := ""
+	if header.Author != nil {
+		authorName = header.Author.Name
+		authorEmail = header.Author.Email
+	}
+
+	_, err = tx.Exec(
 		"INSERT INTO patches (pubkey, patch_request_id, author_name, author_email, author_date, title, body, body_appendix, commit_sha, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		pubkey,
 		prID,
-		header.Author.Name,
-		header.Author.Email,
+		authorName,
+		authorEmail,
 		header.AuthorDate,
-		header.Title,
-		header.Body,
+		prName,
+		prDesc,
 		header.BodyAppendix,
 		header.SHA,
 		buf.String(),
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	err = tx.Commit()
 	if err != nil {
 		return nil, err
 	}
