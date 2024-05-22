@@ -191,7 +191,7 @@ func (cmd PrCmd) SubmitPatchRequest(pubkey string, repoID string, patches io.Rea
 		return nil, fmt.Errorf("could not create patch request")
 	}
 
-	authorName := ""
+	authorName := "Unknown"
 	authorEmail := ""
 	if header.Author != nil {
 		authorName = header.Author.Name
