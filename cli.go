@@ -155,8 +155,11 @@ Here's how it works:
 								return nil
 							}
 
-							for _, patch := range patches {
-								wish.Printf(sesh, "%s\n\n\n", patch.RawText)
+							for idx, patch := range patches {
+								wish.Printf(sesh, patch.RawText)
+								if idx < len(patches)-1 {
+									wish.Printf(sesh, "\n\n\n")
+								}
 							}
 
 							return nil
@@ -201,7 +204,7 @@ Here's how it works:
 									"%s %s %s\n%s <%s>\n%s\n\n---\n%s\n%s\n\n\n",
 									patch.Title,
 									reviewTxt,
-									patch.CommitSha,
+									truncateSha(patch.CommitSha),
 									patch.AuthorName,
 									patch.AuthorEmail,
 									patch.AuthorDate,
@@ -253,7 +256,7 @@ Here's how it works:
 									"%s\t%s\t%s\t%s <%s>\t%s\n",
 									patch.Title,
 									reviewTxt,
-									patch.CommitSha,
+									truncateSha(patch.CommitSha),
 									patch.AuthorName,
 									patch.AuthorEmail,
 									patch.AuthorDate,
@@ -339,6 +342,12 @@ Here's how it works:
 							if err != nil {
 								return err
 							}
+
+							if len(patches) == 0 {
+								wish.Println(sesh, "Patches submitted! However none were saved, probably because they already exist in the system")
+								return nil
+							}
+
 							reviewTxt := ""
 							if isReview {
 								err = pr.UpdatePatchRequest(prID, "review")

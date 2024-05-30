@@ -29,7 +29,12 @@ func GitSshServer() {
 	}
 
 	cfg := NewGitCfg()
-	logger := slog.Default()
+	opts := &slog.HandlerOptions{
+		AddSource: true,
+	}
+	logger := slog.New(
+		slog.NewTextHandler(os.Stdout, opts),
+	)
 	dbh, err := Open(filepath.Join(cfg.DataPath, "pr.db"), logger)
 	if err != nil {
 		panic(err)

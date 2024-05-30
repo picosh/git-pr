@@ -126,12 +126,13 @@ func (cmd PrCmd) calcContentSha(diffFiles []*gitdiff.File, header *gitdiff.Patch
 		header.AuthorDate,
 	)
 	for _, diff := range diffFiles {
-		content += fmt.Sprintf(
-			"%s->%s %s..%s %s-%s\n",
+		dff := fmt.Sprintf(
+			"%s->%s %s..%s %s->%s\n",
 			diff.OldName, diff.NewName,
 			diff.OldOIDPrefix, diff.NewOIDPrefix,
 			diff.OldMode.String(), diff.NewMode.String(),
 		)
+		content += dff
 	}
 	sha := sha256.Sum256([]byte(content))
 	shaStr := hex.EncodeToString(sha[:])
@@ -178,8 +179,8 @@ func (cmd PrCmd) parsePatchSet(patchset io.Reader) ([]*Patch, error) {
 			Title:        header.Title,
 			Body:         header.Body,
 			BodyAppendix: header.BodyAppendix,
-			ContentSha:   contentSha,
 			CommitSha:    header.SHA,
+			ContentSha:   contentSha,
 			RawText:      patchRaw,
 		})
 	}
@@ -188,15 +189,15 @@ func (cmd PrCmd) parsePatchSet(patchset io.Reader) ([]*Patch, error) {
 }
 
 func (cmd PrCmd) createPatch(tx *sqlx.Tx, patch *Patch) (int64, error) {
-	var patchExists *Patch
-	_ = tx.Select(&patchExists, "SELECT * FROM patches WHERE patch_request_id = ? AND content_sha = ?", patch.PatchRequestID, patch.ContentSha)
-	if patchExists.ID == 0 {
+	patchExists := []Patch{}
+	_ = cmd.Backend.DB.Select(&patchExists, "SELECT * FROM patches WHERE patch_request_id = ? AND content_sha = ?", patch.PatchRequestID, patch.ContentSha)
+	if len(patchExists) > 0 {
 		return 0, ErrPatchExists
 	}
 
 	var patchID int64
 	row := tx.QueryRow(
-		"INSERT INTO patches (pubkey, patch_request_id, author_name, author_email, author_date, title, body, body_appendix, commit_sha, content_sha, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		"INSERT INTO patches (pubkey, patch_request_id, author_name, author_email, author_date, title, body, body_appendix, commit_sha, content_sha, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
 		patch.Pubkey,
 		patch.PatchRequestID,
 		patch.AuthorName,
@@ -205,8 +206,8 @@ func (cmd PrCmd) createPatch(tx *sqlx.Tx, patch *Patch) (int64, error) {
 		patch.Title,
 		patch.Body,
 		patch.BodyAppendix,
-		patch.ContentSha,
 		patch.CommitSha,
+		patch.ContentSha,
 		patch.RawText,
 	)
 	err := row.Scan(&patchID)
@@ -226,10 +227,7 @@ func (cmd PrCmd) SubmitPatchRequest(repoID string, pubkey string, patchset io.Re
 	}
 
 	defer func() {
-		err := tx.Rollback()
-		if err != nil {
-			cmd.Backend.Logger.Error("rollback", "err", err)
-		}
+		_ = tx.Rollback()
 	}()
 
 	patches, err := cmd.parsePatchSet(patchset)
@@ -288,10 +286,7 @@ func (cmd PrCmd) SubmitPatchSet(prID int64, pubkey string, review bool, patchset
 	}
 
 	defer func() {
-		err := tx.Rollback()
-		if err != nil {
-			cmd.Backend.Logger.Error("rollback", "err", err)
-		}
+		_ = tx.Rollback()
 	}()
 
 	patches, err := cmd.parsePatchSet(patchset)
