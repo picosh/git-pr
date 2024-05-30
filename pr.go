@@ -1,19 +1,22 @@
 package git
 
 import (
-	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/bluekeyes/go-gitdiff/gitdiff"
+	"github.com/jmoiron/sqlx"
 )
 
 type GitPatchRequest interface {
 	GetRepos() ([]Repo, error)
 	GetRepoByID(repoID string) (*Repo, error)
-	SubmitPatchRequest(pubkey string, repoID string, patches io.Reader) (*PatchRequest, error)
-	SubmitPatch(pubkey string, prID int64, review bool, patch io.Reader) (*Patch, error)
+	SubmitPatchRequest(repoID int64, pubkey string, patchset io.Reader) (*PatchRequest, error)
+	SubmitPatchSet(prID int64, pubkey string, review bool, patchset io.Reader) error
 	GetPatchRequestByID(prID int64) (*PatchRequest, error)
 	GetPatchRequests() ([]*PatchRequest, error)
 	GetPatchRequestsByRepoID(repoID string) ([]*PatchRequest, error)
@@ -100,52 +103,114 @@ func (cmd PrCmd) UpdatePatchRequest(prID int64, status string) error {
 	return err
 }
 
-func (cmd PrCmd) SubmitPatch(pubkey string, prID int64, review bool, patch io.Reader) (*Patch, error) {
-	pr := PatchRequest{}
-	err := cmd.Backend.DB.Get(&pr, "SELECT * FROM patch_requests WHERE id=?", prID)
-	if err != nil {
-		return nil, err
+// calcContentSha calculates a shasum containing the important content
+// changes related to a patch.
+// We cannot rely on patch.CommitSha because it includes the commit date
+// that will change when a user fetches and applies the patch locally.
+func (cmd PrCmd) calcContentSha(diffFiles []*gitdiff.File, header *gitdiff.PatchHeader) string {
+	authorName := ""
+	authorEmail := ""
+	if header.Author != nil {
+		authorName = header.Author.Name
+		authorEmail = header.Author.Email
 	}
-
-	// need to read io.Reader from session twice
-	var buf bytes.Buffer
-	tee := io.TeeReader(patch, &buf)
-
-	_, preamble, err := gitdiff.Parse(tee)
-	if err != nil {
-		return nil, err
-	}
-	header, err := gitdiff.ParsePatchHeader(preamble)
-	if err != nil {
-		return nil, err
-	}
-
-	patchID := 0
-	row := cmd.Backend.DB.QueryRow(
-		"INSERT INTO patches (pubkey, patch_request_id, author_name, author_email, author_date, title, body, body_appendix, commit_sha, review, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
-		pubkey,
-		prID,
-		header.Author.Name,
-		header.Author.Email,
-		header.AuthorDate,
+	content := fmt.Sprintf(
+		"%s\n%s\n%s\n%s\n%s\n",
 		header.Title,
 		header.Body,
-		header.BodyAppendix,
-		header.SHA,
-		review,
-		buf.String(),
+		authorName,
+		authorEmail,
+		header.AuthorDate,
 	)
-	err = row.Scan(&patchID)
+	for _, diff := range diffFiles {
+		content += fmt.Sprintf(
+			"%s->%s %s..%s %s-%s\n",
+			diff.OldName, diff.NewName,
+			diff.OldOIDPrefix, diff.NewOIDPrefix,
+			diff.OldMode.String(), diff.NewMode.String(),
+		)
+	}
+	sha := sha256.Sum256([]byte(content))
+	shaStr := hex.EncodeToString(sha[:])
+	return shaStr
+}
+
+func (cmd PrCmd) splitPatchSet(patchset string) []string {
+	return strings.Split(patchset, "\n\n\n")
+}
+
+func (cmd PrCmd) parsePatchSet(patchset io.Reader) ([]*Patch, error) {
+	patches := []*Patch{}
+	buf := new(strings.Builder)
+	_, err := io.Copy(buf, patchset)
 	if err != nil {
 		return nil, err
 	}
 
-	var patchRec Patch
-	err = cmd.Backend.DB.Get(&patchRec, "SELECT * FROM patches WHERE id=?", patchID)
-	return &patchRec, err
+	patchesRaw := cmd.splitPatchSet(buf.String())
+	for _, patchRaw := range patchesRaw {
+		reader := strings.NewReader(patchRaw)
+		diffFiles, preamble, err := gitdiff.Parse(reader)
+		if err != nil {
+			return nil, err
+		}
+		header, err := gitdiff.ParsePatchHeader(preamble)
+		if err != nil {
+			return nil, err
+		}
+
+		authorName := "Unknown"
+		authorEmail := ""
+		if header.Author != nil {
+			authorName = header.Author.Name
+			authorEmail = header.Author.Email
+		}
+
+		contentSha := cmd.calcContentSha(diffFiles, header)
+
+		patches = append(patches, &Patch{
+			AuthorName:   authorName,
+			AuthorEmail:  authorEmail,
+			AuthorDate:   header.AuthorDate.UTC().String(),
+			Title:        header.Title,
+			Body:         header.Body,
+			BodyAppendix: header.BodyAppendix,
+			ContentSha:   contentSha,
+			CommitSha:    header.SHA,
+			RawText:      patchRaw,
+		})
+	}
+
+	return patches, nil
 }
 
-func (cmd PrCmd) SubmitPatchRequest(pubkey string, repoID string, patches io.Reader) (*PatchRequest, error) {
+func (cmd PrCmd) createPatch(tx *sqlx.Tx, patch *Patch) (int64, error) {
+	var patchID int64
+	row := tx.QueryRow(
+		"INSERT INTO patches (pubkey, patch_request_id, author_name, author_email, author_date, title, body, body_appendix, commit_sha, content_sha, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		patch.Pubkey,
+		patch.PatchRequestID,
+		patch.AuthorName,
+		patch.AuthorEmail,
+		patch.AuthorDate,
+		patch.Title,
+		patch.Body,
+		patch.BodyAppendix,
+		patch.ContentSha,
+		patch.CommitSha,
+		patch.RawText,
+	)
+	err := row.Scan(&patchID)
+	if err != nil {
+		return 0, err
+	}
+	if patchID == 0 {
+		return 0, fmt.Errorf("could not create patch request")
+	}
+	return patchID, err
+}
+
+func (cmd PrCmd) SubmitPatchRequest(repoID int64, pubkey string, patchset io.Reader) (*PatchRequest, error) {
 	tx, err := cmd.Backend.DB.Beginx()
 	if err != nil {
 		return nil, err
@@ -158,20 +223,16 @@ func (cmd PrCmd) SubmitPatchRequest(pubkey string, repoID string, patches io.Rea
 		}
 	}()
 
-	// need to read io.Reader from session twice
-	var buf bytes.Buffer
-	tee := io.TeeReader(patches, &buf)
-
-	_, preamble, err := gitdiff.Parse(tee)
+	patches, err := cmd.parsePatchSet(patchset)
 	if err != nil {
 		return nil, err
 	}
-	header, err := gitdiff.ParsePatchHeader(preamble)
-	if err != nil {
-		return nil, err
+	prName := ""
+	prText := ""
+	if len(patches) > 0 {
+		prName = patches[0].Title
+		prText = patches[0].Body
 	}
-	prName := header.Title
-	prDesc := header.Body
 
 	var prID int64
 	row := tx.QueryRow(
@@ -179,7 +240,7 @@ func (cmd PrCmd) SubmitPatchRequest(pubkey string, repoID string, patches io.Rea
 		pubkey,
 		repoID,
 		prName,
-		prDesc,
+		prText,
 		"open",
 		time.Now(),
 	)
@@ -191,28 +252,13 @@ func (cmd PrCmd) SubmitPatchRequest(pubkey string, repoID string, patches io.Rea
 		return nil, fmt.Errorf("could not create patch request")
 	}
 
-	authorName := "Unknown"
-	authorEmail := ""
-	if header.Author != nil {
-		authorName = header.Author.Name
-		authorEmail = header.Author.Email
-	}
-
-	_, err = tx.Exec(
-		"INSERT INTO patches (pubkey, patch_request_id, author_name, author_email, author_date, title, body, body_appendix, commit_sha, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		pubkey,
-		prID,
-		authorName,
-		authorEmail,
-		header.AuthorDate,
-		prName,
-		prDesc,
-		header.BodyAppendix,
-		header.SHA,
-		buf.String(),
-	)
-	if err != nil {
-		return nil, err
+	for _, patch := range patches {
+		patch.Pubkey = pubkey
+		patch.PatchRequestID = prID
+		_, err = cmd.createPatch(tx, patch)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	err = tx.Commit()
@@ -223,4 +269,39 @@ func (cmd PrCmd) SubmitPatchRequest(pubkey string, repoID string, patches io.Rea
 	var pr PatchRequest
 	err = cmd.Backend.DB.Get(&pr, "SELECT * FROM patch_requests WHERE id=?", prID)
 	return &pr, err
+}
+
+func (cmd PrCmd) SubmitPatchSet(prID int64, pubkey string, review bool, patchset io.Reader) error {
+	tx, err := cmd.Backend.DB.Beginx()
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		err := tx.Rollback()
+		if err != nil {
+			cmd.Backend.Logger.Error("rollback", "err", err)
+		}
+	}()
+
+	patches, err := cmd.parsePatchSet(patchset)
+	if err != nil {
+		return err
+	}
+
+	for _, patch := range patches {
+		patch.Pubkey = pubkey
+		patch.PatchRequestID = prID
+		_, err = cmd.createPatch(tx, patch)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+
+	return err
 }

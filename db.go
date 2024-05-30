@@ -33,6 +33,7 @@ type Patch struct {
 	Body           string    `db:"body"`
 	BodyAppendix   string    `db:"body_appendix"`
 	CommitSha      string    `db:"commit_sha"`
+	ContentSha     string    `db:"content_sha"`
 	Review         bool      `db:"review"`
 	RawText        string    `db:"raw_text"`
 	CreatedAt      time.Time `db:"created_at"`
@@ -80,6 +81,7 @@ CREATE TABLE IF NOT EXISTS patches (
   body TEXT NOT NULL,
   body_appendix TEXT NOT NULL,
   commit_sha TEXT NOT NULL,
+  content_sha TEXT NOT NULL,
   review BOOLEAN NOT NULL DEFAULT false,
   raw_text TEXT NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
