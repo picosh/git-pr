@@ -3,6 +3,7 @@ package git
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -12,11 +13,13 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+var ErrPatchExists = errors.New("patch already exists for patch request")
+
 type GitPatchRequest interface {
 	GetRepos() ([]Repo, error)
 	GetRepoByID(repoID string) (*Repo, error)
-	SubmitPatchRequest(repoID int64, pubkey string, patchset io.Reader) (*PatchRequest, error)
-	SubmitPatchSet(prID int64, pubkey string, review bool, patchset io.Reader) error
+	SubmitPatchRequest(repoID string, pubkey string, patchset io.Reader) (*PatchRequest, error)
+	SubmitPatchSet(prID int64, pubkey string, review bool, patchset io.Reader) ([]*Patch, error)
 	GetPatchRequestByID(prID int64) (*PatchRequest, error)
 	GetPatchRequests() ([]*PatchRequest, error)
 	GetPatchRequestsByRepoID(repoID string) ([]*PatchRequest, error)
@@ -185,6 +188,12 @@ func (cmd PrCmd) parsePatchSet(patchset io.Reader) ([]*Patch, error) {
 }
 
 func (cmd PrCmd) createPatch(tx *sqlx.Tx, patch *Patch) (int64, error) {
+	var patchExists *Patch
+	_ = tx.Select(&patchExists, "SELECT * FROM patches WHERE patch_request_id = ? AND content_sha = ?", patch.PatchRequestID, patch.ContentSha)
+	if patchExists.ID == 0 {
+		return 0, ErrPatchExists
+	}
+
 	var patchID int64
 	row := tx.QueryRow(
 		"INSERT INTO patches (pubkey, patch_request_id, author_name, author_email, author_date, title, body, body_appendix, commit_sha, content_sha, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -210,7 +219,7 @@ func (cmd PrCmd) createPatch(tx *sqlx.Tx, patch *Patch) (int64, error) {
 	return patchID, err
 }
 
-func (cmd PrCmd) SubmitPatchRequest(repoID int64, pubkey string, patchset io.Reader) (*PatchRequest, error) {
+func (cmd PrCmd) SubmitPatchRequest(repoID string, pubkey string, patchset io.Reader) (*PatchRequest, error) {
 	tx, err := cmd.Backend.DB.Beginx()
 	if err != nil {
 		return nil, err
@@ -271,10 +280,11 @@ func (cmd PrCmd) SubmitPatchRequest(repoID int64, pubkey string, patchset io.Rea
 	return &pr, err
 }
 
-func (cmd PrCmd) SubmitPatchSet(prID int64, pubkey string, review bool, patchset io.Reader) error {
+func (cmd PrCmd) SubmitPatchSet(prID int64, pubkey string, review bool, patchset io.Reader) ([]*Patch, error) {
+	fin := []*Patch{}
 	tx, err := cmd.Backend.DB.Beginx()
 	if err != nil {
-		return err
+		return fin, err
 	}
 
 	defer func() {
@@ -286,22 +296,27 @@ func (cmd PrCmd) SubmitPatchSet(prID int64, pubkey string, review bool, patchset
 
 	patches, err := cmd.parsePatchSet(patchset)
 	if err != nil {
-		return err
+		return fin, err
 	}
 
 	for _, patch := range patches {
 		patch.Pubkey = pubkey
 		patch.PatchRequestID = prID
-		_, err = cmd.createPatch(tx, patch)
-		if err != nil {
-			return err
+		patchID, err := cmd.createPatch(tx, patch)
+		if err == nil {
+			patch.ID = patchID
+			fin = append(fin, patch)
+		} else {
+			if !errors.Is(ErrPatchExists, err) {
+				return fin, err
+			}
 		}
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		return err
+		return fin, err
 	}
 
-	return err
+	return fin, err
 }

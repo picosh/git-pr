@@ -123,7 +123,7 @@ Here's how it works:
 						Usage: "Submit a new PR",
 						Action: func(cCtx *cli.Context) error {
 							repoID := cCtx.Args().First()
-							request, err := pr.SubmitPatchRequest(pubkey, repoID, sesh)
+							request, err := pr.SubmitPatchRequest(repoID, pubkey, sesh)
 							if err != nil {
 								return err
 							}
@@ -335,7 +335,7 @@ Here's how it works:
 								return fmt.Errorf("unauthorized, you are not the owner of this PR")
 							}
 
-							patch, err := pr.SubmitPatch(pubkey, prID, isReview, sesh)
+							patches, err := pr.SubmitPatchSet(prID, pubkey, isReview, sesh)
 							if err != nil {
 								return err
 							}
@@ -348,19 +348,21 @@ Here's how it works:
 								reviewTxt = "[review]"
 							}
 
-							wish.Println(sesh, "Patch submitted!")
+							wish.Println(sesh, "Patches submitted!")
 							writer := NewTabWriter(sesh)
 							fmt.Fprintln(
 								writer,
 								"ID\tTitle",
 							)
-							fmt.Fprintf(
-								writer,
-								"%d\t%s %s\n",
-								patch.ID,
-								patch.Title,
-								reviewTxt,
-							)
+							for _, patch := range patches {
+								fmt.Fprintf(
+									writer,
+									"%d\t%s %s\n",
+									patch.ID,
+									patch.Title,
+									reviewTxt,
+								)
+							}
 							writer.Flush()
 							return nil
 						},
