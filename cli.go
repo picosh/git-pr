@@ -275,8 +275,10 @@ Here's how it works:
 							if err != nil {
 								return err
 							}
-							if !be.IsAdmin(sesh.PublicKey()) {
-								return fmt.Errorf("must be admin to accpet PR")
+
+							isAdmin := be.IsAdmin(sesh.PublicKey())
+							if !isAdmin {
+								return fmt.Errorf("you are not authorized to accept a PR")
 							}
 							err = pr.UpdatePatchRequest(prID, "accept")
 							return err
@@ -290,8 +292,15 @@ Here's how it works:
 							if err != nil {
 								return err
 							}
-							if !be.IsAdmin(sesh.PublicKey()) {
-								return fmt.Errorf("must be admin to close PR")
+							patchReq, err := pr.GetPatchRequestByID(prID)
+							if err != nil {
+								return err
+							}
+							pk := sesh.PublicKey()
+							isContrib := be.Pubkey(pk) == patchReq.Pubkey
+							isAdmin := be.IsAdmin(pk)
+							if !isAdmin && !isContrib {
+								return fmt.Errorf("you are not authorized to change PR status")
 							}
 							err = pr.UpdatePatchRequest(prID, "close")
 							return err
@@ -305,9 +314,17 @@ Here's how it works:
 							if err != nil {
 								return err
 							}
-							if !be.IsAdmin(sesh.PublicKey()) {
-								return fmt.Errorf("must be admin to close PR")
+							patchReq, err := pr.GetPatchRequestByID(prID)
+							if err != nil {
+								return err
 							}
+							pk := sesh.PublicKey()
+							isContrib := be.Pubkey(pk) == patchReq.Pubkey
+							isAdmin := be.IsAdmin(pk)
+							if !isAdmin && !isContrib {
+								return fmt.Errorf("you are not authorized to change PR status")
+							}
+
 							err = pr.UpdatePatchRequest(prID, "open")
 							return err
 						},
