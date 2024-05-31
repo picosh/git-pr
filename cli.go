@@ -94,21 +94,31 @@ Here's how it works:
 				Usage: "Manage Patch Requests (PR)",
 				Subcommands: []*cli.Command{
 					{
-						Name:  "ls",
-						Usage: "List all PRs",
+						Name:      "ls",
+						Usage:     "List all PRs",
+						Args:      true,
+						ArgsUsage: "[repoID]",
 						Action: func(cCtx *cli.Context) error {
-							prs, err := pr.GetPatchRequests()
+							repoID := cCtx.Args().First()
+							var prs []*PatchRequest
+							var err error
+							if repoID == "" {
+								prs, err = pr.GetPatchRequests()
+							} else {
+								prs, err = pr.GetPatchRequestsByRepoID(repoID)
+							}
 							if err != nil {
 								return err
 							}
 
 							writer := NewTabWriter(sesh)
-							fmt.Fprintln(writer, "ID\tName\tStatus\tDate")
+							fmt.Fprintln(writer, "ID\tRepoID\tName\tStatus\tDate")
 							for _, req := range prs {
 								fmt.Fprintf(
 									writer,
-									"%d\t%s\t[%s]\t%s\n",
+									"%d\t%s\t%s\t[%s]\t%s\n",
 									req.ID,
+									req.RepoID,
 									req.Name,
 									req.Status,
 									req.CreatedAt.Format(time.RFC3339Nano),
@@ -119,8 +129,10 @@ Here's how it works:
 						},
 					},
 					{
-						Name:  "create",
-						Usage: "Submit a new PR",
+						Name:      "create",
+						Usage:     "Submit a new PR",
+						Args:      true,
+						ArgsUsage: "[repoID]",
 						Action: func(cCtx *cli.Context) error {
 							repoID := cCtx.Args().First()
 							request, err := pr.SubmitPatchRequest(repoID, pubkey, sesh)
@@ -137,8 +149,10 @@ Here's how it works:
 						},
 					},
 					{
-						Name:  "print",
-						Usage: "Print the patches for a PR",
+						Name:      "print",
+						Usage:     "Print the patches for a PR",
+						Args:      true,
+						ArgsUsage: "[prID]",
 						Action: func(cCtx *cli.Context) error {
 							prID, err := getPrID(cCtx.Args().First())
 							if err != nil {
@@ -166,8 +180,10 @@ Here's how it works:
 						},
 					},
 					{
-						Name:  "stats",
-						Usage: "Print PR with diff stats",
+						Name:      "stats",
+						Usage:     "Print PR with diff stats",
+						Args:      true,
+						ArgsUsage: "[prID]",
 						Action: func(cCtx *cli.Context) error {
 							prID, err := getPrID(cCtx.Args().First())
 							if err != nil {
@@ -217,8 +233,10 @@ Here's how it works:
 						},
 					},
 					{
-						Name:  "summary",
-						Usage: "List patches in PRs",
+						Name:      "summary",
+						Usage:     "List patches in PRs",
+						Args:      true,
+						ArgsUsage: "[prID]",
 						Action: func(cCtx *cli.Context) error {
 							prID, err := getPrID(cCtx.Args().First())
 							if err != nil {
@@ -268,8 +286,10 @@ Here's how it works:
 						},
 					},
 					{
-						Name:  "accept",
-						Usage: "Accept a PR",
+						Name:      "accept",
+						Usage:     "Accept a PR",
+						Args:      true,
+						ArgsUsage: "[prID]",
 						Action: func(cCtx *cli.Context) error {
 							prID, err := getPrID(cCtx.Args().First())
 							if err != nil {
@@ -285,8 +305,10 @@ Here's how it works:
 						},
 					},
 					{
-						Name:  "close",
-						Usage: "Close a PR",
+						Name:      "close",
+						Usage:     "Close a PR",
+						Args:      true,
+						ArgsUsage: "[prID]",
 						Action: func(cCtx *cli.Context) error {
 							prID, err := getPrID(cCtx.Args().First())
 							if err != nil {
@@ -307,8 +329,10 @@ Here's how it works:
 						},
 					},
 					{
-						Name:  "reopen",
-						Usage: "Reopen a PR",
+						Name:      "reopen",
+						Usage:     "Reopen a PR",
+						Args:      true,
+						ArgsUsage: "[prID]",
 						Action: func(cCtx *cli.Context) error {
 							prID, err := getPrID(cCtx.Args().First())
 							if err != nil {
@@ -337,6 +361,10 @@ Here's how it works:
 								Name:  "review",
 								Usage: "mark patch as a review",
 							},
+							&cli.BoolFlag{
+								Name:  "force",
+								Usage: "replace patchset with new patchset -- including reviews",
+							},
 						},
 						Action: func(cCtx *cli.Context) error {
 							prID, err := getPrID(cCtx.Args().First())
@@ -345,6 +373,7 @@ Here's how it works:
 							}
 							isAdmin := be.IsAdmin(sesh.PublicKey())
 							isReview := cCtx.Bool("review")
+							isReplace := cCtx.Bool("force")
 							var req PatchRequest
 							err = be.DB.Get(&req, "SELECT * FROM patch_requests WHERE id=?", prID)
 							if err != nil {
@@ -355,7 +384,16 @@ Here's how it works:
 								return fmt.Errorf("unauthorized, you are not the owner of this PR")
 							}
 
-							patches, err := pr.SubmitPatchSet(prID, pubkey, isReview, sesh)
+							op := OpNormal
+							if isReview {
+								wish.Println(sesh, "Marking new patchset as a review")
+								op = OpReview
+							} else if isReplace {
+								wish.Println(sesh, "Replacing current patchset with new one")
+								op = OpReplace
+							}
+
+							patches, err := pr.SubmitPatchSet(prID, pubkey, op, sesh)
 							if err != nil {
 								return err
 							}

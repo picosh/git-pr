@@ -10,10 +10,13 @@
   <h1 class="text-2xl mb">Repos</h1>
 </header>
 <main>
-  <ul>
+  <div class="group">
   {{range .Repos}}
-    <li><a href="{{.Url}}">{{.Text}}</a></li>
+    <div class="box">
+      <h3 class="text-lg"><a href="{{.Url}}">{{.Text}}</a></h3>
+      <div class="text-sm">{{.Desc}}</div>
+    </div>
   {{end}}
-  </ul>
+  </div>
 </main>
 {{end}}

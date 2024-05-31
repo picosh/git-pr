@@ -13,7 +13,7 @@
     <div>Submit patch request: <code>git format-patch -1 HEAD --stdout | ssh pr.pico.sh pr create {{.ID}}</code></div>
 	</div>
 </header>
-<main>
+<main class="group">
   {{range .Prs}}
   <article class="box">
     <div><a href="{{.Url}}">{{.Text}}</a> <code>{{.Status}}</code></div>

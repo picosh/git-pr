@@ -15,16 +15,25 @@ import (
 
 var ErrPatchExists = errors.New("patch already exists for patch request")
 
+type PatchsetOp int
+
+const (
+	OpNormal PatchsetOp = iota
+	OpReview
+	OpReplace
+)
+
 type GitPatchRequest interface {
 	GetRepos() ([]Repo, error)
 	GetRepoByID(repoID string) (*Repo, error)
 	SubmitPatchRequest(repoID string, pubkey string, patchset io.Reader) (*PatchRequest, error)
-	SubmitPatchSet(prID int64, pubkey string, review bool, patchset io.Reader) ([]*Patch, error)
+	SubmitPatchSet(prID int64, pubkey string, op PatchsetOp, patchset io.Reader) ([]*Patch, error)
 	GetPatchRequestByID(prID int64) (*PatchRequest, error)
 	GetPatchRequests() ([]*PatchRequest, error)
 	GetPatchRequestsByRepoID(repoID string) ([]*PatchRequest, error)
 	GetPatchesByPrID(prID int64) ([]*Patch, error)
 	UpdatePatchRequest(prID int64, status string) error
+	DeletePatchesByPrID(prID int64) error
 }
 
 type PrCmd struct {
@@ -188,7 +197,7 @@ func (cmd PrCmd) parsePatchSet(patchset io.Reader) ([]*Patch, error) {
 	return patches, nil
 }
 
-func (cmd PrCmd) createPatch(tx *sqlx.Tx, patch *Patch) (int64, error) {
+func (cmd PrCmd) createPatch(tx *sqlx.Tx, review bool, patch *Patch) (int64, error) {
 	patchExists := []Patch{}
 	_ = cmd.Backend.DB.Select(&patchExists, "SELECT * FROM patches WHERE patch_request_id = ? AND content_sha = ?", patch.PatchRequestID, patch.ContentSha)
 	if len(patchExists) > 0 {
@@ -197,7 +206,7 @@ func (cmd PrCmd) createPatch(tx *sqlx.Tx, patch *Patch) (int64, error) {
 
 	var patchID int64
 	row := tx.QueryRow(
-		"INSERT INTO patches (pubkey, patch_request_id, author_name, author_email, author_date, title, body, body_appendix, commit_sha, content_sha, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+		"INSERT INTO patches (pubkey, patch_request_id, author_name, author_email, author_date, title, body, body_appendix, commit_sha, content_sha, review, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
 		patch.Pubkey,
 		patch.PatchRequestID,
 		patch.AuthorName,
@@ -208,6 +217,7 @@ func (cmd PrCmd) createPatch(tx *sqlx.Tx, patch *Patch) (int64, error) {
 		patch.BodyAppendix,
 		patch.CommitSha,
 		patch.ContentSha,
+		review,
 		patch.RawText,
 	)
 	err := row.Scan(&patchID)
@@ -262,7 +272,7 @@ func (cmd PrCmd) SubmitPatchRequest(repoID string, pubkey string, patchset io.Re
 	for _, patch := range patches {
 		patch.Pubkey = pubkey
 		patch.PatchRequestID = prID
-		_, err = cmd.createPatch(tx, patch)
+		_, err = cmd.createPatch(tx, false, patch)
 		if err != nil {
 			return nil, err
 		}
@@ -278,7 +288,52 @@ func (cmd PrCmd) SubmitPatchRequest(repoID string, pubkey string, patchset io.Re
 	return &pr, err
 }
 
-func (cmd PrCmd) SubmitPatchSet(prID int64, pubkey string, review bool, patchset io.Reader) ([]*Patch, error) {
+func (cmd PrCmd) SubmitPatchSet(prID int64, pubkey string, op PatchsetOp, patchset io.Reader) ([]*Patch, error) {
+	fin := []*Patch{}
+	tx, err := cmd.Backend.DB.Beginx()
+	if err != nil {
+		return fin, err
+	}
+
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	patches, err := cmd.parsePatchSet(patchset)
+	if err != nil {
+		return fin, err
+	}
+
+	if op == OpReplace {
+		err = cmd.DeletePatchesByPrID(prID)
+		if err != nil {
+			return fin, err
+		}
+	}
+
+	for _, patch := range patches {
+		patch.Pubkey = pubkey
+		patch.PatchRequestID = prID
+		patchID, err := cmd.createPatch(tx, op == OpReview, patch)
+		if err == nil {
+			patch.ID = patchID
+			fin = append(fin, patch)
+		} else {
+			if !errors.Is(ErrPatchExists, err) {
+				return fin, err
+			}
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fin, err
+	}
+
+	return fin, err
+}
+
+func (cmd PrCmd) ReplacePatchSet(prID int64, pubkey string, patchset io.Reader) ([]*Patch, error) {
 	fin := []*Patch{}
 	tx, err := cmd.Backend.DB.Beginx()
 	if err != nil {
@@ -297,7 +352,7 @@ func (cmd PrCmd) SubmitPatchSet(prID int64, pubkey string, review bool, patchset
 	for _, patch := range patches {
 		patch.Pubkey = pubkey
 		patch.PatchRequestID = prID
-		patchID, err := cmd.createPatch(tx, patch)
+		patchID, err := cmd.createPatch(tx, false, patch)
 		if err == nil {
 			patch.ID = patchID
 			fin = append(fin, patch)
@@ -314,4 +369,11 @@ func (cmd PrCmd) SubmitPatchSet(prID int64, pubkey string, review bool, patchset
 	}
 
 	return fin, err
+}
+
+func (cmd PrCmd) DeletePatchesByPrID(prID int64) error {
+	_, err := cmd.Backend.DB.Exec(
+		"DELETE FROM patches WHERE patch_request_id=?", prID,
+	)
+	return err
 }
