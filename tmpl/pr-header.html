@@ -1,0 +1,27 @@
+{{define "pr-header"}}
+<header>
+  <h1 class="text-2xl mb">
+    <a href="{{.Repo.Url}}">{{.Repo.Text}}</a>
+    <span> / {{.Pr.Title}} <code>#{{.Pr.ID}}</code></span>
+  </h1>
+
+  <div class="text-sm">
+    <code>{{.Pr.Status}}</code>
+    <span>opened on <date>{{.Pr.Date}}</date> by</span>
+    <code>{{.Pr.Pubkey}}</code>
+  </div>
+
+  <div class="mt">
+  {{if eq .Page "pr"}}
+    <strong>summary</strong> &middot; <a href="{{.PatchesUrl}}">patches</a>
+  {{else}}
+    <a href="{{.SummaryUrl}}">summary</a> &middot; <strong>patches</strong>
+  {{end}}
+  </div>
+
+	<div>
+    <span>Submit change to patch: </span>
+    <code>git format-patch -1 HEAD --stdout | ssh pr.pico.sh pr add {{.Pr.ID}}</code>
+  </div>
+</header>
+{{end}}

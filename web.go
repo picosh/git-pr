@@ -3,6 +3,7 @@ package git
 import (
 	"bytes"
 	"context"
+	"embed"
 	"fmt"
 	"html/template"
 	"log/slog"
@@ -17,6 +18,9 @@ import (
 	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/alecthomas/chroma/v2/styles"
 )
+
+//go:embed tmpl/*
+var tmplFS embed.FS
 
 type WebCtx struct {
 	Pr        *PrCmd
@@ -60,36 +64,34 @@ func ctxMdw(ctx context.Context, handler http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-type TemplateData struct {
-	Title string
-	Body  template.HTML
+func getTemplate(file string) *template.Template {
+	tmpl := template.Must(
+		template.ParseFS(
+			tmplFS,
+			filepath.Join("tmpl", file),
+			filepath.Join("tmpl", "pr-header.html"),
+			filepath.Join("tmpl", "base.html"),
+		),
+	)
+	return tmpl
 }
 
-func getTemplate() *template.Template {
-	str := `<!doctype html>
-<html lang="en">
-	<head>
-		<title>{{.Title}}</title>
-		<link rel="stylesheet" href="https://pico.sh/smol.css" />
-		<link rel="stylesheet" href="/syntax.css" />
-	</head>
-	<body class="container">
-		{{.Body}}
-	</body>
-</html>`
-	tmpl := template.Must(template.New("main").Parse(str))
-	return tmpl
+type LinkData struct {
+	Url  template.URL
+	Text string
+}
+
+type RepoListData struct {
+	Repos []LinkData
 }
 
 func repoListHandler(w http.ResponseWriter, r *http.Request) {
 	web, err := getWebCtx(r)
 	if err != nil {
-		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	str := `<h1 class="text-2xl">repos</h1>`
 	repos, err := web.Pr.GetRepos()
 	if err != nil {
 		web.Pr.Backend.Logger.Error("cannot get repos", "err", err)
@@ -97,25 +99,37 @@ func repoListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	str += "<ul>"
+	repoUrls := []LinkData{}
 	for _, repo := range repos {
-		str += fmt.Sprintf(
-			`<li><a href="%s">%s</a></li>`,
-			template.URL("/repos/"+repo.ID),
-			repo.ID,
-		)
+		url := LinkData{
+			Url:  template.URL("/repos/" + repo.ID),
+			Text: repo.ID,
+		}
+		repoUrls = append(repoUrls, url)
 	}
-	str += "</ul>"
 
 	w.Header().Set("content-type", "text/html")
-	tmpl := getTemplate()
-	err = tmpl.Execute(w, TemplateData{
-		Title: "Repos",
-		Body:  template.HTML(str),
+	tmpl := getTemplate("repo-list.html")
+	err = tmpl.Execute(w, RepoListData{
+		Repos: repoUrls,
 	})
 	if err != nil {
 		fmt.Println(err)
 	}
+}
+
+type PrListData struct {
+	LinkData
+	ID     int64
+	Pubkey string
+	Date   string
+	Status string
+}
+
+type RepoDetailData struct {
+	ID        string
+	CloneAddr string
+	Prs       []PrListData
 }
 
 func repoHandler(w http.ResponseWriter, r *http.Request) {
@@ -135,12 +149,6 @@ func repoHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	str := fmt.Sprintf(`<h1 class="text-2xl"><a href="/">repos</a> / %s</h1>`, repo.ID)
-	str += `<div class="group">`
-	str += fmt.Sprintf(`<div><code>git clone %s</code></div>`, repo.CloneAddr)
-	str += fmt.Sprintf(`<div>Submit patch request: <code>git format-patch --stdout | ssh pr.pico.sh pr create %s</code></div>`, repo.ID)
-	str += `<div class="group"></div>`
-
 	prs, err := web.Pr.GetPatchRequestsByRepoID(repoID)
 	if err != nil {
 		web.Logger.Error("cannot get prs", "err", err)
@@ -148,62 +156,65 @@ func repoHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(prs) == 0 {
-		str += "No PRs found for repo"
-	}
-
+	prList := []PrListData{}
 	for _, curpr := range prs {
-		row := `
-<div class="group-h">
-	<div>%d</div>
-	<div><a href="%s">%s</a></div>
-	<div>%s</div>
-</div>`
-		str += fmt.Sprintf(
-			row,
-			curpr.ID,
-			template.URL(fmt.Sprintf("/prs/%d", curpr.ID)),
-			curpr.Name,
-			curpr.Pubkey,
-		)
+		ls := PrListData{
+			ID:     curpr.ID,
+			Pubkey: curpr.Pubkey,
+			LinkData: LinkData{
+				Url:  template.URL(fmt.Sprintf("/prs/%d", curpr.ID)),
+				Text: curpr.Name,
+			},
+			Date:   curpr.CreatedAt.Format(time.RFC3339),
+			Status: curpr.Status,
+		}
+		prList = append(prList, ls)
 	}
 
 	w.Header().Set("content-type", "text/html")
-	tmpl := getTemplate()
-	err = tmpl.Execute(w, TemplateData{
-		Title: "Patch Requests",
-		Body:  template.HTML(str),
+	tmpl := getTemplate("repo-detail.html")
+	err = tmpl.Execute(w, RepoDetailData{
+		ID:        repo.ID,
+		CloneAddr: repo.CloneAddr,
+		Prs:       prList,
 	})
 	if err != nil {
 		fmt.Println(err)
 	}
 }
 
-func header(repo *Repo, pr *PatchRequest, page string) string {
-	str := fmt.Sprintf(`<h1 class="text-2xl"><a href="/repos/%s">%s</a> / %s</h1>`, repo.ID, repo.ID, pr.Name)
-	str += fmt.Sprintf("<div>[%s] %s %s</div>", pr.Status, pr.CreatedAt.Format(time.DateTime), pr.Pubkey)
-	if page == "pr" {
-		str += fmt.Sprintf(`<div><strong>summary</strong> &middot; <a href="/prs/%d/patches">patches</a></div>`, pr.ID)
-	} else {
-		str += fmt.Sprintf(`<div><a href="/prs/%d">summary</a> &middot; <strong>patches</strong></div>`, pr.ID)
-	}
+type PrData struct {
+	ID     int64
+	Title  string
+	Date   string
+	Pubkey string
+	Status string
+}
 
-	str += fmt.Sprintf(`<div>Submit change to patch: <code>git format-patch HEAD~1 --stdout | ssh pr.pico.sh pr add %d</code></div>`, pr.ID)
-	return str
+type PatchData struct {
+	*Patch
+	DiffStr template.HTML
+}
+
+type PrHeaderData struct {
+	Page       string
+	Repo       LinkData
+	Pr         PrData
+	PatchesUrl template.URL
+	SummaryUrl template.URL
+	Patches    []PatchData
 }
 
 func prHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	prID, err := strconv.Atoi(id)
 	if err != nil {
-		fmt.Println(err)
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		return
 	}
 
 	web, err := getWebCtx(r)
 	if err != nil {
-		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -222,9 +233,6 @@ func prHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	str := header(repo, pr, "pr")
-	str += fmt.Sprintf("<p>%s</p>", pr.Text)
-
 	patches, err := web.Pr.GetPatchesByPrID(int64(prID))
 	if err != nil {
 		web.Logger.Error("cannot get patches", "err", err)
@@ -232,27 +240,32 @@ func prHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	patchesData := []PatchData{}
 	for _, patch := range patches {
-		reviewTxt := ""
-		if patch.Review {
-			reviewTxt = "[review]"
-		}
-		str += fmt.Sprintf(
-			"<div>%s\t%s\t%s\t%s <%s>\t%s\n</div>",
-			reviewTxt,
-			patch.Title,
-			truncateSha(patch.CommitSha),
-			patch.AuthorName,
-			patch.AuthorEmail,
-			patch.AuthorDate,
-		)
+		patchesData = append(patchesData, PatchData{
+			Patch:   patch,
+			DiffStr: "",
+		})
 	}
 
 	w.Header().Set("content-type", "text/html")
-	tmpl := getTemplate()
-	err = tmpl.Execute(w, TemplateData{
-		Title: fmt.Sprintf("%s (%s)", pr.Name, pr.Status),
-		Body:  template.HTML(str),
+	tmpl := getTemplate("pr-detail.html")
+	err = tmpl.Execute(w, PrHeaderData{
+		Page: "pr",
+		Repo: LinkData{
+			Url:  template.URL("/repos/" + repo.ID),
+			Text: repo.ID,
+		},
+		SummaryUrl: template.URL(fmt.Sprintf("/prs/%d", pr.ID)),
+		PatchesUrl: template.URL(fmt.Sprintf("/prs/%d/patches", pr.ID)),
+		Patches:    patchesData,
+		Pr: PrData{
+			ID:     pr.ID,
+			Title:  pr.Name,
+			Pubkey: pr.Pubkey,
+			Date:   pr.CreatedAt.Format(time.RFC3339),
+			Status: pr.Status,
+		},
 	})
 	if err != nil {
 		fmt.Println(err)
@@ -263,14 +276,12 @@ func prPatchesHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	prID, err := strconv.Atoi(id)
 	if err != nil {
-		fmt.Println(err)
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		return
 	}
 
 	web, err := getWebCtx(r)
 	if err != nil {
-		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -289,8 +300,6 @@ func prPatchesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	str := header(repo, pr, "patches")
-
 	patches, err := web.Pr.GetPatchesByPrID(int64(prID))
 	if err != nil {
 		web.Pr.Backend.Logger.Error("cannot get patches", "err", err)
@@ -298,32 +307,38 @@ func prPatchesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	patchesData := []PatchData{}
 	for _, patch := range patches {
-		rev := ""
-		if patch.Review {
-			rev = "[review]"
-		}
 		diffStr, err := parseText(web.Formatter, web.Theme, patch.RawText)
 		if err != nil {
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			return
 		}
 
-		row := `
-<h2 class="text-xl">%s %s</h2>
-<div>%s</div>`
-		str += fmt.Sprintf(
-			row,
-			rev, patch.Title,
-			diffStr,
-		)
+		patchesData = append(patchesData, PatchData{
+			Patch:   patch,
+			DiffStr: template.HTML(diffStr),
+		})
 	}
 
 	w.Header().Set("content-type", "text/html")
-	tmpl := getTemplate()
-	err = tmpl.Execute(w, TemplateData{
-		Title: fmt.Sprintf("patches - %s", pr.Name),
-		Body:  template.HTML(str),
+	tmpl := getTemplate("pr-detail-patches.html")
+	err = tmpl.Execute(w, PrHeaderData{
+		Page: "patches",
+		Repo: LinkData{
+			Url:  template.URL("/repos/" + repo.ID),
+			Text: repo.ID,
+		},
+		SummaryUrl: template.URL(fmt.Sprintf("/prs/%d", pr.ID)),
+		PatchesUrl: template.URL(fmt.Sprintf("/prs/%d/patches", pr.ID)),
+		Patches:    patchesData,
+		Pr: PrData{
+			ID:     pr.ID,
+			Title:  pr.Name,
+			Pubkey: pr.Pubkey,
+			Date:   pr.CreatedAt.Format(time.RFC3339),
+			Status: pr.Status,
+		},
 	})
 	if err != nil {
 		fmt.Println(err)

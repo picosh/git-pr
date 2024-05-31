@@ -1,0 +1,19 @@
+{{template "base" .}}
+
+{{define "title"}}repo list{{end}}
+
+{{define "meta"}}
+{{end}}
+
+{{define "body"}}
+<header>
+  <h1 class="text-2xl mb">Repos</h1>
+</header>
+<main>
+  <ul>
+  {{range .Repos}}
+    <li><a href="{{.Url}}">{{.Text}}</a></li>
+  {{end}}
+  </ul>
+</main>
+{{end}}

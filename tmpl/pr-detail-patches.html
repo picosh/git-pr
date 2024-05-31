@@ -1,0 +1,27 @@
+{{template "base" .}}
+
+{{define "title"}}{{.Pr.Title}} - pr patches{{end}}
+
+{{define "meta"}}
+{{end}}
+
+{{define "body"}}
+{{template "pr-header" .}}
+
+<main>
+  <div class="group">
+    {{range .Patches}}
+    <div class="box">
+      <div class="group-h">
+        <h2 class="text-lg m-0 p-0">
+          {{if .Review}}<code>review</code>{{end}}
+          <span>{{.Title}}</span>
+        </h2>
+      </div>
+      <div>{{.DiffStr}}</div>
+    </div>
+    {{end}}
+  </div>
+  <hr />
+</main>
+{{end}}

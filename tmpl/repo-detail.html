@@ -1,0 +1,28 @@
+{{template "base" .}}
+
+{{define "title"}}{{.ID}} - repo{{end}}
+
+{{define "meta"}}
+{{end}}
+
+{{define "body"}}
+<header>
+  <h1 class="text-2xl mb"><a href="/">repos</a> / {{.ID}}</h1>
+  <div class="group">
+    <div><code>git clone {{.CloneAddr}}</code></div>
+    <div>Submit patch request: <code>git format-patch -1 HEAD --stdout | ssh pr.pico.sh pr create {{.ID}}</code></div>
+	</div>
+</header>
+<main>
+  {{range .Prs}}
+  <article class="box">
+    <div><a href="{{.Url}}">{{.Text}}</a> <code>{{.Status}}</code></div>
+    <div class="text-sm">
+      <code>#{{.ID}}</code>
+      <span>opened on <date>{{.Date}}</date> by </span>
+      <code>{{.Pubkey}}</code>
+    </div>
+  </article>
+  {{end}}
+</main>
+{{end}}
