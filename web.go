@@ -81,8 +81,13 @@ type LinkData struct {
 	Text string
 }
 
+type RepoData struct {
+	LinkData
+	Desc string
+}
+
 type RepoListData struct {
-	Repos []LinkData
+	Repos []RepoData
 }
 
 func repoListHandler(w http.ResponseWriter, r *http.Request) {
@@ -99,19 +104,22 @@ func repoListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	repoUrls := []LinkData{}
+	repoData := []RepoData{}
 	for _, repo := range repos {
-		url := LinkData{
-			Url:  template.URL("/repos/" + repo.ID),
-			Text: repo.ID,
+		d := RepoData{
+			Desc: repo.Desc,
+			LinkData: LinkData{
+				Url:  template.URL("/repos/" + repo.ID),
+				Text: repo.ID,
+			},
 		}
-		repoUrls = append(repoUrls, url)
+		repoData = append(repoData, d)
 	}
 
 	w.Header().Set("content-type", "text/html")
 	tmpl := getTemplate("repo-list.html")
 	err = tmpl.Execute(w, RepoListData{
-		Repos: repoUrls,
+		Repos: repoData,
 	})
 	if err != nil {
 		fmt.Println(err)
