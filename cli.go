@@ -324,7 +324,7 @@ Here's how it works:
 							if !isAdmin && !isContrib {
 								return fmt.Errorf("you are not authorized to change PR status")
 							}
-							err = pr.UpdatePatchRequest(prID, "close")
+							err = pr.UpdatePatchRequest(prID, "closed")
 							return err
 						},
 					},
@@ -405,7 +405,7 @@ Here's how it works:
 
 							reviewTxt := ""
 							if isReview {
-								err = pr.UpdatePatchRequest(prID, "review")
+								err = pr.UpdatePatchRequest(prID, "reviewed")
 								if err != nil {
 									return err
 								}
