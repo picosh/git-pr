@@ -3,19 +3,19 @@
 {{define "title"}}repo list{{end}}
 
 {{define "meta"}}
+<link rel="alternate" type="application/atom+xml"
+      title="RSS feed for git collaboration server"
+      href="/rss" />
 {{end}}
 
 {{define "body"}}
 <header>
   <h1 class="text-2xl mb">Repos</h1>
-  <p>A new git collaboration service</p>
+  <p>A new git collaboration service.</p>
 </header>
 <main>
   <div class="group">
-    <div>
-      <div>Learn how it works:</div>
-      <div><pre>ssh pr.pico.sh help</pre></div>
-    </div>
+    <pre>ssh pr.pico.sh help</pre>
 
     {{range .Repos}}
     <div class="box">
@@ -25,4 +25,11 @@
     {{end}}
   </div>
 </main>
+
+<hr />
+
+<footer>
+  <div><a href="/rss">rss</a></div>
+  <div class="text-sm">OR with fingerprint, url encoded: <code>/rss?pubkey=SHA256%3Axxx</code></div>
+</footer>
 {{end}}

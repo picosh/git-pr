@@ -12,11 +12,13 @@ type GitCfg struct {
 	DataPath string
 	Admins   []ssh.PublicKey
 	Repos    []Repo
+	Url      string
 }
 
 func NewGitCfg() *GitCfg {
 	return &GitCfg{
 		DataPath: "./ssh_data",
+		Url:      "pr.pico.sh",
 		Repos: []Repo{
 			{
 				ID:        "test",

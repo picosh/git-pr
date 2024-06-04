@@ -90,6 +90,60 @@ Here's how it works:
 				},
 			},
 			{
+				Name:  "logs",
+				Usage: "List event logs by on filters",
+				Args:  true,
+				Flags: []cli.Flag{
+					&cli.Int64Flag{
+						Name:  "pr",
+						Usage: "show all events related to the provided patch request",
+					},
+					&cli.BoolFlag{
+						Name:  "pubkey",
+						Usage: "show all events related to your pubkey",
+					},
+					&cli.StringFlag{
+						Name:  "repo",
+						Usage: "show all events related to a repo",
+					},
+				},
+				Action: func(cCtx *cli.Context) error {
+					pubkey := be.Pubkey(sesh.PublicKey())
+					isPubkey := cCtx.Bool("pubkey")
+					prID := cCtx.Int64("pr")
+					repoID := cCtx.String("repo")
+					var eventLogs []*EventLog
+					var err error
+					if isPubkey {
+						eventLogs, err = pr.GetEventLogsByPubkey(pubkey)
+					} else if prID != 0 {
+						eventLogs, err = pr.GetEventLogsByPrID(prID)
+					} else if repoID != "" {
+						eventLogs, err = pr.GetEventLogsByRepoID(repoID)
+					} else {
+						eventLogs, err = pr.GetEventLogs()
+					}
+					if err != nil {
+						return err
+					}
+					writer := NewTabWriter(sesh)
+					fmt.Fprintln(writer, "RepoID\tPrID\tEvent\tCreated\tData")
+					for _, eventLog := range eventLogs {
+						fmt.Fprintf(
+							writer,
+							"%s\t%d\t%s\t%s\t%s\n",
+							eventLog.RepoID,
+							eventLog.PatchRequestID,
+							eventLog.Event,
+							eventLog.CreatedAt.Format(time.RFC3339Nano),
+							eventLog.Data,
+						)
+					}
+					writer.Flush()
+					return nil
+				},
+			},
+			{
 				Name:  "pr",
 				Usage: "Manage Patch Requests (PR)",
 				Subcommands: []*cli.Command{
@@ -300,7 +354,7 @@ Here's how it works:
 							if !isAdmin {
 								return fmt.Errorf("you are not authorized to accept a PR")
 							}
-							err = pr.UpdatePatchRequest(prID, "accept")
+							err = pr.UpdatePatchRequest(prID, pubkey, "accepted")
 							return err
 						},
 					},
@@ -324,7 +378,7 @@ Here's how it works:
 							if !isAdmin && !isContrib {
 								return fmt.Errorf("you are not authorized to change PR status")
 							}
-							err = pr.UpdatePatchRequest(prID, "closed")
+							err = pr.UpdatePatchRequest(prID, pubkey, "closed")
 							return err
 						},
 					},
@@ -349,7 +403,7 @@ Here's how it works:
 								return fmt.Errorf("you are not authorized to change PR status")
 							}
 
-							err = pr.UpdatePatchRequest(prID, "open")
+							err = pr.UpdatePatchRequest(prID, pubkey, "open")
 							return err
 						},
 					},
@@ -405,7 +459,7 @@ Here's how it works:
 
 							reviewTxt := ""
 							if isReview {
-								err = pr.UpdatePatchRequest(prID, "reviewed")
+								err = pr.UpdatePatchRequest(prID, pubkey, "reviewed")
 								if err != nil {
 									return err
 								}

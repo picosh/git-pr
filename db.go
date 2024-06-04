@@ -49,7 +49,16 @@ type Comment struct {
 	UpdatedAt      time.Time `db:"updated_at"`
 }
 
-type GitDB interface {
+// EventLog is a event log for RSS or other notification systems.
+type EventLog struct {
+	ID             int64     `db:"id"`
+	Pubkey         string    `db:"pubkey"`
+	RepoID         string    `db:"repo_id"`
+	PatchRequestID int64     `db:"patch_request_id"`
+	CommentID      int64     `db:"comment_id"`
+	Event          string    `db:"event"`
+	Data           string    `db:"data"`
+	CreatedAt      time.Time `db:"created_at"`
 }
 
 // DB is the interface for a pico/git database.
@@ -100,6 +109,25 @@ CREATE TABLE IF NOT EXISTS comments (
   updated_at DATETIME NOT NULL,
   CONSTRAINT pr_id_fk
   FOREIGN KEY(patch_request_id) REFERENCES patch_requests(id)
+  ON DELETE CASCADE
+  ON UPDATE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS event_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  pubkey TEXT NOT NULL,
+  repo_id TEXT,
+  patch_request_id INTEGER,
+  comment_id INTEGER,
+  event TEXT NOT NULL,
+  data TEXT,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT event_logs_pr_id_fk
+  FOREIGN KEY(patch_request_id) REFERENCES patch_requests(id)
+  ON DELETE CASCADE
+  ON UPDATE CASCADE,
+  CONSTRAINT event_logs_comment_id_fk
+  FOREIGN KEY(comment_id) REFERENCES comments(id)
   ON DELETE CASCADE
   ON UPDATE CASCADE
 );

@@ -3,6 +3,9 @@
 {{define "title"}}{{.Pr.Title}} - pr summary{{end}}
 
 {{define "meta"}}
+<link rel="alternate" type="application/atom+xml"
+      title="RSS feed for git collaboration server"
+      href="/prs/{{.Pr.ID}}/rss" />
 {{end}}
 
 {{define "body"}}
@@ -32,4 +35,10 @@
     {{end}}
   </div>
 </main>
+
+<hr />
+
+<footer>
+  <a href="/prs/{{.Pr.ID}}/rss">rss</a>
+</footer>
 {{end}}

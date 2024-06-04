@@ -8,6 +8,7 @@ require (
 	github.com/charmbracelet/soft-serve v0.7.4
 	github.com/charmbracelet/ssh v0.0.0-20240301204039-e79ff702f5b3
 	github.com/charmbracelet/wish v1.3.2
+	github.com/gorilla/feeds v1.1.2
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/urfave/cli/v2 v2.27.2
 	golang.org/x/crypto v0.21.0

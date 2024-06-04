@@ -17,6 +17,7 @@ import (
 	formatterHtml "github.com/alecthomas/chroma/v2/formatters/html"
 	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/alecthomas/chroma/v2/styles"
+	"github.com/gorilla/feeds"
 )
 
 //go:embed tmpl/*
@@ -353,6 +354,100 @@ func prPatchesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func rssHandler(w http.ResponseWriter, r *http.Request) {
+	web, err := getWebCtx(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+
+	desc := fmt.Sprintf(
+		"Events related to git collaboration server %s",
+		web.Backend.Cfg.Url,
+	)
+	feed := &feeds.Feed{
+		Title:       fmt.Sprintf("%s events", web.Backend.Cfg.Url),
+		Link:        &feeds.Link{Href: web.Backend.Cfg.Url},
+		Description: desc,
+		Author:      &feeds.Author{Name: "git collaboration server"},
+		Created:     time.Now(),
+	}
+
+	var eventLogs []*EventLog
+	id := r.PathValue("id")
+	repoID := r.PathValue("repoid")
+	pubkey := r.URL.Query().Get("pubkey")
+	if id != "" {
+		var prID int64
+		prID, err = getPrID(id)
+		if err != nil {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			return
+		}
+		eventLogs, err = web.Pr.GetEventLogsByPrID(prID)
+	} else if pubkey != "" {
+		eventLogs, err = web.Pr.GetEventLogsByPubkey(pubkey)
+	} else if repoID != "" {
+		eventLogs, err = web.Pr.GetEventLogsByRepoID(repoID)
+	} else {
+		eventLogs, err = web.Pr.GetEventLogs()
+	}
+
+	if err != nil {
+		web.Logger.Error("rss could not get eventLogs", "err", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	var feedItems []*feeds.Item
+	for _, eventLog := range eventLogs {
+		realUrl := fmt.Sprintf("%s/prs/%d", web.Backend.Cfg.Url, eventLog.PatchRequestID)
+		content := fmt.Sprintf(
+			"<div><div>RepoID: %s</div><div>PatchRequestID: %d</div><div>Event: %s</div><div>Created: %s</div><div>Data: %s</div></div>",
+			eventLog.RepoID,
+			eventLog.PatchRequestID,
+			eventLog.Event,
+			eventLog.CreatedAt.Format(time.RFC3339Nano),
+			eventLog.Data,
+		)
+		pr, err := web.Pr.GetPatchRequestByID(eventLog.PatchRequestID)
+		if err != nil {
+			continue
+		}
+		title := fmt.Sprintf(
+			`%s in %s for PR "%s" (#%d)`,
+			eventLog.Event,
+			eventLog.RepoID,
+			pr.Name,
+			eventLog.PatchRequestID,
+		)
+		item := &feeds.Item{
+			Id:          fmt.Sprintf("%d", eventLog.ID),
+			Title:       title,
+			Link:        &feeds.Link{Href: realUrl},
+			Content:     content,
+			Created:     eventLog.CreatedAt,
+			Description: title,
+			Author:      &feeds.Author{Name: eventLog.Pubkey},
+		}
+
+		feedItems = append(feedItems, item)
+	}
+	feed.Items = feedItems
+
+	rss, err := feed.ToAtom()
+	if err != nil {
+		web.Logger.Error("could not generate atom rss feed", "err", err)
+		http.Error(w, "Could not generate atom rss feed", http.StatusInternalServerError)
+	}
+
+	w.Header().Add("Content-Type", "application/atom+xml; charset=utf-8")
+	_, err = w.Write([]byte(rss))
+	if err != nil {
+		web.Logger.Error("write error atom rss feed", "err", err)
+	}
+}
+
 func chromaStyleHandler(w http.ResponseWriter, r *http.Request) {
 	web, err := getWebCtx(r)
 	if err != nil {
@@ -412,9 +507,12 @@ func StartWebServer() {
 	// GODEBUG=httpmuxgo121=0
 	http.HandleFunc("GET /prs/{id}/patches", ctxMdw(ctx, prPatchesHandler))
 	http.HandleFunc("GET /prs/{id}", ctxMdw(ctx, prHandler))
+	http.HandleFunc("GET /prs/{id}/rss", ctxMdw(ctx, rssHandler))
 	http.HandleFunc("GET /repos/{id}", ctxMdw(ctx, repoHandler))
+	http.HandleFunc("GET /repos/{repoid}/rss", ctxMdw(ctx, rssHandler))
 	http.HandleFunc("GET /", ctxMdw(ctx, repoListHandler))
 	http.HandleFunc("GET /syntax.css", ctxMdw(ctx, chromaStyleHandler))
+	http.HandleFunc("GET /rss", ctxMdw(ctx, rssHandler))
 
 	logger.Info("starting web server", "addr", addr)
 	err = http.ListenAndServe(addr, nil)

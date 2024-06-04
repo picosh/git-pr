@@ -3,6 +3,9 @@
 {{define "title"}}{{.ID}} - repo{{end}}
 
 {{define "meta"}}
+<link rel="alternate" type="application/atom+xml"
+      title="RSS feed for git collaboration server"
+      href="/repos/{{.ID}}/rss" />
 {{end}}
 
 {{define "body"}}
@@ -29,4 +32,10 @@
   </article>
   {{end}}
 </main>
+
+<hr />
+
+<footer>
+  <a href="/repos/{{.ID}}/rss">rss</a>
+</footer>
 {{end}}
