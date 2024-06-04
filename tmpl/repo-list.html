@@ -8,15 +8,21 @@
 {{define "body"}}
 <header>
   <h1 class="text-2xl mb">Repos</h1>
+  <p>A new git collaboration service</p>
 </header>
 <main>
   <div class="group">
-  {{range .Repos}}
+    <div>
+      <div>Learn how it works:</div>
+      <div><pre>ssh pr.pico.sh help</pre></div>
+    </div>
+
+    {{range .Repos}}
     <div class="box">
       <h3 class="text-lg m-0 p-0"><a href="{{.Url}}">{{.Text}}</a></h3>
       <div class="text-sm">{{.Desc}}</div>
     </div>
-  {{end}}
+    {{end}}
   </div>
 </main>
 {{end}}
