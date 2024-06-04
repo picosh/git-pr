@@ -33,6 +33,21 @@ func NewGitCfg() *GitCfg {
 				Desc:      "passwordless authentication for the web",
 				CloneAddr: "git@github.com:picosh/ptun",
 			},
+			{
+				ID:        "pobj",
+				Desc:      "rsync, scp, sftp for your object store",
+				CloneAddr: "git@github.com:picosh/ptun",
+			},
+			{
+				ID:        "send",
+				Desc:      "ssh wish middleware for sending and receiving files from familiar tools (rsync, scp, sftp)",
+				CloneAddr: "git@github.com:picosh/send",
+			},
+			{
+				ID:        "docs",
+				Desc:      "pico.sh doc site",
+				CloneAddr: "git@github.com:picosh/docs",
+			},
 		},
 	}
 }
