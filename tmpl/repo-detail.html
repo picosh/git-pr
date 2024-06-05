@@ -17,7 +17,9 @@
 	</div>
 </header>
 <main class="group">
-  {{range .Prs}}
+  <h3 class="text-lg">Open PRs</h3>
+
+  {{range .OpenPrs}}
   <article class="box">
     <div><a href="{{.Url}}">{{.Text}}</a> <code>{{.Status}}</code></div>
     <div class="text-sm">
@@ -26,10 +28,40 @@
       <code>{{.Pubkey}}</code>
     </div>
   </article>
-  {{else}}
+  {{end}}
+
+  {{if .AcceptedPrs}}
+  <hr class="my w-full" />
+
+  <h3 class="text-lg">Accepted PRs</h3>
+
+  {{range .AcceptedPrs}}
   <article class="box">
-    <div>No patch requests for this repo.</div>
+    <div><a href="{{.Url}}">{{.Text}}</a> <code>{{.Status}}</code></div>
+    <div class="text-sm">
+      <code>#{{.ID}}</code>
+      <span>opened on <date>{{.Date}}</date> by </span>
+      <code>{{.Pubkey}}</code>
+    </div>
   </article>
+  {{end}}
+  {{end}}
+
+  {{if .ClosedPrs}}
+  <hr class="my w-full" />
+
+  <h3 class="text-lg">Closed PRs</h3>
+
+  {{range .ClosedPrs}}
+  <article class="box">
+    <div><a href="{{.Url}}">{{.Text}}</a> <code>{{.Status}}</code></div>
+    <div class="text-sm">
+      <code>#{{.ID}}</code>
+      <span>opened on <date>{{.Date}}</date> by </span>
+      <code>{{.Pubkey}}</code>
+    </div>
+  </article>
+  {{end}}
   {{end}}
 </main>
 

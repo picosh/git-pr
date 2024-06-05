@@ -136,9 +136,11 @@ type PrListData struct {
 }
 
 type RepoDetailData struct {
-	ID        string
-	CloneAddr string
-	Prs       []PrListData
+	ID          string
+	CloneAddr   string
+	OpenPrs     []PrListData
+	AcceptedPrs []PrListData
+	ClosedPrs   []PrListData
 }
 
 func repoHandler(w http.ResponseWriter, r *http.Request) {
@@ -165,7 +167,9 @@ func repoHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	prList := []PrListData{}
+	openList := []PrListData{}
+	acceptedList := []PrListData{}
+	closedList := []PrListData{}
 	for _, curpr := range prs {
 		ls := PrListData{
 			ID:     curpr.ID,
@@ -177,15 +181,23 @@ func repoHandler(w http.ResponseWriter, r *http.Request) {
 			Date:   curpr.CreatedAt.Format(time.RFC3339),
 			Status: curpr.Status,
 		}
-		prList = append(prList, ls)
+		if curpr.Status == "open" {
+			openList = append(openList, ls)
+		} else if curpr.Status == "accepted" {
+			acceptedList = append(acceptedList, ls)
+		} else {
+			closedList = append(closedList, ls)
+		}
 	}
 
 	w.Header().Set("content-type", "text/html")
 	tmpl := getTemplate("repo-detail.html")
 	err = tmpl.Execute(w, RepoDetailData{
-		ID:        repo.ID,
-		CloneAddr: repo.CloneAddr,
-		Prs:       prList,
+		ID:          repo.ID,
+		CloneAddr:   repo.CloneAddr,
+		OpenPrs:     openList,
+		AcceptedPrs: acceptedList,
+		ClosedPrs:   closedList,
 	})
 	if err != nil {
 		fmt.Println(err)

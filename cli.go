@@ -152,6 +152,16 @@ Here's how it works:
 						Usage:     "List all PRs",
 						Args:      true,
 						ArgsUsage: "[repoID]",
+						Flags: []cli.Flag{
+							&cli.BoolFlag{
+								Name:  "closed",
+								Usage: "only show closed PRs",
+							},
+							&cli.BoolFlag{
+								Name:  "accepted",
+								Usage: "only show accepted PRs",
+							},
+						},
 						Action: func(cCtx *cli.Context) error {
 							repoID := cCtx.Args().First()
 							var prs []*PatchRequest
@@ -165,9 +175,24 @@ Here's how it works:
 								return err
 							}
 
+							onlyAccepted := cCtx.Bool("accepted")
+							onlyClosed := cCtx.Bool("closed")
+
 							writer := NewTabWriter(sesh)
 							fmt.Fprintln(writer, "ID\tRepoID\tName\tStatus\tDate")
 							for _, req := range prs {
+								if onlyAccepted && req.Status != "accepted" {
+									continue
+								}
+
+								if onlyClosed && req.Status != "closed" {
+									continue
+								}
+
+								if !onlyAccepted && !onlyClosed && req.Status != "open" {
+									continue
+								}
+
 								fmt.Fprintf(
 									writer,
 									"%d\t%s\t%s\t[%s]\t%s\n",
@@ -360,8 +385,12 @@ Here's how it works:
 								return err
 							}
 
+							if patchReq.Status == "accepted" {
+								return fmt.Errorf("PR has already been accepted")
+							}
+
 							err = pr.UpdatePatchRequest(prID, pubkey, "accepted")
-							if err != nil {
+							if err == nil {
 								wish.Printf(sesh, "Accepted PR %s (#%d)\n", patchReq.Name, patchReq.ID)
 							}
 							return err
@@ -387,8 +416,13 @@ Here's how it works:
 							if !isAdmin && !isContrib {
 								return fmt.Errorf("you are not authorized to change PR status")
 							}
+
+							if patchReq.Status == "closed" {
+								return fmt.Errorf("PR has already been closed")
+							}
+
 							err = pr.UpdatePatchRequest(prID, pubkey, "closed")
-							if err != nil {
+							if err == nil {
 								wish.Printf(sesh, "Closed PR %s (#%d)\n", patchReq.Name, patchReq.ID)
 							}
 							return err
@@ -415,8 +449,12 @@ Here's how it works:
 								return fmt.Errorf("you are not authorized to change PR status")
 							}
 
+							if patchReq.Status == "open" {
+								return fmt.Errorf("PR is already open")
+							}
+
 							err = pr.UpdatePatchRequest(prID, pubkey, "open")
-							if err != nil {
+							if err == nil {
 								wish.Printf(sesh, "Reopened PR %s (#%d)\n", patchReq.Name, patchReq.ID)
 							}
 							return err
