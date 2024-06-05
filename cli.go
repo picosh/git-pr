@@ -354,7 +354,16 @@ Here's how it works:
 							if !isAdmin {
 								return fmt.Errorf("you are not authorized to accept a PR")
 							}
+
+							patchReq, err := pr.GetPatchRequestByID(prID)
+							if err != nil {
+								return err
+							}
+
 							err = pr.UpdatePatchRequest(prID, pubkey, "accepted")
+							if err != nil {
+								wish.Printf(sesh, "Accepted PR %s (#%d)\n", patchReq.Name, patchReq.ID)
+							}
 							return err
 						},
 					},
@@ -379,6 +388,9 @@ Here's how it works:
 								return fmt.Errorf("you are not authorized to change PR status")
 							}
 							err = pr.UpdatePatchRequest(prID, pubkey, "closed")
+							if err != nil {
+								wish.Printf(sesh, "Closed PR %s (#%d)\n", patchReq.Name, patchReq.ID)
+							}
 							return err
 						},
 					},
@@ -404,6 +416,9 @@ Here's how it works:
 							}
 
 							err = pr.UpdatePatchRequest(prID, pubkey, "open")
+							if err != nil {
+								wish.Printf(sesh, "Reopened PR %s (#%d)\n", patchReq.Name, patchReq.ID)
+							}
 							return err
 						},
 					},
