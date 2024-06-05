@@ -16,7 +16,7 @@
     {{range .Patches}}
     <div class="box">
       <h2 class="text-lg m-0 p-0">
-        {{if .Review}}<code>review</code>{{end}}
+        {{if .Review}}<code>REVIEW</code>{{end}}
         <span>{{.Title}}</span>
       </h2>
       <div class="group-h text-sm">
@@ -24,9 +24,11 @@
         <date>{{.AuthorDate}}</date>
       </div>
 
+      {{if .Body}}
       <div class="my">
         <pre>{{.Body}}</pre>
       </div>
+      {{end}}
     </div>
     {{else}}
     <div class="box">
