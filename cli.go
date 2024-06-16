@@ -249,7 +249,7 @@ Here's how it works:
 							}
 
 							for idx, patch := range patches {
-								wish.Printf(sesh, patch.RawText)
+								wish.Println(sesh, patch.RawText)
 								if idx < len(patches)-1 {
 									wish.Printf(sesh, "\n\n\n")
 								}
