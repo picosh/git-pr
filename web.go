@@ -270,7 +270,7 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 
 		patchesData = append(patchesData, PatchData{
 			Patch:   patch,
-			Url:     template.URL(fmt.Sprintf("#patch-%d", patch.ID)),
+			Url:     template.URL(fmt.Sprintf("patch-%d", patch.ID)),
 			DiffStr: template.HTML(diffStr),
 		})
 	}
