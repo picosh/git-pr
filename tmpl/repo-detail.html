@@ -13,7 +13,8 @@
   <h1 class="text-2xl mb"><a href="/">repos</a> / {{.ID}}</h1>
   <div class="group">
     <div><code>git clone {{.CloneAddr}}</code></div>
-    <div>Submit patch request: <code>git format-patch -1 HEAD --stdout | ssh pr.pico.sh pr create {{.ID}}</code></div>
+    <pre># submit a new patch request
+git format-patch main --stdout | ssh pr.pico.sh pr create {{.ID}}</pre>
 	</div>
 </header>
 <main class="group">
