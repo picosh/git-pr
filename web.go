@@ -143,7 +143,7 @@ type RepoDetailData struct {
 	ClosedPrs   []PrListData
 }
 
-func repoHandler(w http.ResponseWriter, r *http.Request) {
+func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 	repoID := r.PathValue("id")
 
 	web, err := getWebCtx(r)
@@ -214,19 +214,18 @@ type PrData struct {
 
 type PatchData struct {
 	*Patch
+	Url     template.URL
 	DiffStr template.HTML
 }
 
 type PrHeaderData struct {
-	Page       string
-	Repo       LinkData
-	Pr         PrData
-	PatchesUrl template.URL
-	SummaryUrl template.URL
-	Patches    []PatchData
+	Page    string
+	Repo    LinkData
+	Pr      PrData
+	Patches []PatchData
 }
 
-func prHandler(w http.ResponseWriter, r *http.Request) {
+func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	prID, err := strconv.Atoi(id)
 	if err != nil {
@@ -263,9 +262,16 @@ func prHandler(w http.ResponseWriter, r *http.Request) {
 
 	patchesData := []PatchData{}
 	for _, patch := range patches {
+		diffStr, err := parseText(web.Formatter, web.Theme, patch.RawText)
+		if err != nil {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			return
+		}
+
 		patchesData = append(patchesData, PatchData{
 			Patch:   patch,
-			DiffStr: "",
+			Url:     template.URL(fmt.Sprintf("#patch-%d", patch.ID)),
+			DiffStr: template.HTML(diffStr),
 		})
 	}
 
@@ -277,82 +283,7 @@ func prHandler(w http.ResponseWriter, r *http.Request) {
 			Url:  template.URL("/repos/" + repo.ID),
 			Text: repo.ID,
 		},
-		SummaryUrl: template.URL(fmt.Sprintf("/prs/%d", pr.ID)),
-		PatchesUrl: template.URL(fmt.Sprintf("/prs/%d/patches", pr.ID)),
-		Patches:    patchesData,
-		Pr: PrData{
-			ID:     pr.ID,
-			Title:  pr.Name,
-			Pubkey: pr.Pubkey,
-			Date:   pr.CreatedAt.Format(time.RFC3339),
-			Status: pr.Status,
-		},
-	})
-	if err != nil {
-		fmt.Println(err)
-	}
-}
-
-func prPatchesHandler(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	prID, err := strconv.Atoi(id)
-	if err != nil {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
-
-	web, err := getWebCtx(r)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	pr, err := web.Pr.GetPatchRequestByID(int64(prID))
-	if err != nil {
-		web.Pr.Backend.Logger.Error("cannot get prs", "err", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	repo, err := web.Pr.GetRepoByID(pr.RepoID)
-	if err != nil {
-		web.Logger.Error("cannot get repo", "err", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	patches, err := web.Pr.GetPatchesByPrID(int64(prID))
-	if err != nil {
-		web.Pr.Backend.Logger.Error("cannot get patches", "err", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	patchesData := []PatchData{}
-	for _, patch := range patches {
-		diffStr, err := parseText(web.Formatter, web.Theme, patch.RawText)
-		if err != nil {
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			return
-		}
-
-		patchesData = append(patchesData, PatchData{
-			Patch:   patch,
-			DiffStr: template.HTML(diffStr),
-		})
-	}
-
-	w.Header().Set("content-type", "text/html")
-	tmpl := getTemplate("pr-detail-patches.html")
-	err = tmpl.Execute(w, PrHeaderData{
-		Page: "patches",
-		Repo: LinkData{
-			Url:  template.URL("/repos/" + repo.ID),
-			Text: repo.ID,
-		},
-		SummaryUrl: template.URL(fmt.Sprintf("/prs/%d", pr.ID)),
-		PatchesUrl: template.URL(fmt.Sprintf("/prs/%d/patches", pr.ID)),
-		Patches:    patchesData,
+		Patches: patchesData,
 		Pr: PrData{
 			ID:     pr.ID,
 			Title:  pr.Name,
@@ -517,10 +448,9 @@ func StartWebServer() {
 
 	// ensure legacy router is disabled
 	// GODEBUG=httpmuxgo121=0
-	http.HandleFunc("GET /prs/{id}/patches", ctxMdw(ctx, prPatchesHandler))
-	http.HandleFunc("GET /prs/{id}", ctxMdw(ctx, prHandler))
+	http.HandleFunc("GET /prs/{id}", ctxMdw(ctx, prDetailHandler))
 	http.HandleFunc("GET /prs/{id}/rss", ctxMdw(ctx, rssHandler))
-	http.HandleFunc("GET /repos/{id}", ctxMdw(ctx, repoHandler))
+	http.HandleFunc("GET /repos/{id}", ctxMdw(ctx, repoDetailHandler))
 	http.HandleFunc("GET /repos/{repoid}/rss", ctxMdw(ctx, rssHandler))
 	http.HandleFunc("GET /", ctxMdw(ctx, repoListHandler))
 	http.HandleFunc("GET /syntax.css", ctxMdw(ctx, chromaStyleHandler))

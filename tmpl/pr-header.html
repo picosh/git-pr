@@ -11,17 +11,7 @@
     <code>{{.Pr.Pubkey}}</code>
   </div>
 
-  <div class="mt">
-  {{if eq .Page "pr"}}
-    <strong>summary</strong> &middot; <a href="{{.PatchesUrl}}">patches</a>
-  {{else}}
-    <a href="{{.SummaryUrl}}">summary</a> &middot; <strong>patches</strong>
-  {{end}}
-  </div>
-
-	<div>
-    <span>Submit change to patch: </span>
-    <code>git format-patch -1 HEAD --stdout | ssh pr.pico.sh pr add {{.Pr.ID}}</code>
-  </div>
+    <pre># add changes to patch request
+git format-patch main --stdout | ssh pr.pico.sh pr add {{.Pr.ID}}</pre>
 </header>
 {{end}}

@@ -11,28 +11,38 @@
 {{define "body"}}
 {{template "pr-header" .}}
 
-<main>
+<main class="group">
   <div class="group">
     {{range .Patches}}
     <div class="box">
       <h2 class="text-lg m-0 p-0">
         {{if .Review}}<code>REVIEW</code>{{end}}
-        <span>{{.Title}}</span>
+        <a href="{{.Url}}">{{.Title}}</a>
       </h2>
       <div class="group-h text-sm">
         <code>{{.AuthorName}} &lt;{{.AuthorEmail}}&gt;</code>
         <date>{{.AuthorDate}}</date>
       </div>
-
-      {{if .Body}}
-      <div class="my">
-        <pre>{{.Body}}</pre>
-      </div>
-      {{end}}
     </div>
     {{else}}
     <div class="box">
       No patches found for patch request.
+    </div>
+    {{end}}
+  </div>
+
+  <hr class="w-full" />
+
+  <div class="group">
+    {{range .Patches}}
+    <div class="box">
+      <div class="group-h">
+        <h2 class="text-lg m-0 p-0">
+          {{if .Review}}<code>REVIEW</code>{{end}}
+          <a href="{{.Url}}">{{.Title}}</a>
+        </h2>
+      </div>
+      <div>{{.DiffStr}}</div>
     </div>
     {{end}}
   </div>
