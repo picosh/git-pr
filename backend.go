@@ -31,6 +31,10 @@ func (be *Backend) Pubkey(pk ssh.PublicKey) string {
 	return gossh.FingerprintSHA256(pk)
 }
 
+func (be *Backend) KeysEqual(pka, pkb string) bool {
+	return pka == pkb
+}
+
 func (be *Backend) IsAdmin(pk ssh.PublicKey) bool {
 	for _, apk := range be.Cfg.Admins {
 		if ssh.KeysEqual(pk, apk) {
@@ -38,4 +42,8 @@ func (be *Backend) IsAdmin(pk ssh.PublicKey) bool {
 		}
 	}
 	return false
+}
+
+func (be *Backend) IsPrOwner(pka, pkb string) bool {
+	return be.KeysEqual(pka, pkb)
 }

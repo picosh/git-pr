@@ -478,15 +478,15 @@ Here's how it works:
 							if err != nil {
 								return err
 							}
-							isAdmin := be.IsAdmin(sesh.PublicKey())
-							isReview := cCtx.Bool("review")
-							isReplace := cCtx.Bool("force")
-							var req PatchRequest
-							err = be.DB.Get(&req, "SELECT * FROM patch_requests WHERE id=?", prID)
+							prq, err := pr.GetPatchRequestByID(prID)
 							if err != nil {
 								return err
 							}
-							isPrOwner := req.Pubkey == be.Pubkey(sesh.PublicKey())
+
+							isAdmin := be.IsAdmin(sesh.PublicKey())
+							isReview := cCtx.Bool("review")
+							isReplace := cCtx.Bool("force")
+							isPrOwner := be.IsPrOwner(prq.Pubkey, be.Pubkey(sesh.PublicKey()))
 							if !isAdmin && !isPrOwner {
 								return fmt.Errorf("unauthorized, you are not the owner of this PR")
 							}
