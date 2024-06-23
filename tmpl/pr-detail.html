@@ -13,15 +13,16 @@
 
 <main class="group">
   <div class="group">
-    {{range .Patches}}
+    {{range $idx, $val := .Patches}}
     <div class="box">
-      <h2 class="text-lg m-0 p-0">
-        {{if .Review}}<code>REVIEW</code>{{end}}
-        <a href="#{{.Url}}">{{.Title}}</a>
+      <h2 class="text-lg m-0 p-0 mb">
+        <code>#{{$idx}}</code>
+        {{if $val.Review}}<code>REVIEW</code>{{end}}
+        <a href="#{{$val.Url}}">{{$val.Title}}</a>
       </h2>
       <div class="group-h text-sm">
-        <code>{{.AuthorName}} &lt;{{.AuthorEmail}}&gt;</code>
-        <date>{{.AuthorDate}}</date>
+        <code>{{$val.AuthorName}} &lt;{{$val.AuthorEmail}}&gt;</code>
+        <date>{{$val.AuthorDate}}</date>
       </div>
     </div>
     {{else}}

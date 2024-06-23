@@ -3,8 +3,8 @@ package git
 import (
 	"fmt"
 	"io"
-	"path/filepath"
 	"strconv"
+	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -21,6 +21,70 @@ func NewTabWriter(out io.Writer) *tabwriter.Writer {
 func getPrID(str string) (int64, error) {
 	prID, err := strconv.ParseInt(str, 10, 64)
 	return prID, err
+}
+
+type Ranger struct {
+	Left  int
+	Right int
+}
+
+func parseRange(rnge string, sliceLen int) (*Ranger, error) {
+	items := strings.Split(rnge, ":")
+	left := 0
+	var err error
+	if items[0] != "" {
+		left, err = strconv.Atoi(items[0])
+		if err != nil {
+			return nil, fmt.Errorf("first value before `:` must provide number")
+		}
+	}
+
+	if left < 0 {
+		return nil, fmt.Errorf("first value must be >= 0")
+	}
+
+	if left >= sliceLen {
+		return nil, fmt.Errorf("first value must be less than number of patches")
+	}
+
+	if len(items) == 1 {
+		return &Ranger{
+			Left:  left,
+			Right: left,
+		}, nil
+	}
+
+	if items[1] == "" {
+		return &Ranger{Left: left, Right: sliceLen - 1}, nil
+	}
+
+	right, err := strconv.Atoi(items[1])
+	if err != nil {
+		return nil, fmt.Errorf("second value after `:` must provide number")
+	}
+
+	if left > right {
+		return nil, fmt.Errorf("second value must be greater than first value")
+	}
+
+	if right >= sliceLen {
+		return nil, fmt.Errorf("second value must be less than number of patches")
+	}
+
+	return &Ranger{
+		Left:  left,
+		Right: right,
+	}, nil
+}
+
+func filterPatches(ranger *Ranger, patches []*Patch) []*Patch {
+	opatches := []*Patch{}
+	if ranger.Left == ranger.Right {
+		opatches = []*Patch{patches[ranger.Left]}
+	} else {
+		opatches = patches[ranger.Left:ranger.Right]
+	}
+	return opatches
 }
 
 func NewCli(sesh ssh.Session, be *Backend, pr GitPatchRequest) *cli.App {
@@ -45,7 +109,7 @@ Here's how it works:
 	app := &cli.App{
 		Name:        "ssh",
 		Description: desc,
-		Usage:       "Collaborate with external contributors to your project",
+		Usage:       "Collaborate with contributors for your git project",
 		Writer:      sesh,
 		ErrWriter:   sesh,
 		Commands: []*cli.Command{
@@ -76,13 +140,12 @@ Here's how it works:
 						return err
 					}
 					writer := NewTabWriter(sesh)
-					fmt.Fprintln(writer, "ID\tDir")
+					fmt.Fprintln(writer, "ID")
 					for _, repo := range repos {
 						fmt.Fprintf(
 							writer,
-							"%s\t%s\n",
+							"%s\n",
 							utils.SanitizeRepo(repo.ID),
-							filepath.Join(be.ReposDir(), repo.ID),
 						)
 					}
 					writer.Flush()
@@ -91,7 +154,7 @@ Here's how it works:
 			},
 			{
 				Name:  "logs",
-				Usage: "List event logs by on filters",
+				Usage: "List event logs with filters",
 				Args:  true,
 				Flags: []cli.Flag{
 					&cli.Int64Flag{
@@ -232,6 +295,13 @@ Here's how it works:
 						Usage:     "Print the patches for a PR",
 						Args:      true,
 						ArgsUsage: "[prID]",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:    "filter",
+								Usage:   "Only print patches in sequence range (x:y) (x:) (:y)",
+								Aliases: []string{"f"},
+							},
+						},
 						Action: func(cCtx *cli.Context) error {
 							prID, err := getPrID(cCtx.Args().First())
 							if err != nil {
@@ -248,7 +318,17 @@ Here's how it works:
 								return nil
 							}
 
-							for idx, patch := range patches {
+							rnge := cCtx.String("filter")
+							opatches := patches
+							if rnge != "" {
+								ranger, err := parseRange(rnge, len(patches))
+								if err != nil {
+									return err
+								}
+								opatches = filterPatches(ranger, patches)
+							}
+
+							for idx, patch := range opatches {
 								wish.Println(sesh, patch.RawText)
 								if idx < len(patches)-1 {
 									wish.Printf(sesh, "\n\n\n")
@@ -263,6 +343,13 @@ Here's how it works:
 						Usage:     "Print PR with diff stats",
 						Args:      true,
 						ArgsUsage: "[prID]",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:    "filter",
+								Usage:   "Only print patches in sequence range (x:y) (x:) (:y)",
+								Aliases: []string{"f"},
+							},
+						},
 						Action: func(cCtx *cli.Context) error {
 							prID, err := getPrID(cCtx.Args().First())
 							if err != nil {
@@ -289,7 +376,17 @@ Here's how it works:
 								return err
 							}
 
-							for _, patch := range patches {
+							rnge := cCtx.String("filter")
+							opatches := patches
+							if rnge != "" {
+								ranger, err := parseRange(rnge, len(patches))
+								if err != nil {
+									return err
+								}
+								opatches = filterPatches(ranger, patches)
+							}
+
+							for _, patch := range opatches {
 								reviewTxt := ""
 								if patch.Review {
 									reviewTxt = "[review]"
@@ -316,6 +413,13 @@ Here's how it works:
 						Usage:     "List patches in PRs",
 						Args:      true,
 						ArgsUsage: "[prID]",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:    "filter",
+								Usage:   "Only print patches in sequence range (x:y) (x:) (:y)",
+								Aliases: []string{"f"},
+							},
+						},
 						Action: func(cCtx *cli.Context) error {
 							prID, err := getPrID(cCtx.Args().First())
 							if err != nil {
@@ -341,16 +445,27 @@ Here's how it works:
 								return err
 							}
 
+							rnge := cCtx.String("filter")
+							opatches := patches
+							if rnge != "" {
+								ranger, err := parseRange(rnge, len(patches))
+								if err != nil {
+									return err
+								}
+								opatches = filterPatches(ranger, patches)
+							}
+
 							w := NewTabWriter(sesh)
-							fmt.Fprintln(w, "Title\tStatus\tCommit\tAuthor\tDate")
-							for _, patch := range patches {
+							fmt.Fprintln(w, "Idx\tTitle\tStatus\tCommit\tAuthor\tDate")
+							for idx, patch := range opatches {
 								reviewTxt := ""
 								if patch.Review {
 									reviewTxt = "[review]"
 								}
 								fmt.Fprintf(
 									w,
-									"%s\t%s\t%s\t%s <%s>\t%s\n",
+									"%d\t%s\t%s\t%s\t%s <%s>\t%s\n",
+									idx,
 									patch.Title,
 									reviewTxt,
 									truncateSha(patch.CommitSha),
