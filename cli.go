@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"strconv"
-	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -21,67 +20,6 @@ func NewTabWriter(out io.Writer) *tabwriter.Writer {
 func getPrID(str string) (int64, error) {
 	prID, err := strconv.ParseInt(str, 10, 64)
 	return prID, err
-}
-
-type Ranger struct {
-	Left  int
-	Right int
-}
-
-func parseRange(rnge string, sliceLen int) (*Ranger, error) {
-	items := strings.Split(rnge, ":")
-	left := 0
-	var err error
-	if items[0] != "" {
-		left, err = strconv.Atoi(items[0])
-		if err != nil {
-			return nil, fmt.Errorf("first value before `:` must provide number")
-		}
-	}
-
-	if left < 0 {
-		return nil, fmt.Errorf("first value must be >= 0")
-	}
-
-	if left >= sliceLen {
-		return nil, fmt.Errorf("first value must be less than number of patches")
-	}
-
-	if len(items) == 1 {
-		return &Ranger{
-			Left:  left,
-			Right: left,
-		}, nil
-	}
-
-	if items[1] == "" {
-		return &Ranger{Left: left, Right: sliceLen - 1}, nil
-	}
-
-	right, err := strconv.Atoi(items[1])
-	if err != nil {
-		return nil, fmt.Errorf("second value after `:` must provide number")
-	}
-
-	if left > right {
-		return nil, fmt.Errorf("second value must be greater than first value")
-	}
-
-	if right >= sliceLen {
-		return nil, fmt.Errorf("second value must be less than number of patches")
-	}
-
-	return &Ranger{
-		Left:  left,
-		Right: right,
-	}, nil
-}
-
-func filterPatches(ranger *Ranger, patches []*Patch) []*Patch {
-	if ranger.Left == ranger.Right {
-		return []*Patch{patches[ranger.Left]}
-	}
-	return patches[ranger.Left:ranger.Right]
 }
 
 func NewCli(sesh ssh.Session, be *Backend, pr GitPatchRequest) *cli.App {
