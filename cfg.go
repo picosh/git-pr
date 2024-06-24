@@ -1,55 +1,58 @@
 package git
 
-import "github.com/charmbracelet/ssh"
+import (
+	"os"
+
+	"github.com/charmbracelet/ssh"
+)
 
 type Repo struct {
-	ID        string
-	Desc      string
-	CloneAddr string
+	ID            string
+	Desc          string
+	CloneAddr     string
+	DefaultBranch string
+}
+
+func NewRepo(id, cloneAddr string) *Repo {
+	return &Repo{
+		ID:            id,
+		CloneAddr:     cloneAddr,
+		DefaultBranch: "main",
+	}
 }
 
 type GitCfg struct {
 	DataPath string
 	Admins   []ssh.PublicKey
-	Repos    []Repo
+	Repos    []*Repo
 	Url      string
+	Host     string
+	SshPort  string
+	WebPort  string
 }
 
-func NewGitCfg() *GitCfg {
+func NewGitCfg(dataPath, url string, repos []*Repo) *GitCfg {
+	host := os.Getenv("GIT_HOST")
+	if host == "" {
+		host = "0.0.0.0"
+	}
+
+	sshPort := os.Getenv("GIT_SSH_PORT")
+	if sshPort == "" {
+		sshPort = "2222"
+	}
+
+	webPort := os.Getenv("GIT_WEB_PORT")
+	if webPort == "" {
+		webPort = "3000"
+	}
+
 	return &GitCfg{
-		DataPath: "./ssh_data",
-		Url:      "pr.pico.sh",
-		Repos: []Repo{
-			{
-				ID:        "test",
-				Desc:      "A test repo to play around with Patch Requests",
-				CloneAddr: "git@github.com:picosh/test",
-			},
-			{
-				ID:        "pico",
-				Desc:      "hacker labs - open and managed web services leveraging ssh",
-				CloneAddr: "git@github.com:picosh/pico",
-			},
-			{
-				ID:        "ptun",
-				Desc:      "passwordless authentication for the web",
-				CloneAddr: "git@github.com:picosh/ptun",
-			},
-			{
-				ID:        "pobj",
-				Desc:      "rsync, scp, sftp for your object store",
-				CloneAddr: "git@github.com:picosh/ptun",
-			},
-			{
-				ID:        "send",
-				Desc:      "ssh wish middleware for sending and receiving files from familiar tools (rsync, scp, sftp)",
-				CloneAddr: "git@github.com:picosh/send",
-			},
-			{
-				ID:        "docs",
-				Desc:      "pico.sh doc site",
-				CloneAddr: "git@github.com:picosh/docs",
-			},
-		},
+		DataPath: dataPath,
+		Url:      url,
+		Repos:    repos,
+		Host:     host,
+		SshPort:  sshPort,
+		WebPort:  webPort,
 	}
 }

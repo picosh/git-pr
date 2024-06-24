@@ -18,17 +18,7 @@ func authHandler(ctx ssh.Context, key ssh.PublicKey) bool {
 	return true
 }
 
-func GitSshServer() {
-	host := os.Getenv("GIT_HOST")
-	if host == "" {
-		host = "0.0.0.0"
-	}
-	port := os.Getenv("GIT_SSH_PORT")
-	if port == "" {
-		port = "2222"
-	}
-
-	cfg := NewGitCfg()
+func GitSshServer(cfg *GitCfg) {
 	opts := &slog.HandlerOptions{
 		AddSource: true,
 	}
@@ -59,7 +49,7 @@ func GitSshServer() {
 
 	s, err := wish.NewServer(
 		wish.WithAddress(
-			fmt.Sprintf("%s:%s", host, port),
+			fmt.Sprintf("%s:%s", cfg.Host, cfg.SshPort),
 		),
 		wish.WithHostKeyPath(
 			filepath.Join(cfg.DataPath, "term_info_ed25519"),
@@ -76,7 +66,7 @@ func GitSshServer() {
 
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-	logger.Info("starting SSH server", "host", host, "port", port)
+	logger.Info("starting SSH server", "host", cfg.Host, "port", cfg.SshPort)
 	go func() {
 		if err = s.ListenAndServe(); err != nil {
 			logger.Error("serve error", "err", err)

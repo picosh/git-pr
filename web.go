@@ -8,7 +8,6 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -422,19 +421,10 @@ func chromaStyleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func StartWebServer() {
-	host := os.Getenv("GIT_HOST")
-	if host == "" {
-		host = "0.0.0.0"
-	}
-	port := os.Getenv("GIT_WEB_PORT")
-	if port == "" {
-		port = "3000"
-	}
-	addr := fmt.Sprintf("%s:%s", host, port)
+func StartWebServer(cfg *GitCfg) {
+	addr := fmt.Sprintf("%s:%s", cfg.Host, cfg.WebPort)
 	logger := slog.Default()
 
-	cfg := NewGitCfg()
 	dbh, err := Open(filepath.Join(cfg.DataPath, "pr.db"), logger)
 	if err != nil {
 		logger.Error("could not open db", "err", err)

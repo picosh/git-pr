@@ -24,7 +24,7 @@ const (
 )
 
 type GitPatchRequest interface {
-	GetRepos() ([]Repo, error)
+	GetRepos() ([]*Repo, error)
 	GetReposWithLatestPr() ([]RepoWithLatestPr, error)
 	GetRepoByID(repoID string) (*Repo, error)
 	SubmitPatchRequest(repoID string, pubkey string, patchset io.Reader) (*PatchRequest, error)
@@ -59,7 +59,7 @@ type RepoWithLatestPr struct {
 	PatchRequest *PatchRequest
 }
 
-func (pr PrCmd) GetRepos() ([]Repo, error) {
+func (pr PrCmd) GetRepos() ([]*Repo, error) {
 	return pr.Backend.Cfg.Repos, nil
 }
 
@@ -76,7 +76,7 @@ func (pr PrCmd) GetReposWithLatestPr() ([]RepoWithLatestPr, error) {
 		for _, repo := range pr.Backend.Cfg.Repos {
 			if prq.RepoID == repo.ID {
 				repos = append(repos, RepoWithLatestPr{
-					Repo:         &repo,
+					Repo:         repo,
 					PatchRequest: &prq,
 				})
 			}
@@ -92,7 +92,7 @@ func (pr PrCmd) GetReposWithLatestPr() ([]RepoWithLatestPr, error) {
 		}
 		if !found {
 			repos = append(repos, RepoWithLatestPr{
-				Repo: &repo,
+				Repo: repo,
 			})
 		}
 	}
@@ -108,7 +108,7 @@ func (pr PrCmd) GetRepoByID(repoID string) (*Repo, error) {
 
 	for _, repo := range repos {
 		if repo.ID == repoID {
-			return &repo, nil
+			return repo, nil
 		}
 	}
 
