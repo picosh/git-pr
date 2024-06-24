@@ -78,13 +78,10 @@ func parseRange(rnge string, sliceLen int) (*Ranger, error) {
 }
 
 func filterPatches(ranger *Ranger, patches []*Patch) []*Patch {
-	opatches := []*Patch{}
 	if ranger.Left == ranger.Right {
-		opatches = []*Patch{patches[ranger.Left]}
-	} else {
-		opatches = patches[ranger.Left:ranger.Right]
+		return []*Patch{patches[ranger.Left]}
 	}
-	return opatches
+	return patches[ranger.Left:ranger.Right]
 }
 
 func NewCli(sesh ssh.Session, be *Backend, pr GitPatchRequest) *cli.App {
@@ -650,14 +647,6 @@ Here's how it works:
 								)
 							}
 							writer.Flush()
-							return nil
-						},
-					},
-					{
-						Name:  "comment",
-						Usage: "Comment on a PR",
-						Action: func(cCtx *cli.Context) error {
-							wish.Println(sesh, "Commenting is not currently implemented :(")
 							return nil
 						},
 					},

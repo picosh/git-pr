@@ -147,11 +147,10 @@ func (cmd PrCmd) CreateEventLog(eventLog EventLog) error {
 	}
 
 	_, err := cmd.Backend.DB.Exec(
-		"INSERT INTO event_logs (pubkey, repo_id, patch_request_id, comment_id, event, data) VALUES (?, ?, ?, ?, ?, ?)",
+		"INSERT INTO event_logs (pubkey, repo_id, patch_request_id, event, data) VALUES (?, ?, ?, ?, ?, ?)",
 		eventLog.Pubkey,
 		eventLog.RepoID,
 		eventLog.PatchRequestID,
-		eventLog.CommentID,
 		eventLog.Event,
 		eventLog.Data,
 	)

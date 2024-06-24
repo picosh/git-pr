@@ -95,9 +95,6 @@ git format-patch HEAD~1 --stdout | ssh pr.pico.sh pr review 1
 # Contributor can checkout reviews
 ssh pr.pico.sh pr print 1 | git am -3 -i
 
-# Commenting
-cat my_comment.md | pr.pico.sh comment 1
-
 # Owner can reject a pr:
 ssh pr.pico.sh pr close 1
 
