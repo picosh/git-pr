@@ -71,6 +71,7 @@ func getTemplate(file string) *template.Template {
 			tmplFS,
 			filepath.Join("tmpl", file),
 			filepath.Join("tmpl", "pr-header.html"),
+			filepath.Join("tmpl", "pr-list-item.html"),
 			filepath.Join("tmpl", "base.html"),
 		),
 	)
@@ -84,7 +85,8 @@ type LinkData struct {
 
 type RepoData struct {
 	LinkData
-	Desc string
+	Desc     string
+	LatestPr PrListData
 }
 
 type RepoListData struct {
@@ -98,7 +100,7 @@ func repoListHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	repos, err := web.Pr.GetRepos()
+	repos, err := web.Pr.GetReposWithLatestPr()
 	if err != nil {
 		web.Pr.Backend.Logger.Error("cannot get repos", "err", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -107,12 +109,28 @@ func repoListHandler(w http.ResponseWriter, r *http.Request) {
 
 	repoData := []RepoData{}
 	for _, repo := range repos {
+		var ls PrListData
+		if repo.PatchRequest != nil {
+			curpr := repo.PatchRequest
+			ls = PrListData{
+				ID:     curpr.ID,
+				Pubkey: curpr.Pubkey,
+				LinkData: LinkData{
+					Url:  template.URL(fmt.Sprintf("/prs/%d", curpr.ID)),
+					Text: curpr.Name,
+				},
+				Date:   curpr.CreatedAt.Format(time.RFC3339),
+				Status: curpr.Status,
+			}
+		}
+
 		d := RepoData{
 			Desc: repo.Desc,
 			LinkData: LinkData{
 				Url:  template.URL("/repos/" + repo.ID),
 				Text: repo.ID,
 			},
+			LatestPr: ls,
 		}
 		repoData = append(repoData, d)
 	}
@@ -433,7 +451,6 @@ func StartWebServer() {
 	}
 	formatter := formatterHtml.New(
 		formatterHtml.WithLineNumbers(true),
-		formatterHtml.WithLinkableLineNumbers(true, ""),
 		formatterHtml.WithClasses(true),
 	)
 	web := &WebCtx{

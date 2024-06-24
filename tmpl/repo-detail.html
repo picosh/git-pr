@@ -12,57 +12,37 @@
 <header>
   <h1 class="text-2xl mb"><a href="/">repos</a> / {{.ID}}</h1>
   <div class="group">
-    <div><code>git clone {{.CloneAddr}}</code></div>
-    <pre># submit a new patch request
+    <div>
+      <code>git clone {{.CloneAddr}}</code>
+    </div>
+
+    <details>
+      <summary>Help</summary>
+      <pre class="m-0"># submit a new patch request
 git format-patch main --stdout | ssh pr.pico.sh pr create {{.ID}}</pre>
+    </details>
 	</div>
 </header>
 <main class="group">
   <h3 class="text-lg">Open PRs</h3>
-
   {{range .OpenPrs}}
-  <article class="box">
-    <div><a href="{{.Url}}">{{.Text}}</a> <code>{{.Status}}</code></div>
-    <div class="text-sm">
-      <code>#{{.ID}}</code>
-      <span>opened on <date>{{.Date}}</date> by </span>
-      <code>{{.Pubkey}}</code>
-    </div>
-  </article>
+    <div class="box">{{template "pr-list-item" .}}</div>
   {{end}}
 
   {{if .AcceptedPrs}}
-  <hr class="my w-full" />
-
-  <h3 class="text-lg">Accepted PRs</h3>
-
-  {{range .AcceptedPrs}}
-  <article class="box">
-    <div><a href="{{.Url}}">{{.Text}}</a> <code>{{.Status}}</code></div>
-    <div class="text-sm">
-      <code>#{{.ID}}</code>
-      <span>opened on <date>{{.Date}}</date> by </span>
-      <code>{{.Pubkey}}</code>
-    </div>
-  </article>
-  {{end}}
+    <hr class="my w-full" />
+    <h3 class="text-lg">Accepted PRs</h3>
+    {{range .AcceptedPrs}}
+      <div class="box">{{template "pr-list-item" .}}</div>
+    {{end}}
   {{end}}
 
   {{if .ClosedPrs}}
-  <hr class="my w-full" />
-
-  <h3 class="text-lg">Closed PRs</h3>
-
-  {{range .ClosedPrs}}
-  <article class="box">
-    <div><a href="{{.Url}}">{{.Text}}</a> <code>{{.Status}}</code></div>
-    <div class="text-sm">
-      <code>#{{.ID}}</code>
-      <span>opened on <date>{{.Date}}</date> by </span>
-      <code>{{.Pubkey}}</code>
-    </div>
-  </article>
-  {{end}}
+    <hr class="my w-full" />
+    <h3 class="text-lg">Closed PRs</h3>
+    {{range .ClosedPrs}}
+      <div class="box">{{template "pr-list-item" .}}</div>
+    {{end}}
   {{end}}
 </main>
 

@@ -25,6 +25,7 @@ const (
 
 type GitPatchRequest interface {
 	GetRepos() ([]Repo, error)
+	GetReposWithLatestPr() ([]RepoWithLatestPr, error)
 	GetRepoByID(repoID string) (*Repo, error)
 	SubmitPatchRequest(repoID string, pubkey string, patchset io.Reader) (*PatchRequest, error)
 	SubmitPatchSet(prID int64, pubkey string, op PatchsetOp, patchset io.Reader) ([]*Patch, error)
@@ -48,8 +49,49 @@ type PrCmd struct {
 var _ GitPatchRequest = PrCmd{}
 var _ GitPatchRequest = (*PrCmd)(nil)
 
+type PrWithRepo struct {
+	LastUpdatedPrID int64
+	RepoID          string
+}
+
+type RepoWithLatestPr struct {
+	*Repo
+	PatchRequest *PatchRequest
+}
+
 func (pr PrCmd) GetRepos() ([]Repo, error) {
 	return pr.Backend.Cfg.Repos, nil
+}
+
+func (pr PrCmd) GetReposWithLatestPr() ([]RepoWithLatestPr, error) {
+	repos := []RepoWithLatestPr{}
+	prs := []PatchRequest{}
+	err := pr.Backend.DB.Select(&prs, "SELECT * FROM patch_requests GROUP BY repo_id ORDER BY updated_at DESC")
+	if err != nil {
+		return repos, err
+	}
+
+	// we want recently modified repos to be on top
+	for _, prq := range prs {
+		for _, repo := range pr.Backend.Cfg.Repos {
+			if prq.RepoID == repo.ID {
+				repos = append(repos, RepoWithLatestPr{
+					Repo:         &repo,
+					PatchRequest: &prq,
+				})
+			}
+		}
+	}
+
+	for _, repo := range pr.Backend.Cfg.Repos {
+		for _, curRepo := range repos {
+			if curRepo.ID == repo.ID {
+				continue
+			}
+		}
+	}
+
+	return repos, nil
 }
 
 func (pr PrCmd) GetRepoByID(repoID string) (*Repo, error) {

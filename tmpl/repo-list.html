@@ -9,18 +9,44 @@
 {{end}}
 
 {{define "body"}}
-<header>
-  <h1 class="text-2xl mb">Repos</h1>
-  <p>A new git collaboration service.</p>
+<header class="group">
+  <h1 class="text-2xl">Repos</h1>
+  <div>A new git collaboration service.</div>
+  <pre class="m-0">ssh pr.pico.sh help</pre>
+  <details>
+    <summary>How do Patch Requests work?</summary>
+      <div>
+        Patch requests (PR) are the simplest way to submit, review, and accept changes to your git repository.
+        Here's how it works:
+      </div>
+
+      <ol>
+        <li>External contributor clones repo (<code>git-clone</code>)</li>
+        <li>External contributor makes a code change (<code>git-add</code> & <code>git-commit</code>)</li>
+        <li>External contributor generates patches (<code>git-format-patch</code>)</li>
+        <li>External contributor submits a PR to SSH server</li>
+        <li>Owner receives RSS notification that there's a new PR</li>
+        <li>Owner applies patches locally (<code>git-am</code>) from SSH server</li>
+        <li>Owner makes suggestions in code! (<code>git-add</code> & <code>git-commit</code>)</li>
+        <li>Owner submits review by piping patch to SSH server (<code>git-format-patch</code>)</li>
+        <li>External contributor receives RSS notification of the PR review</li>
+        <li>External contributor re-applies patches (<code>git-am</code>)</li>
+        <li>External contributor reviews and removes comments in code!</li>
+        <li>External contributor submits another patch (<code>git-format-patch</code>)</li>
+        <li>Owner applies patches locally (<code>git-am</code>)</li>
+        <li>Owner marks PR as accepted and pushes code to main (<code>git-push</code>)</li>
+      </ol>
+  </details>
 </header>
 <main>
   <div class="group">
-    <pre>ssh pr.pico.sh help</pre>
-
     {{range .Repos}}
     <div class="box">
       <h3 class="text-lg m-0 p-0"><a href="{{.Url}}">{{.Text}}</a></h3>
       <div class="text-sm">{{.Desc}}</div>
+      {{if .LatestPr}}
+        <div class="text-xs mt box-sm">{{template "pr-list-item" .LatestPr}}</div>
+      {{end}}
     </div>
     {{end}}
   </div>

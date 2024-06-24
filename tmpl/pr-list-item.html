@@ -1,0 +1,10 @@
+{{define "pr-list-item"}}
+<div>
+  <div><a href="{{.Url}}">{{.Text}}</a> <code>{{.Status}}</code></div>
+  <div>
+    <code>#{{.ID}}</code>
+    <span>opened on <date>{{.Date}}</date> by </span>
+    <code>{{.Pubkey}}</code>
+  </div>
+</div>
+{{end}}
