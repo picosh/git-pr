@@ -33,7 +33,8 @@ type GitPatchRequest interface {
 	GetPatchRequests() ([]*PatchRequest, error)
 	GetPatchRequestsByRepoID(repoID string) ([]*PatchRequest, error)
 	GetPatchesByPrID(prID int64) ([]*Patch, error)
-	UpdatePatchRequest(prID int64, pubkey, status string) error
+	UpdatePatchRequestStatus(prID int64, pubkey, status string) error
+	UpdatePatchRequestName(prID int64, pubkey, name string) error
 	DeletePatchesByPrID(prID int64) error
 	CreateEventLog(eventLog EventLog) error
 	GetEventLogs() ([]*EventLog, error)
@@ -161,7 +162,7 @@ func (cmd PrCmd) GetPatchRequestByID(prID int64) (*PatchRequest, error) {
 }
 
 // Status types: open, closed, accepted, reviewed.
-func (cmd PrCmd) UpdatePatchRequest(prID int64, pubkey string, status string) error {
+func (cmd PrCmd) UpdatePatchRequestStatus(prID int64, pubkey string, status string) error {
 	_, err := cmd.Backend.DB.Exec(
 		"UPDATE patch_requests SET status=? WHERE id=?",
 		status,
@@ -172,6 +173,25 @@ func (cmd PrCmd) UpdatePatchRequest(prID int64, pubkey string, status string) er
 		PatchRequestID: prID,
 		Event:          "pr_status_changed",
 		Data:           fmt.Sprintf(`{"status":"%s"}`, status),
+	})
+	return err
+}
+
+func (cmd PrCmd) UpdatePatchRequestName(prID int64, pubkey string, name string) error {
+	if name == "" {
+		return fmt.Errorf("must provide name or text in order to update patch request")
+	}
+
+	_, err := cmd.Backend.DB.Exec(
+		"UPDATE patch_requests SET name=? WHERE id=?",
+		name,
+		prID,
+	)
+	_ = cmd.CreateEventLog(EventLog{
+		Pubkey:         pubkey,
+		PatchRequestID: prID,
+		Event:          "pr_name_changed",
+		Data:           fmt.Sprintf(`{"name":"%s"}`, name),
 	})
 	return err
 }
@@ -195,7 +215,7 @@ func (cmd PrCmd) CreateEventLog(eventLog EventLog) error {
 	}
 
 	_, err := cmd.Backend.DB.Exec(
-		"INSERT INTO event_logs (pubkey, repo_id, patch_request_id, event, data) VALUES (?, ?, ?, ?, ?, ?)",
+		"INSERT INTO event_logs (pubkey, repo_id, patch_request_id, event, data) VALUES (?, ?, ?, ?, ?)",
 		eventLog.Pubkey,
 		eventLog.RepoID,
 		eventLog.PatchRequestID,

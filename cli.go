@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -439,7 +440,7 @@ Here's how it works:
 								return fmt.Errorf("PR has already been accepted")
 							}
 
-							err = pr.UpdatePatchRequest(prID, pubkey, "accepted")
+							err = pr.UpdatePatchRequestStatus(prID, pubkey, "accepted")
 							if err == nil {
 								wish.Printf(sesh, "Accepted PR %s (#%d)\n", patchReq.Name, patchReq.ID)
 							}
@@ -471,7 +472,7 @@ Here's how it works:
 								return fmt.Errorf("PR has already been closed")
 							}
 
-							err = pr.UpdatePatchRequest(prID, pubkey, "closed")
+							err = pr.UpdatePatchRequestStatus(prID, pubkey, "closed")
 							if err == nil {
 								wish.Printf(sesh, "Closed PR %s (#%d)\n", patchReq.Name, patchReq.ID)
 							}
@@ -503,7 +504,7 @@ Here's how it works:
 								return fmt.Errorf("PR is already open")
 							}
 
-							err = pr.UpdatePatchRequest(prID, pubkey, "open")
+							err = pr.UpdatePatchRequestStatus(prID, pubkey, "open")
 							if err == nil {
 								wish.Printf(sesh, "Reopened PR %s (#%d)\n", patchReq.Name, patchReq.ID)
 							}
@@ -511,8 +512,48 @@ Here's how it works:
 						},
 					},
 					{
-						Name:  "add",
-						Usage: "Append a patch to a PR",
+						Name:      "edit",
+						Usage:     "Edit PR title",
+						Args:      true,
+						ArgsUsage: "[prID] [title]",
+						Action: func(cCtx *cli.Context) error {
+							prID, err := getPrID(cCtx.Args().First())
+							if err != nil {
+								return err
+							}
+							prq, err := pr.GetPatchRequestByID(prID)
+							if err != nil {
+								return err
+							}
+							isAdmin := be.IsAdmin(sesh.PublicKey())
+							isPrOwner := be.IsPrOwner(prq.Pubkey, be.Pubkey(sesh.PublicKey()))
+							if !isAdmin && !isPrOwner {
+								return fmt.Errorf("unauthorized, you are not the owner of this PR")
+							}
+
+							tail := cCtx.Args().Tail()
+							title := strings.Join(tail, " ")
+							if title == "" {
+								return fmt.Errorf("must provide title")
+							}
+
+							err = pr.UpdatePatchRequestName(
+								prID,
+								be.Pubkey(sesh.PublicKey()),
+								title,
+							)
+							if err == nil {
+								wish.Printf(sesh, "New title: %s (%d)\n", title, prq.ID)
+							}
+
+							return err
+						},
+					},
+					{
+						Name:      "add",
+						Usage:     "Append a patch to a PR",
+						Args:      true,
+						ArgsUsage: "[prID]",
 						Flags: []cli.Flag{
 							&cli.BoolFlag{
 								Name:  "review",
@@ -562,7 +603,7 @@ Here's how it works:
 
 							reviewTxt := ""
 							if isReview {
-								err = pr.UpdatePatchRequest(prID, pubkey, "reviewed")
+								err = pr.UpdatePatchRequestStatus(prID, pubkey, "reviewed")
 								if err != nil {
 									return err
 								}
