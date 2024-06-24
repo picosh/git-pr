@@ -86,7 +86,7 @@ type LinkData struct {
 type RepoData struct {
 	LinkData
 	Desc     string
-	LatestPr PrListData
+	LatestPr *PrListData
 }
 
 type RepoListData struct {
@@ -109,10 +109,10 @@ func repoListHandler(w http.ResponseWriter, r *http.Request) {
 
 	repoData := []RepoData{}
 	for _, repo := range repos {
-		var ls PrListData
+		var ls *PrListData
 		if repo.PatchRequest != nil {
 			curpr := repo.PatchRequest
-			ls = PrListData{
+			ls = &PrListData{
 				ID:     curpr.ID,
 				Pubkey: curpr.Pubkey,
 				LinkData: LinkData{

@@ -84,10 +84,16 @@ func (pr PrCmd) GetReposWithLatestPr() ([]RepoWithLatestPr, error) {
 	}
 
 	for _, repo := range pr.Backend.Cfg.Repos {
+		found := false
 		for _, curRepo := range repos {
 			if curRepo.ID == repo.ID {
-				continue
+				found = true
 			}
+		}
+		if !found {
+			repos = append(repos, RepoWithLatestPr{
+				Repo: &repo,
+			})
 		}
 	}
 
