@@ -19,7 +19,7 @@
     <details>
       <summary>Help</summary>
       <pre class="m-0"># submit a new patch request
-git format-patch main --stdout | ssh pr.pico.sh pr create {{.ID}}</pre>
+git format-patch {{.Branch}} --stdout | ssh pr.pico.sh pr create {{.ID}}</pre>
     </details>
 	</div>
 </header>
@@ -27,6 +27,16 @@ git format-patch main --stdout | ssh pr.pico.sh pr create {{.ID}}</pre>
   <h3 class="text-lg">Open PRs</h3>
   {{range .OpenPrs}}
     <div class="box">{{template "pr-list-item" .}}</div>
+  {{else}}
+    <div>No open patch requests.</div>
+  {{end}}
+
+  {{if .ReviewedPrs}}
+    <hr class="my w-full" />
+    <h3 class="text-lg">Reviews PRs</h3>
+    {{range .ReviewedPrs}}
+      <div class="box">{{template "pr-list-item" .}}</div>
+    {{end}}
   {{end}}
 
   {{if .AcceptedPrs}}

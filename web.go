@@ -155,9 +155,11 @@ type PrListData struct {
 type RepoDetailData struct {
 	ID          string
 	CloneAddr   string
+	Branch      string
 	OpenPrs     []PrListData
 	AcceptedPrs []PrListData
 	ClosedPrs   []PrListData
+	ReviewedPrs []PrListData
 }
 
 func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
@@ -185,6 +187,7 @@ func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	openList := []PrListData{}
+	reviewedList := []PrListData{}
 	acceptedList := []PrListData{}
 	closedList := []PrListData{}
 	for _, curpr := range prs {
@@ -202,6 +205,8 @@ func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 			openList = append(openList, ls)
 		} else if curpr.Status == "accepted" {
 			acceptedList = append(acceptedList, ls)
+		} else if curpr.Status == "reviewed" {
+			reviewedList = append(reviewedList, ls)
 		} else {
 			closedList = append(closedList, ls)
 		}
@@ -212,6 +217,7 @@ func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 	err = tmpl.Execute(w, RepoDetailData{
 		ID:          repo.ID,
 		CloneAddr:   repo.CloneAddr,
+		Branch:      repo.DefaultBranch,
 		OpenPrs:     openList,
 		AcceptedPrs: acceptedList,
 		ClosedPrs:   closedList,
@@ -240,6 +246,7 @@ type PrHeaderData struct {
 	Repo    LinkData
 	Pr      PrData
 	Patches []PatchData
+	Branch  string
 }
 
 func prDetailHandler(w http.ResponseWriter, r *http.Request) {
@@ -300,6 +307,7 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 			Url:  template.URL("/repos/" + repo.ID),
 			Text: repo.ID,
 		},
+		Branch:  repo.DefaultBranch,
 		Patches: patchesData,
 		Pr: PrData{
 			ID:     pr.ID,

@@ -15,7 +15,7 @@
     <summary>Help</summary>
     <div class="group">
       <pre class="m-0"># add changes to patch request
-git format-patch main --stdout | ssh pr.pico.sh pr add {{.Pr.ID}}</pre>
+git format-patch {{.Branch}} --stdout | ssh pr.pico.sh pr add {{.Pr.ID}}</pre>
       <pre class="m-0"># checkout all patches
 ssh pr.pico.sh pr print {{.Pr.ID}} | git am -3</pre>
       <pre class="m-0"># checkout specific patch
