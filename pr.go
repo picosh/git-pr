@@ -27,7 +27,6 @@ type GitPatchRequest interface {
 	GetUsers() ([]*User, error)
 	GetUserByID(userID int64) (*User, error)
 	GetUserByPubkey(pubkey string) (*User, error)
-	CreateUser(user *User) (*User, error)
 	UpsertUser(user *User) (*User, error)
 	GetRepos() ([]*Repo, error)
 	GetReposWithLatestPr() ([]RepoWithLatestPr, error)
@@ -64,10 +63,6 @@ func (pr PrCmd) GetUserByID(id int64) (*User, error) {
 }
 
 func (pr PrCmd) GetUserByPubkey(pubkey string) (*User, error) {
-	return nil, nil
-}
-
-func (pr PrCmd) CreateUser(user *User) (*User, error) {
 	return nil, nil
 }
 
