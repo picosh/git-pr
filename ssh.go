@@ -14,8 +14,22 @@ import (
 	"github.com/charmbracelet/wish"
 )
 
-func authHandler(ctx ssh.Context, key ssh.PublicKey) bool {
-	return true
+func authHandler(pr *PrCmd) func(ctx ssh.Context, key ssh.PublicKey) bool {
+	return func(ctx ssh.Context, key ssh.PublicKey) bool {
+		pubkey := pr.Backend.Pubkey(key)
+		userName := ctx.User()
+		err := pr.IsBanned(pubkey, userName)
+		if err != nil {
+			pr.Backend.Logger.Info(
+				"user denied access",
+				"err", err,
+				"username", userName,
+				"pubkey", pubkey,
+			)
+			return false
+		}
+		return true
+	}
 }
 
 func GitSshServer(cfg *GitCfg) {
@@ -53,7 +67,7 @@ func GitSshServer(cfg *GitCfg) {
 		wish.WithHostKeyPath(
 			filepath.Join(cfg.DataPath, "term_info_ed25519"),
 		),
-		wish.WithPublicKeyAuth(authHandler),
+		wish.WithPublicKeyAuth(authHandler(prCmd)),
 		wish.WithMiddleware(
 			GitPatchRequestMiddleware(be, prCmd),
 		),

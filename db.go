@@ -17,6 +17,15 @@ type User struct {
 	UpdatedAt time.Time `db:"updated_at"`
 }
 
+type Acl struct {
+	ID         int64     `db:"id"`
+	UserID     int64     `db:"user_id"`
+	Pubkey     string    `db:"pubkey"`
+	IpAddress  string    `db:"ip_address"`
+	Permission string    `db:"permission"`
+	CreatedAt  time.Time `db:"created_at"`
+}
+
 // PatchRequest is a database model for patches submitted to a Repo.
 type PatchRequest struct {
 	ID        int64     `db:"id"`
@@ -77,6 +86,7 @@ CREATE TABLE IF NOT EXISTS app_users (
 CREATE TABLE IF NOT EXISTS acl (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER,
+  pubkey string,
   ip_address string,
   permission string,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

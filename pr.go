@@ -28,6 +28,7 @@ type GitPatchRequest interface {
 	GetUserByID(userID int64) (*User, error)
 	GetUserByPubkey(pubkey string) (*User, error)
 	UpsertUser(pubkey, name string) (*User, error)
+	IsBanned(pubkey, ipAddress string) error
 	GetRepos() ([]*Repo, error)
 	GetReposWithLatestPr() ([]RepoWithLatestPr, error)
 	GetRepoByID(repoID string) (*Repo, error)
@@ -53,6 +54,20 @@ type PrCmd struct {
 
 var _ GitPatchRequest = PrCmd{}
 var _ GitPatchRequest = (*PrCmd)(nil)
+
+func (pr PrCmd) IsBanned(pubkey, ipAddress string) error {
+	acl := []*Acl{}
+	err := pr.Backend.DB.Select(
+		&acl,
+		"SELECT * FROM acl WHERE permission='banned' AND (pubkey=? OR ip_address=?)",
+		pubkey,
+		ipAddress,
+	)
+	if len(acl) > 0 {
+		return fmt.Errorf("user has been banned")
+	}
+	return err
+}
 
 func (pr PrCmd) GetUsers() ([]*User, error) {
 	users := []*User{}
