@@ -24,23 +24,28 @@ const (
 )
 
 type GitPatchRequest interface {
+	GetUsers() ([]*User, error)
+	GetUserByID(userID int64) (*User, error)
+	GetUserByPubkey(pubkey string) (*User, error)
+	CreateUser(user *User) (*User, error)
+	UpsertUser(user *User) (*User, error)
 	GetRepos() ([]*Repo, error)
 	GetReposWithLatestPr() ([]RepoWithLatestPr, error)
 	GetRepoByID(repoID string) (*Repo, error)
-	SubmitPatchRequest(repoID string, pubkey string, patchset io.Reader) (*PatchRequest, error)
-	SubmitPatchSet(prID int64, pubkey string, op PatchsetOp, patchset io.Reader) ([]*Patch, error)
+	SubmitPatchRequest(repoID string, userID int64, patchset io.Reader) (*PatchRequest, error)
+	SubmitPatchSet(prID, userID int64, op PatchsetOp, patchset io.Reader) ([]*Patch, error)
 	GetPatchRequestByID(prID int64) (*PatchRequest, error)
 	GetPatchRequests() ([]*PatchRequest, error)
 	GetPatchRequestsByRepoID(repoID string) ([]*PatchRequest, error)
 	GetPatchesByPrID(prID int64) ([]*Patch, error)
-	UpdatePatchRequestStatus(prID int64, pubkey, status string) error
-	UpdatePatchRequestName(prID int64, pubkey, name string) error
+	UpdatePatchRequestStatus(prID, userID int64, status string) error
+	UpdatePatchRequestName(prID, userID int64, name string) error
 	DeletePatchesByPrID(prID int64) error
 	CreateEventLog(eventLog EventLog) error
 	GetEventLogs() ([]*EventLog, error)
 	GetEventLogsByRepoID(repoID string) ([]*EventLog, error)
 	GetEventLogsByPrID(prID int64) ([]*EventLog, error)
-	GetEventLogsByPubkey(pubkey string) ([]*EventLog, error)
+	GetEventLogsByUserID(userID int64) ([]*EventLog, error)
 }
 
 type PrCmd struct {
@@ -50,6 +55,26 @@ type PrCmd struct {
 var _ GitPatchRequest = PrCmd{}
 var _ GitPatchRequest = (*PrCmd)(nil)
 
+func (pr PrCmd) GetUsers() ([]*User, error) {
+	return []*User{}, nil
+}
+
+func (pr PrCmd) GetUserByID(id int64) (*User, error) {
+	return nil, nil
+}
+
+func (pr PrCmd) GetUserByPubkey(pubkey string) (*User, error) {
+	return nil, nil
+}
+
+func (pr PrCmd) CreateUser(user *User) (*User, error) {
+	return nil, nil
+}
+
+func (pr PrCmd) UpsertUser(user *User) (*User, error) {
+	return nil, nil
+}
+
 type PrWithRepo struct {
 	LastUpdatedPrID int64
 	RepoID          string
@@ -57,6 +82,7 @@ type PrWithRepo struct {
 
 type RepoWithLatestPr struct {
 	*Repo
+	User         *User
 	PatchRequest *PatchRequest
 }
 
@@ -72,11 +98,24 @@ func (pr PrCmd) GetReposWithLatestPr() ([]RepoWithLatestPr, error) {
 		return repos, err
 	}
 
+	users, err := pr.GetUsers()
+	if err != nil {
+		return repos, err
+	}
+
 	// we want recently modified repos to be on top
 	for _, prq := range prs {
 		for _, repo := range pr.Backend.Cfg.Repos {
 			if prq.RepoID == repo.ID {
+				var user *User
+				for _, usr := range users {
+					if prq.UserID == usr.ID {
+						user = usr
+						break
+					}
+				}
 				repos = append(repos, RepoWithLatestPr{
+					User:         user,
 					Repo:         repo,
 					PatchRequest: &prq,
 				})
@@ -162,14 +201,14 @@ func (cmd PrCmd) GetPatchRequestByID(prID int64) (*PatchRequest, error) {
 }
 
 // Status types: open, closed, accepted, reviewed.
-func (cmd PrCmd) UpdatePatchRequestStatus(prID int64, pubkey string, status string) error {
+func (cmd PrCmd) UpdatePatchRequestStatus(prID int64, userID int64, status string) error {
 	_, err := cmd.Backend.DB.Exec(
 		"UPDATE patch_requests SET status=? WHERE id=?",
 		status,
 		prID,
 	)
 	_ = cmd.CreateEventLog(EventLog{
-		Pubkey:         pubkey,
+		UserID:         userID,
 		PatchRequestID: prID,
 		Event:          "pr_status_changed",
 		Data:           fmt.Sprintf(`{"status":"%s"}`, status),
@@ -177,7 +216,7 @@ func (cmd PrCmd) UpdatePatchRequestStatus(prID int64, pubkey string, status stri
 	return err
 }
 
-func (cmd PrCmd) UpdatePatchRequestName(prID int64, pubkey string, name string) error {
+func (cmd PrCmd) UpdatePatchRequestName(prID int64, userID int64, name string) error {
 	if name == "" {
 		return fmt.Errorf("must provide name or text in order to update patch request")
 	}
@@ -188,7 +227,7 @@ func (cmd PrCmd) UpdatePatchRequestName(prID int64, pubkey string, name string) 
 		prID,
 	)
 	_ = cmd.CreateEventLog(EventLog{
-		Pubkey:         pubkey,
+		UserID:         userID,
 		PatchRequestID: prID,
 		Event:          "pr_name_changed",
 		Data:           fmt.Sprintf(`{"name":"%s"}`, name),
@@ -215,8 +254,8 @@ func (cmd PrCmd) CreateEventLog(eventLog EventLog) error {
 	}
 
 	_, err := cmd.Backend.DB.Exec(
-		"INSERT INTO event_logs (pubkey, repo_id, patch_request_id, event, data) VALUES (?, ?, ?, ?, ?)",
-		eventLog.Pubkey,
+		"INSERT INTO event_logs (user_id, repo_id, patch_request_id, event, data) VALUES (?, ?, ?, ?, ?)",
+		eventLog.UserID,
 		eventLog.RepoID,
 		eventLog.PatchRequestID,
 		eventLog.Event,
@@ -322,8 +361,8 @@ func (cmd PrCmd) createPatch(tx *sqlx.Tx, review bool, patch *Patch) (int64, err
 
 	var patchID int64
 	row := tx.QueryRow(
-		"INSERT INTO patches (pubkey, patch_request_id, author_name, author_email, author_date, title, body, body_appendix, commit_sha, content_sha, review, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
-		patch.Pubkey,
+		"INSERT INTO patches (user_id, patch_request_id, author_name, author_email, author_date, title, body, body_appendix, commit_sha, content_sha, review, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+		patch.UserID,
 		patch.PatchRequestID,
 		patch.AuthorName,
 		patch.AuthorEmail,
@@ -346,7 +385,7 @@ func (cmd PrCmd) createPatch(tx *sqlx.Tx, review bool, patch *Patch) (int64, err
 	return patchID, err
 }
 
-func (cmd PrCmd) SubmitPatchRequest(repoID string, pubkey string, patchset io.Reader) (*PatchRequest, error) {
+func (cmd PrCmd) SubmitPatchRequest(repoID string, userID int64, patchset io.Reader) (*PatchRequest, error) {
 	tx, err := cmd.Backend.DB.Beginx()
 	if err != nil {
 		return nil, err
@@ -369,8 +408,8 @@ func (cmd PrCmd) SubmitPatchRequest(repoID string, pubkey string, patchset io.Re
 
 	var prID int64
 	row := tx.QueryRow(
-		"INSERT INTO patch_requests (pubkey, repo_id, name, text, status, updated_at) VALUES(?, ?, ?, ?, ?, ?) RETURNING id",
-		pubkey,
+		"INSERT INTO patch_requests (user_id, repo_id, name, text, status, updated_at) VALUES(?, ?, ?, ?, ?, ?) RETURNING id",
+		userID,
 		repoID,
 		prName,
 		prText,
@@ -386,7 +425,7 @@ func (cmd PrCmd) SubmitPatchRequest(repoID string, pubkey string, patchset io.Re
 	}
 
 	for _, patch := range patches {
-		patch.Pubkey = pubkey
+		patch.UserID = userID
 		patch.PatchRequestID = prID
 		_, err = cmd.createPatch(tx, false, patch)
 		if err != nil {
@@ -400,7 +439,7 @@ func (cmd PrCmd) SubmitPatchRequest(repoID string, pubkey string, patchset io.Re
 	}
 
 	_ = cmd.CreateEventLog(EventLog{
-		Pubkey:         pubkey,
+		UserID:         userID,
 		PatchRequestID: prID,
 		Event:          "pr_created",
 	})
@@ -410,7 +449,7 @@ func (cmd PrCmd) SubmitPatchRequest(repoID string, pubkey string, patchset io.Re
 	return &pr, err
 }
 
-func (cmd PrCmd) SubmitPatchSet(prID int64, pubkey string, op PatchsetOp, patchset io.Reader) ([]*Patch, error) {
+func (cmd PrCmd) SubmitPatchSet(prID int64, userID int64, op PatchsetOp, patchset io.Reader) ([]*Patch, error) {
 	fin := []*Patch{}
 	tx, err := cmd.Backend.DB.Beginx()
 	if err != nil {
@@ -434,7 +473,7 @@ func (cmd PrCmd) SubmitPatchSet(prID int64, pubkey string, op PatchsetOp, patchs
 	}
 
 	for _, patch := range patches {
-		patch.Pubkey = pubkey
+		patch.UserID = userID
 		patch.PatchRequestID = prID
 		patchID, err := cmd.createPatch(tx, op == OpReview, patch)
 		if err == nil {
@@ -461,7 +500,7 @@ func (cmd PrCmd) SubmitPatchSet(prID int64, pubkey string, op PatchsetOp, patchs
 		}
 
 		_ = cmd.CreateEventLog(EventLog{
-			Pubkey:         pubkey,
+			UserID:         userID,
 			PatchRequestID: prID,
 			Event:          event,
 		})
@@ -506,19 +545,19 @@ func (cmd PrCmd) GetEventLogsByPrID(prID int64) ([]*EventLog, error) {
 	return eventLogs, err
 }
 
-func (cmd PrCmd) GetEventLogsByPubkey(pubkey string) ([]*EventLog, error) {
+func (cmd PrCmd) GetEventLogsByUserID(userID int64) ([]*EventLog, error) {
 	eventLogs := []*EventLog{}
 	query := `SELECT * FROM event_logs
-	WHERE pubkey=?
+	WHERE user_id=?
 		OR patch_request_id IN (
-			SELECT id FROM patch_requests WHERE pubkey=?
+			SELECT id FROM patch_requests WHERE user_id=?
 		)
 	ORDER BY created_at DESC`
 	err := cmd.Backend.DB.Select(
 		&eventLogs,
 		query,
-		pubkey,
-		pubkey,
+		userID,
+		userID,
 	)
 	return eventLogs, err
 }

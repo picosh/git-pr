@@ -112,8 +112,9 @@ func repoListHandler(w http.ResponseWriter, r *http.Request) {
 		if repo.PatchRequest != nil {
 			curpr := repo.PatchRequest
 			ls = &PrListData{
-				ID:     curpr.ID,
-				Pubkey: curpr.Pubkey,
+				ID:       curpr.ID,
+				UserName: repo.User.Name,
+				Pubkey:   repo.User.Pubkey,
 				LinkData: LinkData{
 					Url:  template.URL(fmt.Sprintf("/prs/%d", curpr.ID)),
 					Text: curpr.Name,
@@ -146,10 +147,11 @@ func repoListHandler(w http.ResponseWriter, r *http.Request) {
 
 type PrListData struct {
 	LinkData
-	ID     int64
-	Pubkey string
-	Date   string
-	Status string
+	ID       int64
+	UserName string
+	Pubkey   string
+	Date     string
+	Status   string
 }
 
 type RepoDetailData struct {
@@ -191,9 +193,14 @@ func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 	acceptedList := []PrListData{}
 	closedList := []PrListData{}
 	for _, curpr := range prs {
+		user, err := web.Pr.GetUserByID(curpr.UserID)
+		if err != nil {
+			continue
+		}
 		ls := PrListData{
-			ID:     curpr.ID,
-			Pubkey: curpr.Pubkey,
+			ID:       curpr.ID,
+			UserName: user.Name,
+			Pubkey:   user.Pubkey,
 			LinkData: LinkData{
 				Url:  template.URL(fmt.Sprintf("/prs/%d", curpr.ID)),
 				Text: curpr.Name,
@@ -221,6 +228,7 @@ func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 		OpenPrs:     openList,
 		AcceptedPrs: acceptedList,
 		ClosedPrs:   closedList,
+		ReviewedPrs: reviewedList,
 	})
 	if err != nil {
 		fmt.Println(err)
@@ -228,11 +236,12 @@ func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PrData struct {
-	ID     int64
-	Title  string
-	Date   string
-	Pubkey string
-	Status string
+	ID       int64
+	Title    string
+	Date     string
+	UserName string
+	Pubkey   string
+	Status   string
 }
 
 type PatchData struct {
@@ -299,6 +308,12 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	user, err := web.Pr.GetUserByID(pr.UserID)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
 	w.Header().Set("content-type", "text/html")
 	tmpl := getTemplate("pr-detail.html")
 	err = tmpl.Execute(w, PrHeaderData{
@@ -310,11 +325,12 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 		Branch:  repo.DefaultBranch,
 		Patches: patchesData,
 		Pr: PrData{
-			ID:     pr.ID,
-			Title:  pr.Name,
-			Pubkey: pr.Pubkey,
-			Date:   pr.CreatedAt.Format(time.RFC3339),
-			Status: pr.Status,
+			ID:       pr.ID,
+			Title:    pr.Name,
+			UserName: user.Name,
+			Pubkey:   user.Pubkey,
+			Date:     pr.CreatedAt.Format(time.RFC3339),
+			Status:   pr.Status,
 		},
 	})
 	if err != nil {
@@ -345,6 +361,11 @@ func rssHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	repoID := r.PathValue("repoid")
 	pubkey := r.URL.Query().Get("pubkey")
+	user, err := web.Pr.GetUserByPubkey(pubkey)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
 	if id != "" {
 		var prID int64
 		prID, err = getPrID(id)
@@ -354,7 +375,7 @@ func rssHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		eventLogs, err = web.Pr.GetEventLogsByPrID(prID)
 	} else if pubkey != "" {
-		eventLogs, err = web.Pr.GetEventLogsByPubkey(pubkey)
+		eventLogs, err = web.Pr.GetEventLogsByUserID(user.ID)
 	} else if repoID != "" {
 		eventLogs, err = web.Pr.GetEventLogsByRepoID(repoID)
 	} else {
@@ -382,6 +403,12 @@ func rssHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			continue
 		}
+
+		user, err := web.Pr.GetUserByID(pr.UserID)
+		if err != nil {
+			continue
+		}
+
 		title := fmt.Sprintf(
 			`%s in %s for PR "%s" (#%d)`,
 			eventLog.Event,
@@ -396,7 +423,7 @@ func rssHandler(w http.ResponseWriter, r *http.Request) {
 			Content:     content,
 			Created:     eventLog.CreatedAt,
 			Description: title,
-			Author:      &feeds.Author{Name: eventLog.Pubkey},
+			Author:      &feeds.Author{Name: user.Name},
 		}
 
 		feedItems = append(feedItems, item)

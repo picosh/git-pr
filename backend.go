@@ -44,6 +44,6 @@ func (be *Backend) IsAdmin(pk ssh.PublicKey) bool {
 	return false
 }
 
-func (be *Backend) IsPrOwner(pka, pkb string) bool {
-	return be.KeysEqual(pka, pkb)
+func (be *Backend) IsPrOwner(pka, pkb int64) bool {
+	return pka == pkb
 }

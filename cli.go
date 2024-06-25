@@ -42,6 +42,7 @@ Here's how it works:
 	- Owner marks PR as accepted and pushes code to main (git-push)`
 
 	pubkey := be.Pubkey(sesh.PublicKey())
+	userName := sesh.User()
 	app := &cli.App{
 		Name:        "ssh",
 		Description: desc,
@@ -108,13 +109,16 @@ Here's how it works:
 				},
 				Action: func(cCtx *cli.Context) error {
 					pubkey := be.Pubkey(sesh.PublicKey())
+					user, err := pr.GetUserByPubkey(pubkey)
+					if err != nil {
+						return err
+					}
 					isPubkey := cCtx.Bool("pubkey")
 					prID := cCtx.Int64("pr")
 					repoID := cCtx.String("repo")
 					var eventLogs []*EventLog
-					var err error
 					if isPubkey {
-						eventLogs, err = pr.GetEventLogsByPubkey(pubkey)
+						eventLogs, err = pr.GetEventLogsByUserID(user.ID)
 					} else if prID != 0 {
 						eventLogs, err = pr.GetEventLogsByPrID(prID)
 					} else if repoID != "" {
@@ -212,8 +216,16 @@ Here's how it works:
 						Args:      true,
 						ArgsUsage: "[repoID]",
 						Action: func(cCtx *cli.Context) error {
+							user, err := pr.UpsertUser(&User{
+								Pubkey: pubkey,
+								Name:   userName,
+							})
+							if err != nil {
+								return err
+							}
+
 							repoID := cCtx.Args().First()
-							request, err := pr.SubmitPatchRequest(repoID, pubkey, sesh)
+							request, err := pr.SubmitPatchRequest(repoID, user.ID, sesh)
 							if err != nil {
 								return err
 							}
@@ -440,7 +452,15 @@ Here's how it works:
 								return fmt.Errorf("PR has already been accepted")
 							}
 
-							err = pr.UpdatePatchRequestStatus(prID, pubkey, "accepted")
+							user, err := pr.UpsertUser(&User{
+								Pubkey: pubkey,
+								Name:   userName,
+							})
+							if err != nil {
+								return err
+							}
+
+							err = pr.UpdatePatchRequestStatus(prID, user.ID, "accepted")
 							if err == nil {
 								wish.Printf(sesh, "Accepted PR %s (#%d)\n", patchReq.Name, patchReq.ID)
 							}
@@ -457,12 +477,21 @@ Here's how it works:
 							if err != nil {
 								return err
 							}
+
+							user, err := pr.UpsertUser(&User{
+								Pubkey: pubkey,
+								Name:   userName,
+							})
+							if err != nil {
+								return err
+							}
+
 							patchReq, err := pr.GetPatchRequestByID(prID)
 							if err != nil {
 								return err
 							}
 							pk := sesh.PublicKey()
-							isContrib := be.Pubkey(pk) == patchReq.Pubkey
+							isContrib := be.Pubkey(pk) == user.Pubkey
 							isAdmin := be.IsAdmin(pk)
 							if !isAdmin && !isContrib {
 								return fmt.Errorf("you are not authorized to change PR status")
@@ -472,7 +501,7 @@ Here's how it works:
 								return fmt.Errorf("PR has already been closed")
 							}
 
-							err = pr.UpdatePatchRequestStatus(prID, pubkey, "closed")
+							err = pr.UpdatePatchRequestStatus(prID, user.ID, "closed")
 							if err == nil {
 								wish.Printf(sesh, "Closed PR %s (#%d)\n", patchReq.Name, patchReq.ID)
 							}
@@ -489,12 +518,22 @@ Here's how it works:
 							if err != nil {
 								return err
 							}
+
 							patchReq, err := pr.GetPatchRequestByID(prID)
 							if err != nil {
 								return err
 							}
+
+							user, err := pr.UpsertUser(&User{
+								Pubkey: pubkey,
+								Name:   userName,
+							})
+							if err != nil {
+								return err
+							}
+
 							pk := sesh.PublicKey()
-							isContrib := be.Pubkey(pk) == patchReq.Pubkey
+							isContrib := be.Pubkey(pk) == user.Pubkey
 							isAdmin := be.IsAdmin(pk)
 							if !isAdmin && !isContrib {
 								return fmt.Errorf("you are not authorized to change PR status")
@@ -504,7 +543,7 @@ Here's how it works:
 								return fmt.Errorf("PR is already open")
 							}
 
-							err = pr.UpdatePatchRequestStatus(prID, pubkey, "open")
+							err = pr.UpdatePatchRequestStatus(prID, user.ID, "open")
 							if err == nil {
 								wish.Printf(sesh, "Reopened PR %s (#%d)\n", patchReq.Name, patchReq.ID)
 							}
@@ -525,8 +564,17 @@ Here's how it works:
 							if err != nil {
 								return err
 							}
+
+							user, err := pr.UpsertUser(&User{
+								Pubkey: pubkey,
+								Name:   userName,
+							})
+							if err != nil {
+								return err
+							}
+
 							isAdmin := be.IsAdmin(sesh.PublicKey())
-							isPrOwner := be.IsPrOwner(prq.Pubkey, be.Pubkey(sesh.PublicKey()))
+							isPrOwner := be.IsPrOwner(prq.UserID, user.ID)
 							if !isAdmin && !isPrOwner {
 								return fmt.Errorf("unauthorized, you are not the owner of this PR")
 							}
@@ -539,7 +587,7 @@ Here's how it works:
 
 							err = pr.UpdatePatchRequestName(
 								prID,
-								be.Pubkey(sesh.PublicKey()),
+								user.ID,
 								title,
 							)
 							if err == nil {
@@ -574,10 +622,18 @@ Here's how it works:
 								return err
 							}
 
+							user, err := pr.UpsertUser(&User{
+								Pubkey: pubkey,
+								Name:   userName,
+							})
+							if err != nil {
+								return err
+							}
+
 							isAdmin := be.IsAdmin(sesh.PublicKey())
 							isReview := cCtx.Bool("review")
 							isReplace := cCtx.Bool("force")
-							isPrOwner := be.IsPrOwner(prq.Pubkey, be.Pubkey(sesh.PublicKey()))
+							isPrOwner := be.IsPrOwner(prq.UserID, user.ID)
 							if !isAdmin && !isPrOwner {
 								return fmt.Errorf("unauthorized, you are not the owner of this PR")
 							}
@@ -591,7 +647,7 @@ Here's how it works:
 								op = OpReplace
 							}
 
-							patches, err := pr.SubmitPatchSet(prID, pubkey, op, sesh)
+							patches, err := pr.SubmitPatchSet(prID, user.ID, op, sesh)
 							if err != nil {
 								return err
 							}
@@ -603,7 +659,7 @@ Here's how it works:
 
 							reviewTxt := ""
 							if isReview {
-								err = pr.UpdatePatchRequestStatus(prID, pubkey, "reviewed")
+								err = pr.UpdatePatchRequestStatus(prID, user.ID, "reviewed")
 								if err != nil {
 									return err
 								}

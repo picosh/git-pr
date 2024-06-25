@@ -8,10 +8,18 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+type User struct {
+	ID        int64     `db:"id"`
+	Pubkey    string    `db:"pubkey"`
+	Name      string    `db:"name"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
+}
+
 // PatchRequest is a database model for patches submitted to a Repo.
 type PatchRequest struct {
 	ID        int64     `db:"id"`
-	Pubkey    string    `db:"pubkey"`
+	UserID    int64     `db:"user_id"`
 	RepoID    string    `db:"repo_id"`
 	Name      string    `db:"name"`
 	Text      string    `db:"text"`
@@ -24,7 +32,7 @@ type PatchRequest struct {
 // This usually corresponds to a git commit.
 type Patch struct {
 	ID             int64     `db:"id"`
-	Pubkey         string    `db:"pubkey"`
+	UserID         int64     `db:"user_id"`
 	PatchRequestID int64     `db:"patch_request_id"`
 	AuthorName     string    `db:"author_name"`
 	AuthorEmail    string    `db:"author_email"`
@@ -42,7 +50,7 @@ type Patch struct {
 // EventLog is a event log for RSS or other notification systems.
 type EventLog struct {
 	ID             int64     `db:"id"`
-	Pubkey         string    `db:"pubkey"`
+	UserID         int64     `db:"user_id"`
 	RepoID         string    `db:"repo_id"`
 	PatchRequestID int64     `db:"patch_request_id"`
 	Event          string    `db:"event"`
@@ -57,20 +65,32 @@ type DB struct {
 }
 
 var schema = `
-CREATE TABLE IF NOT EXISTS patch_requests (
+CREATE TABLE IF NOT EXISTS app_users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   pubkey TEXT NOT NULL,
+  name TEXT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS patch_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
   repo_id TEXT NOT NULL,
   name TEXT NOT NULL,
   text TEXT NOT NULL,
   status TEXT NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL
+  updated_at DATETIME NOT NULL,
+  CONSTRAINT pr_user_id_fk
+    FOREIGN KEY(user_id) REFERENCES app_users(id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS patches (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  pubkey TEXT NOT NULL,
+  user_id INTEGER NOT NULL,
   patch_request_id INTEGER NOT NULL,
   author_name TEXT NOT NULL,
   author_email TEXT NOT NULL,
@@ -84,14 +104,18 @@ CREATE TABLE IF NOT EXISTS patches (
   raw_text TEXT NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT pr_id_fk
-  FOREIGN KEY(patch_request_id) REFERENCES patch_requests(id)
-  ON DELETE CASCADE
-  ON UPDATE CASCADE
+    FOREIGN KEY(patch_request_id) REFERENCES patch_requests(id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+  CONSTRAINT patches_user_id_fk
+    FOREIGN KEY(user_id) REFERENCES app_users(id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS event_logs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  pubkey TEXT NOT NULL,
+  user_id INTEGER NOT NULL,
   repo_id TEXT,
   patch_request_id INTEGER,
   event TEXT NOT NULL,
@@ -100,7 +124,11 @@ CREATE TABLE IF NOT EXISTS event_logs (
   CONSTRAINT event_logs_pr_id_fk
   FOREIGN KEY(patch_request_id) REFERENCES patch_requests(id)
   ON DELETE CASCADE
-  ON UPDATE CASCADE
+  ON UPDATE CASCADE,
+  CONSTRAINT event_logs_user_id_fk
+    FOREIGN KEY(user_id) REFERENCES app_users(id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
 );
 `
 
