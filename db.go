@@ -1,6 +1,7 @@
 package git
 
 import (
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"time"
@@ -18,12 +19,11 @@ type User struct {
 }
 
 type Acl struct {
-	ID         int64     `db:"id"`
-	UserID     int64     `db:"user_id"`
-	Pubkey     string    `db:"pubkey"`
-	IpAddress  string    `db:"ip_address"`
-	Permission string    `db:"permission"`
-	CreatedAt  time.Time `db:"created_at"`
+	ID         int64          `db:"id"`
+	Pubkey     sql.NullString `db:"pubkey"`
+	IpAddress  sql.NullString `db:"ip_address"`
+	Permission string         `db:"permission"`
+	CreatedAt  time.Time      `db:"created_at"`
 }
 
 // PatchRequest is a database model for patches submitted to a Repo.
@@ -85,15 +85,10 @@ CREATE TABLE IF NOT EXISTS app_users (
 
 CREATE TABLE IF NOT EXISTS acl (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER,
   pubkey string,
   ip_address string,
-  permission string,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT acl_user_id_fk
-    FOREIGN KEY(user_id) REFERENCES app_users(id)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
+  permission string NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS patch_requests (
