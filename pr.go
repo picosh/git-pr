@@ -87,6 +87,20 @@ func (pr PrCmd) GetUserByPubkey(pubkey string) (*User, error) {
 	return &user, err
 }
 
+func (pr PrCmd) computeUserName(name string) (string, error) {
+	var user User
+	err := pr.Backend.DB.Get(&user, "SELECT * FROM app_users WHERE name=?", name)
+	if err != nil {
+		return name, err
+	}
+	// name is available
+	if user.ID == 0 {
+		return name, nil
+	}
+	// collision, generate random number and append
+	return fmt.Sprintf("%s%s", name, randSeq(4)), nil
+}
+
 func (pr PrCmd) createUser(pubkey, name string) (*User, error) {
 	if pubkey == "" {
 		return nil, fmt.Errorf("must provide pubkey when creating user")
@@ -95,13 +109,18 @@ func (pr PrCmd) createUser(pubkey, name string) (*User, error) {
 		return nil, fmt.Errorf("must provide user name when creating user")
 	}
 
+	userName, err := pr.computeUserName(name)
+	if err != nil {
+		pr.Backend.Logger.Error("could not compute username", "err", err)
+	}
+
 	var userID int64
 	row := pr.Backend.DB.QueryRow(
 		"INSERT INTO app_users (pubkey, name) VALUES (?, ?) RETURNING id",
 		pubkey,
-		name,
+		userName,
 	)
-	err := row.Scan(&userID)
+	err = row.Scan(&userID)
 	if err != nil {
 		return nil, err
 	}
