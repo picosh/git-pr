@@ -1,6 +1,7 @@
 package git
 
 import (
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -132,6 +133,10 @@ CREATE TABLE IF NOT EXISTS event_logs (
 );
 `
 
+var sqliteMigrations = []string{
+	"", // migration #0 is reserved for schema initialization
+}
+
 // Open opens a database connection.
 func Open(dsn string, logger *slog.Logger) (*DB, error) {
 	db, err := sqlx.Connect("sqlite", dsn)
@@ -144,16 +149,57 @@ func Open(dsn string, logger *slog.Logger) (*DB, error) {
 		logger: logger,
 	}
 
-	return d, nil
-}
+	err = d.upgrade()
+	if err != nil {
+		d.Close()
+		return nil, err
+	}
 
-func (d *DB) Migrate() {
-	// exec the schema or fail; multi-statement Exec behavior varies between
-	// database drivers;  pq will exec them all, sqlite3 won't, ymmv
-	d.DB.MustExec(schema)
+	return d, nil
 }
 
 // Close implements db.DB.
 func (d *DB) Close() error {
 	return d.DB.Close()
+}
+
+func (db *DB) upgrade() error {
+	var version int
+	if err := db.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
+		return fmt.Errorf("failed to query schema version: %v", err)
+	}
+
+	if version == len(sqliteMigrations) {
+		return nil
+	} else if version > len(sqliteMigrations) {
+		return fmt.Errorf("git-pr (version %d) older than schema (version %d)", len(sqliteMigrations), version)
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	if version == 0 {
+		if _, err := tx.Exec(schema); err != nil {
+			return fmt.Errorf("failed to initialize schema: %v", err)
+		}
+	} else {
+		for i := version; i < len(sqliteMigrations); i++ {
+			if _, err := tx.Exec(sqliteMigrations[i]); err != nil {
+				return fmt.Errorf("failed to execute migration #%v: %v", i, err)
+			}
+		}
+	}
+
+	// For some reason prepared statements don't work here
+	_, err = tx.Exec(fmt.Sprintf("PRAGMA user_version = %d", len(sqliteMigrations)))
+	if err != nil {
+		return fmt.Errorf("failed to bump schema version: %v", err)
+	}
+
+	return tx.Commit()
 }

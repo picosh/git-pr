@@ -29,7 +29,6 @@ func GitSshServer(cfg *GitCfg) {
 	if err != nil {
 		panic(err)
 	}
-	dbh.Migrate()
 
 	keys, err := getAuthorizedKeys(filepath.Join(cfg.DataPath, "authorized_keys"))
 	if err == nil {
