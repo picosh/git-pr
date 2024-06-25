@@ -10,6 +10,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+// User is a db model for users
 type User struct {
 	ID        int64     `db:"id"`
 	Pubkey    string    `db:"pubkey"`
@@ -18,6 +19,7 @@ type User struct {
 	UpdatedAt time.Time `db:"updated_at"`
 }
 
+// Acl is a db model for access control
 type Acl struct {
 	ID         int64          `db:"id"`
 	Pubkey     sql.NullString `db:"pubkey"`
