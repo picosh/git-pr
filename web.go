@@ -141,7 +141,7 @@ func repoListHandler(w http.ResponseWriter, r *http.Request) {
 		Repos: repoData,
 	})
 	if err != nil {
-		fmt.Println(err)
+		web.Backend.Logger.Error("cannot execute template", "err", err)
 	}
 }
 
@@ -169,7 +169,7 @@ func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 
 	web, err := getWebCtx(r)
 	if err != nil {
-		fmt.Println(err)
+		web.Logger.Error("fetch web", "err", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -231,7 +231,7 @@ func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 		ReviewedPrs: reviewedList,
 	})
 	if err != nil {
-		fmt.Println(err)
+		web.Backend.Logger.Error("cannot execute template", "err", err)
 	}
 }
 
@@ -334,7 +334,7 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 	if err != nil {
-		fmt.Println(err)
+		web.Backend.Logger.Error("cannot execute template", "err", err)
 	}
 }
 
@@ -452,7 +452,7 @@ func chromaStyleHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("content-type", "text/css")
 	err = web.Formatter.WriteCSS(w, web.Theme)
 	if err != nil {
-		fmt.Println(err)
+		web.Backend.Logger.Error("cannot write css file", "err", err)
 	}
 }
 

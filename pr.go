@@ -27,7 +27,7 @@ type GitPatchRequest interface {
 	GetUsers() ([]*User, error)
 	GetUserByID(userID int64) (*User, error)
 	GetUserByPubkey(pubkey string) (*User, error)
-	UpsertUser(user *User) (*User, error)
+	UpsertUser(pubkey, name string) (*User, error)
 	GetRepos() ([]*Repo, error)
 	GetReposWithLatestPr() ([]RepoWithLatestPr, error)
 	GetRepoByID(repoID string) (*Repo, error)
@@ -55,19 +55,58 @@ var _ GitPatchRequest = PrCmd{}
 var _ GitPatchRequest = (*PrCmd)(nil)
 
 func (pr PrCmd) GetUsers() ([]*User, error) {
-	return []*User{}, nil
+	users := []*User{}
+	err := pr.Backend.DB.Select(&users, "SELECT * FROM app_users")
+	return users, err
 }
 
 func (pr PrCmd) GetUserByID(id int64) (*User, error) {
-	return nil, nil
+	var user User
+	err := pr.Backend.DB.Get(&user, "SELECT * FROM app_users WHERE id=?", id)
+	return &user, err
 }
 
 func (pr PrCmd) GetUserByPubkey(pubkey string) (*User, error) {
-	return nil, nil
+	var user User
+	err := pr.Backend.DB.Get(&user, "SELECT * FROM app_users WHERE pubkey=?", pubkey)
+	return &user, err
 }
 
-func (pr PrCmd) UpsertUser(user *User) (*User, error) {
-	return nil, nil
+func (pr PrCmd) createUser(pubkey, name string) (*User, error) {
+	if pubkey == "" {
+		return nil, fmt.Errorf("must provide pubkey when creating user")
+	}
+	if name == "" {
+		return nil, fmt.Errorf("must provide user name when creating user")
+	}
+
+	var userID int64
+	row := pr.Backend.DB.QueryRow(
+		"INSERT INTO app_users (pubkey, name) VALUES (?, ?) RETURNING id",
+		pubkey,
+		name,
+	)
+	err := row.Scan(&userID)
+	if err != nil {
+		return nil, err
+	}
+	if userID == 0 {
+		return nil, fmt.Errorf("could not create user")
+	}
+
+	user, err := pr.GetUserByID(userID)
+	return user, err
+}
+
+func (pr PrCmd) UpsertUser(pubkey, name string) (*User, error) {
+	if pubkey == "" {
+		return nil, fmt.Errorf("must provide pubkey during upsert")
+	}
+	user, err := pr.GetUserByPubkey(pubkey)
+	if err != nil {
+		user, err = pr.createUser(pubkey, name)
+	}
+	return user, err
 }
 
 type PrWithRepo struct {

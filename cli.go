@@ -216,10 +216,7 @@ Here's how it works:
 						Args:      true,
 						ArgsUsage: "[repoID]",
 						Action: func(cCtx *cli.Context) error {
-							user, err := pr.UpsertUser(&User{
-								Pubkey: pubkey,
-								Name:   userName,
-							})
+							user, err := pr.UpsertUser(pubkey, userName)
 							if err != nil {
 								return err
 							}
@@ -452,10 +449,7 @@ Here's how it works:
 								return fmt.Errorf("PR has already been accepted")
 							}
 
-							user, err := pr.UpsertUser(&User{
-								Pubkey: pubkey,
-								Name:   userName,
-							})
+							user, err := pr.UpsertUser(pubkey, userName)
 							if err != nil {
 								return err
 							}
@@ -478,10 +472,7 @@ Here's how it works:
 								return err
 							}
 
-							user, err := pr.UpsertUser(&User{
-								Pubkey: pubkey,
-								Name:   userName,
-							})
+							user, err := pr.UpsertUser(pubkey, userName)
 							if err != nil {
 								return err
 							}
@@ -524,10 +515,7 @@ Here's how it works:
 								return err
 							}
 
-							user, err := pr.UpsertUser(&User{
-								Pubkey: pubkey,
-								Name:   userName,
-							})
+							user, err := pr.UpsertUser(pubkey, userName)
 							if err != nil {
 								return err
 							}
@@ -565,10 +553,7 @@ Here's how it works:
 								return err
 							}
 
-							user, err := pr.UpsertUser(&User{
-								Pubkey: pubkey,
-								Name:   userName,
-							})
+							user, err := pr.UpsertUser(pubkey, userName)
 							if err != nil {
 								return err
 							}
@@ -622,10 +607,7 @@ Here's how it works:
 								return err
 							}
 
-							user, err := pr.UpsertUser(&User{
-								Pubkey: pubkey,
-								Name:   userName,
-							})
+							user, err := pr.UpsertUser(pubkey, userName)
 							if err != nil {
 								return err
 							}
