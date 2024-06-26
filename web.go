@@ -71,6 +71,7 @@ func getTemplate(file string) *template.Template {
 			filepath.Join("tmpl", file),
 			filepath.Join("tmpl", "pr-header.html"),
 			filepath.Join("tmpl", "pr-list-item.html"),
+			filepath.Join("tmpl", "pr-status.html"),
 			filepath.Join("tmpl", "base.html"),
 		),
 	)
@@ -237,6 +238,7 @@ func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 
 type PrData struct {
 	ID       int64
+	IsAdmin  bool
 	Title    string
 	Date     string
 	UserName string
@@ -316,6 +318,13 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("content-type", "text/html")
 	tmpl := getTemplate("pr-detail.html")
+	pk, err := web.Backend.PubkeyToPublicKey(user.Pubkey)
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+	isAdmin := web.Backend.IsAdmin(pk)
+
 	err = tmpl.Execute(w, PrHeaderData{
 		Page: "pr",
 		Repo: LinkData{
@@ -326,6 +335,7 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 		Patches: patchesData,
 		Pr: PrData{
 			ID:       pr.ID,
+			IsAdmin:  isAdmin,
 			Title:    pr.Name,
 			UserName: user.Name,
 			Pubkey:   user.Pubkey,

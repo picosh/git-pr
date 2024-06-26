@@ -1,0 +1,11 @@
+{{define "pr-status"}}
+  {{if eq . "reviewed"}}
+    <code class="pill-alert">{{.}}</code>
+  {{else if eq . "opened"}}
+    <code class="pill-info">{{.}}</code>
+  {{else if eq . "accepted"}}
+    <code class="pill-success">{{.}}</code>
+  {{else}}
+    <code>{{.}}</code>
+  {{end}}
+{{end}}

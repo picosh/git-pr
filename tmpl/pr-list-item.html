@@ -1,6 +1,9 @@
 {{define "pr-list-item"}}
 <div>
-  <div style="margin-bottom: 0.15rem;"><a href="{{.Url}}">{{.Text}}</a> <code>{{.Status}}</code></div>
+  <div style="margin-bottom: 0.15rem;">
+    <a href="{{.Url}}">{{.Text}}</a>
+    {{template "pr-status" .Status}}
+  </div>
   <div>
     <code>#{{.ID}}</code>
     <span>opened on <date>{{.Date}}</date> by </span>

@@ -6,9 +6,9 @@
   </h1>
 
   <div class="text-sm">
-    <code>{{.Pr.Status}}</code>
+    {{template "pr-status" .Pr.Status}}
     <span>opened on <date>{{.Pr.Date}}</date> by</span>
-    <code title="{{.Pr.Pubkey}}">{{.Pr.UserName}}</code>
+    <code class="{{if .Pr.IsAdmin}}pill-alert{{end}}" title="{{.Pr.Pubkey}}">{{.Pr.UserName}}</code>
   </div>
 
   <details>

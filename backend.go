@@ -37,6 +37,11 @@ func (be *Backend) KeyForFingerprint(pk ssh.PublicKey) string {
 	return gossh.FingerprintSHA256(pk)
 }
 
+func (be *Backend) PubkeyToPublicKey(pubkey string) (ssh.PublicKey, error) {
+	kk, _, _, _, err := ssh.ParseAuthorizedKey([]byte(pubkey))
+	return kk, err
+}
+
 func (be *Backend) KeyForKeyText(pk ssh.PublicKey) string {
 	kb := base64.StdEncoding.EncodeToString(pk.Marshal())
 	return fmt.Sprintf("%s %s", pk.Type(), kb)
