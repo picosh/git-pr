@@ -14,6 +14,138 @@
   <div>A new git collaboration service.</div>
   <pre class="m-0">ssh pr.pico.sh help</pre>
   <details>
+    <summary>Intro</summary>
+
+    <div>
+      <p>
+        We are trying to build the simplest git collaboration tool. The goal is to make
+        self-hosting a git server as simple as running an SSH server -- all without
+        sacrificing external collaborators time and energy.
+      </p>
+
+      <blockquote>
+        <code>git format-patch</code> isn't the problem and pull requests aren't the solution.
+      </blockquote>
+
+      <p>
+        We are combining mailing list and pull request workflows. In order to build the
+        simplest collaboration tool, we needed something as simple as generating patches
+        but the ease-of-use of pull requests.
+      </p>
+
+      <p>
+        The goal is not to create another code forge here. The goal is to create a very
+        simple self-hosted git solution with the ability to collaborate with external
+        contributors. All the code owner needs to setup a running git server:
+      </p>
+
+      <ul><li>A single golang binary</li></ul>
+
+      <div>
+        All an external contributor needs is:
+      </div>
+
+      <ul>
+        <li>An SSH keypair</li>
+        <li>An SSH client</li>
+      </ul>
+
+      <h2 class="text-xl">the problem</h2>
+
+      <p>
+        Email is great as a decentralized system to send and receive changes (patchsets)
+        to a git repo. However, onboarding a new user to a mailing list, properly
+        setting up their email client, and then finally submitting the code contribution
+        is enough to make many developers give up. Further, because we are leveraging
+        the email protocol for collaboration, we are limited by its feature-set. For
+        example, it is not possible to make edits to emails, everyone has a different
+        client, those clients have different limitations around plain text email and
+        downloading patches from it.
+      </p>
+
+      <p>
+        Github pull requests are easy to use, easy to edit, and easy to manage. The
+        downside is it forces the user to be inside their website to perform reviews.
+        For quick changes, this is great, but when you start reading code within a web
+        browser, there are quite a few downsides. At a certain point, it makes more
+        sense to review code inside your local development environment, IDE, etc. There
+        are tools and plugins that allow users to review PRs inside their IDE, but it
+        requires a herculean effort to make it usable.
+      </p>
+
+      <p>
+        Further, self-hosted solutions that mimic a pull request require a lot of
+        infrastructure in order to manage it. A database, a web site connected to git,
+        admin management, and services to manage it all. Another big point of friction:
+        before an external user submits a code change, they first need to create an
+        account and then login. This adds quite a bit of friction for a self-hosted
+        solution, not only for an external contributor, but also for the code owner who
+        has to provision the infra. Often times they also have to fork the repo within
+        the code forge before submitting a PR. Then they never make a contribution ever
+        again and keep a forked repo around forever. That seems silly.
+      </p>
+
+      <h2 class="text-xl">introducing patch requests (PR)</h2>
+
+      <p>
+        Instead, we want to create a self-hosted git "server" that can handle sending
+        and receiving patches without the cumbersome nature of setting up email or the
+        limitations imposed by the email protocol. Further, we want the primary workflow
+        to surround the local development environment. Github is bringing the IDE to the
+        browser in order to support their workflow, we want to flip that idea on its
+        head by making code reviews a first-class citizen inside your local development
+        environment.
+      </p>
+
+      <p>
+        We see this as a hybrid between the github workflow of a pull request and
+        sending and receiving patches over email.
+      </p>
+
+      <p>
+        The basic idea is to leverage an SSH app to handle most of the interaction
+        between contributor and owner of a project. Everything can be done completely
+        within the terminal, in a way that is ergonomic and fully featured.
+      </p>
+
+      <p>
+        Notifications would happen with RSS and all state mutations would result in the
+        generation of static web assets so it can all be hosted using a simple file web
+        server.
+      </p>
+
+      <h3 class="text-lg">format-patch workflow</h3>
+
+      <p>
+        The fundamental collaboration tool here is <code>format-patch</code>. Whether you a
+        submitting code changes or you are reviewing code changes, it all happens in
+        code. Both contributor and owner are simply creating new commits and generating
+        patches on top of each other. This obviates the need to have a web viewer where
+        the reviewing can "comment" on a line of code block. There's no need, apply the
+        contributor's patches, write comments or code changes, generate a new patch,
+        send the patch to the git server as a "review." This flow also works the exact
+        same if two users are collaborating on a set of changes.
+      </p>
+
+      <p>
+        This also solves the problem of sending multiple patchsets for the same code
+        change. There's a single, central Patch Request where all changes and
+        collaboration happens.
+      </p>
+
+      <p>
+        We could figure out a way to leverage <code>git notes</code> for reviews / comments, but
+        honestly, that solution feels brutal and outside the comfort level of most git
+        users. Just send reviews as code and write comments in the programming language
+        you are using. It's the job of the contributor to "address" those comments and
+        then remove them in subsequent patches. This is the forcing function to address
+        all comments: the patch won't be merged if there are comment unaddressed in
+        code; they cannot be ignored or else they will be upstreamed erroneously.
+      </p>
+    </div>
+  </details>
+
+  <details>
     <summary>How do Patch Requests work?</summary>
       <div>
         Patch requests (PR) are the simplest way to submit, review, and accept changes to your git repository.

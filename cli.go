@@ -49,6 +49,13 @@ Here's how it works:
 		Usage:       "Collaborate with contributors for your git project",
 		Writer:      sesh,
 		ErrWriter:   sesh,
+		ExitErrHandler: func(cCtx *cli.Context, err error) {
+			wish.Fatalln(sesh, err)
+		},
+		OnUsageError: func(cCtx *cli.Context, err error, isSubcommand bool) error {
+			wish.Fatalln(sesh, err)
+			return nil
+		},
 		Commands: []*cli.Command{
 			/* {
 				Name:  "git-receive-pack",

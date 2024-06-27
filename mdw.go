@@ -15,6 +15,7 @@ func GitPatchRequestMiddleware(be *Backend, pr GitPatchRequest) wish.Middleware 
 			if err != nil {
 				be.Logger.Error("error when running cli", "err", err)
 				wish.Fatalln(sesh, err)
+				next(sesh)
 				return
 			}
 		}

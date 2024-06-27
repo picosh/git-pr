@@ -1,8 +1,8 @@
 # `pico/git-pr` a self-hosted git collaboration server
 
 We are trying to build the simplest git collaboration tool. The goal is to make
-self-hosting a git server as simple as running an SSH server and hosting static
-web assets -- all without sacrificing external collaborators.
+self-hosting a git server as simple as running an SSH server -- all without
+sacrificing external collaborators time and energy.
 
 > `git format-patch` isn't the problem and pull requests aren't the solution.
 
@@ -15,7 +15,6 @@ simple self-hosted git solution with the ability to collaborate with external
 contributors. All the code owner needs to setup a running git server:
 
 - A single golang binary
-- sqlite to store patch requests and other repo metadata
 
 All an external contributor needs is:
 
@@ -37,7 +36,9 @@ Github pull requests are easy to use, easy to edit, and easy to manage. The
 downside is it forces the user to be inside their website to perform reviews.
 For quick changes, this is great, but when you start reading code within a web
 browser, there are quite a few downsides. At a certain point, it makes more
-sense to review code inside your local development environment, IDE, etc.
+sense to review code inside your local development environment, IDE, etc. There
+are tools and plugins that allow users to review PRs inside their IDE, but it
+requires a herculean effort to make it usable.
 
 Further, self-hosted solutions that mimic a pull request require a lot of
 infrastructure in order to manage it. A database, a web site connected to git,
@@ -55,8 +56,9 @@ Instead, we want to create a self-hosted git "server" that can handle sending
 and receiving patches without the cumbersome nature of setting up email or the
 limitations imposed by the email protocol. Further, we want the primary workflow
 to surround the local development environment. Github is bringing the IDE to the
-browser in order to support their workflow, we want to bring the workflow to the
-local dev environment.
+browser in order to support their workflow, we want to flip that idea on its
+head by making code reviews a first-class citizen inside your local development
+environment.
 
 We see this as a hybrid between the github workflow of a pull request and
 sending and receiving patches over email.
@@ -82,18 +84,18 @@ git clone git@github.com:user/noice.git
 git add -A && git commit -m "fix: some bugs"
 
 # Contributor runs:
-git format-patch --stdout | ssh pr.pico.sh pr create noice
+git format-patch origin/main --stdout | ssh pr.pico.sh pr create noice
 # > Patch Request has been created (ID: 1)
 
 # Owner can checkout patch:
-ssh pr.pico.sh pr print 1 | git am -3 -i
+ssh pr.pico.sh pr print 1 | git am -3
 # Owner can comment (IN CODE), commit, then send another format-patch
 # on top of the PR:
-git format-patch HEAD~1 --stdout | ssh pr.pico.sh pr review 1
+git format-patch origin/main --stdout | ssh pr.pico.sh pr add --review 1
 # UI clearly marks patch as a review
 
 # Contributor can checkout reviews
-ssh pr.pico.sh pr print 1 | git am -3 -i
+ssh pr.pico.sh pr print 1 | git am -3
 
 # Owner can reject a pr:
 ssh pr.pico.sh pr close 1
@@ -102,7 +104,7 @@ ssh pr.pico.sh pr close 1
 ssh pr.pico.sh pr accept 1
 
 # Owner can cleanup PR:
-ssh pr.pico.sh pr print 1 | git am -3 -i
+ssh pr.pico.sh pr print 1 | git am -3
 
 # Then push to upstream
 git push origin main
@@ -127,7 +129,9 @@ We could figure out a way to leverage `git notes` for reviews / comments, but
 honestly, that solution feels brutal and outside the comfort level of most git
 users. Just send reviews as code and write comments in the programming language
 you are using. It's the job of the contributor to "address" those comments and
-then remove them in subsequent patches.
+then remove them in subsequent patches. This is the forcing function to address
+all comments: the patch won't be merged if there are comment unaddressed in
+code; they cannot be ignored or else they will be upstreamed erroneously.
 
 # research
 

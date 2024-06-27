@@ -391,6 +391,11 @@ func (cmd PrCmd) parsePatchSet(patchset io.Reader) ([]*Patch, error) {
 			return nil, err
 		}
 
+		if len(diffFiles) == 0 {
+			cmd.Backend.Logger.Info("not diff files found for patch, skipping")
+			continue
+		}
+
 		authorName := "Unknown"
 		authorEmail := ""
 		if header.Author != nil {
@@ -463,6 +468,11 @@ func (cmd PrCmd) SubmitPatchRequest(repoID string, userID int64, patchset io.Rea
 	if err != nil {
 		return nil, err
 	}
+
+	if len(patches) == 0 {
+		return nil, fmt.Errorf("after parsing patchset we did't find any patches, did you send us an empty patchset?")
+	}
+
 	prName := ""
 	prText := ""
 	if len(patches) > 0 {
