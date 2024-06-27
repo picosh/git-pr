@@ -54,6 +54,7 @@ type Patch struct {
 	BodyAppendix   string    `db:"body_appendix"`
 	CommitSha      string    `db:"commit_sha"`
 	ContentSha     string    `db:"content_sha"`
+	BaseCommitSha  string    `db:"base_commit_sha"`
 	Review         bool      `db:"review"`
 	RawText        string    `db:"raw_text"`
 	CreatedAt      time.Time `db:"created_at"`
@@ -154,6 +155,7 @@ CREATE TABLE IF NOT EXISTS event_logs (
 
 var sqliteMigrations = []string{
 	"", // migration #0 is reserved for schema initialization
+	"ALTER TABLE patches ADD COLUMN base_commit_sha TEXT",
 }
 
 // Open opens a database connection.

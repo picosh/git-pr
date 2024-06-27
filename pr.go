@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"time"
 
@@ -367,8 +368,18 @@ func (cmd PrCmd) calcContentSha(diffFiles []*gitdiff.File, header *gitdiff.Patch
 	return shaStr
 }
 
-func (cmd PrCmd) splitPatchSet(patchset string) []string {
+func splitPatchSet(patchset string) []string {
 	return strings.Split(patchset, "\n\n\n")
+}
+
+func findBaseCommit(patch string) string {
+	re := regexp.MustCompile(`base-commit: (.+)\s*`)
+	strs := re.FindStringSubmatch(patch)
+	baseCommit := ""
+	if len(strs) > 1 {
+		baseCommit = strs[1]
+	}
+	return baseCommit
 }
 
 func (cmd PrCmd) parsePatchSet(patchset io.Reader) ([]*Patch, error) {
@@ -379,7 +390,7 @@ func (cmd PrCmd) parsePatchSet(patchset io.Reader) ([]*Patch, error) {
 		return nil, err
 	}
 
-	patchesRaw := cmd.splitPatchSet(buf.String())
+	patchesRaw := splitPatchSet(buf.String())
 	for _, patchRaw := range patchesRaw {
 		reader := strings.NewReader(patchRaw)
 		diffFiles, preamble, err := gitdiff.Parse(reader)
@@ -396,6 +407,7 @@ func (cmd PrCmd) parsePatchSet(patchset io.Reader) ([]*Patch, error) {
 			continue
 		}
 
+		baseCommit := findBaseCommit(patchRaw)
 		authorName := "Unknown"
 		authorEmail := ""
 		if header.Author != nil {
@@ -406,15 +418,16 @@ func (cmd PrCmd) parsePatchSet(patchset io.Reader) ([]*Patch, error) {
 		contentSha := cmd.calcContentSha(diffFiles, header)
 
 		patches = append(patches, &Patch{
-			AuthorName:   authorName,
-			AuthorEmail:  authorEmail,
-			AuthorDate:   header.AuthorDate.UTC().String(),
-			Title:        header.Title,
-			Body:         header.Body,
-			BodyAppendix: header.BodyAppendix,
-			CommitSha:    header.SHA,
-			ContentSha:   contentSha,
-			RawText:      patchRaw,
+			AuthorName:    authorName,
+			AuthorEmail:   authorEmail,
+			AuthorDate:    header.AuthorDate.UTC().String(),
+			Title:         header.Title,
+			Body:          header.Body,
+			BodyAppendix:  header.BodyAppendix,
+			CommitSha:     header.SHA,
+			ContentSha:    contentSha,
+			RawText:       patchRaw,
+			BaseCommitSha: baseCommit,
 		})
 	}
 
@@ -430,7 +443,7 @@ func (cmd PrCmd) createPatch(tx *sqlx.Tx, review bool, patch *Patch) (int64, err
 
 	var patchID int64
 	row := tx.QueryRow(
-		"INSERT INTO patches (user_id, patch_request_id, author_name, author_email, author_date, title, body, body_appendix, commit_sha, content_sha, review, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+		"INSERT INTO patches (user_id, patch_request_id, author_name, author_email, author_date, title, body, body_appendix, commit_sha, content_sha, base_commit_sha, review, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
 		patch.UserID,
 		patch.PatchRequestID,
 		patch.AuthorName,
@@ -441,6 +454,7 @@ func (cmd PrCmd) createPatch(tx *sqlx.Tx, review bool, patch *Patch) (int64, err
 		patch.BodyAppendix,
 		patch.CommitSha,
 		patch.ContentSha,
+		patch.BaseCommitSha,
 		review,
 		patch.RawText,
 	)
