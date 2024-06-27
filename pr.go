@@ -2,6 +2,7 @@ package git
 
 import (
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -427,7 +428,7 @@ func (cmd PrCmd) parsePatchSet(patchset io.Reader) ([]*Patch, error) {
 			CommitSha:     header.SHA,
 			ContentSha:    contentSha,
 			RawText:       patchRaw,
-			BaseCommitSha: baseCommit,
+			BaseCommitSha: sql.NullString{String: baseCommit},
 		})
 	}
 

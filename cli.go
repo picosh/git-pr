@@ -50,10 +50,14 @@ Here's how it works:
 		Writer:      sesh,
 		ErrWriter:   sesh,
 		ExitErrHandler: func(cCtx *cli.Context, err error) {
-			wish.Fatalln(sesh, err)
+			if err != nil {
+				wish.Fatalln(sesh, err)
+			}
 		},
 		OnUsageError: func(cCtx *cli.Context, err error, isSubcommand bool) error {
-			wish.Fatalln(sesh, err)
+			if err != nil {
+				wish.Fatalln(sesh, err)
+			}
 			return nil
 		},
 		Commands: []*cli.Command{
@@ -229,16 +233,26 @@ Here's how it works:
 							}
 
 							repoID := cCtx.Args().First()
-							request, err := pr.SubmitPatchRequest(repoID, user.ID, sesh)
+							prq, err := pr.SubmitPatchRequest(repoID, user.ID, sesh)
 							if err != nil {
 								return err
 							}
-							wish.Printf(
+							wish.Println(
 								sesh,
-								"PR submitted! Use the ID for interacting with this PR.\nID\tName\n%d\t%s\n",
-								request.ID,
-								request.Name,
+								"PR submitted! Use the ID for interacting with this PR.",
 							)
+
+							writer := NewTabWriter(sesh)
+							fmt.Fprintln(writer, "ID\tName\tURL")
+							fmt.Fprintf(
+								writer,
+								"%d\t%s\t%s\n",
+								prq.ID,
+								prq.Name,
+								fmt.Sprintf("https://%s/prs/%d", be.Cfg.Url, prq.ID),
+							)
+							writer.Flush()
+
 							return nil
 						},
 					},
@@ -671,6 +685,11 @@ Here's how it works:
 								)
 							}
 							writer.Flush()
+
+							wish.Println(
+								sesh,
+								fmt.Sprintf("https://%s/prs/%d", be.Cfg.Url, prq.ID),
+							)
 							return nil
 						},
 					},

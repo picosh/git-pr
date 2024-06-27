@@ -43,21 +43,21 @@ type PatchRequest struct {
 // Patch is a database model for a single entry in a patchset.
 // This usually corresponds to a git commit.
 type Patch struct {
-	ID             int64     `db:"id"`
-	UserID         int64     `db:"user_id"`
-	PatchRequestID int64     `db:"patch_request_id"`
-	AuthorName     string    `db:"author_name"`
-	AuthorEmail    string    `db:"author_email"`
-	AuthorDate     string    `db:"author_date"`
-	Title          string    `db:"title"`
-	Body           string    `db:"body"`
-	BodyAppendix   string    `db:"body_appendix"`
-	CommitSha      string    `db:"commit_sha"`
-	ContentSha     string    `db:"content_sha"`
-	BaseCommitSha  string    `db:"base_commit_sha"`
-	Review         bool      `db:"review"`
-	RawText        string    `db:"raw_text"`
-	CreatedAt      time.Time `db:"created_at"`
+	ID             int64          `db:"id"`
+	UserID         int64          `db:"user_id"`
+	PatchRequestID int64          `db:"patch_request_id"`
+	AuthorName     string         `db:"author_name"`
+	AuthorEmail    string         `db:"author_email"`
+	AuthorDate     string         `db:"author_date"`
+	Title          string         `db:"title"`
+	Body           string         `db:"body"`
+	BodyAppendix   string         `db:"body_appendix"`
+	CommitSha      string         `db:"commit_sha"`
+	ContentSha     string         `db:"content_sha"`
+	BaseCommitSha  sql.NullString `db:"base_commit_sha"`
+	Review         bool           `db:"review"`
+	RawText        string         `db:"raw_text"`
+	CreatedAt      time.Time      `db:"created_at"`
 }
 
 // EventLog is a event log for RSS or other notification systems.

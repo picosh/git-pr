@@ -371,11 +371,7 @@ func rssHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	repoID := r.PathValue("repoid")
 	pubkey := r.URL.Query().Get("pubkey")
-	user, err := web.Pr.GetUserByPubkey(pubkey)
-	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
+
 	if id != "" {
 		var prID int64
 		prID, err = getPrID(id)
@@ -385,6 +381,11 @@ func rssHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		eventLogs, err = web.Pr.GetEventLogsByPrID(prID)
 	} else if pubkey != "" {
+		user, perr := web.Pr.GetUserByPubkey(pubkey)
+		if perr != nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
 		eventLogs, err = web.Pr.GetEventLogsByUserID(user.ID)
 	} else if repoID != "" {
 		eventLogs, err = web.Pr.GetEventLogsByRepoID(repoID)
