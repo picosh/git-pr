@@ -91,10 +91,6 @@ func (pr PrCmd) computeUserName(name string) (string, error) {
 	var user User
 	err := pr.Backend.DB.Get(&user, "SELECT * FROM app_users WHERE name=?", name)
 	if err != nil {
-		return name, err
-	}
-	// name is available
-	if user.ID == 0 {
 		return name, nil
 	}
 	// collision, generate random number and append
