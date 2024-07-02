@@ -9,6 +9,9 @@ func NewPicoCfg() *git.GitCfg {
 	pico := git.NewRepo("pico", "git@github.com:picosh/pico")
 	pico.Desc = "hacker labs - open and managed web services leveraging ssh"
 
+	pr := git.NewRepo("git-pr", "git@github.com:picosh/git-pr")
+	pr.Desc = "the easiest git collaboration tool"
+
 	ptun := git.NewRepo("ptun", "git@github.com:picosh/ptun")
 	ptun.Desc = "passwordless authentication for the web"
 
@@ -24,6 +27,6 @@ func NewPicoCfg() *git.GitCfg {
 	return git.NewGitCfg(
 		"ssh_data",
 		"pr.pico.sh",
-		[]*git.Repo{test, pico, ptun, pobj, send, docs},
+		[]*git.Repo{test, pico, ptun, pobj, send, docs, pr},
 	)
 }
