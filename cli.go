@@ -88,12 +88,15 @@ Here's how it works:
 						return err
 					}
 					writer := NewTabWriter(sesh)
-					fmt.Fprintln(writer, "ID")
+					fmt.Fprintln(writer, "ID\tDefBranch\tClone\tDesc")
 					for _, repo := range repos {
 						fmt.Fprintf(
 							writer,
-							"%s\n",
+							"%s\t%s\t%s\t%s\n",
 							utils.SanitizeRepo(repo.ID),
+							repo.DefaultBranch,
+							repo.CloneAddr,
+							repo.Desc,
 						)
 					}
 					writer.Flush()
@@ -175,6 +178,10 @@ Here's how it works:
 								Name:  "accepted",
 								Usage: "only show accepted PRs",
 							},
+							&cli.StringFlag{
+								Name:  "repo",
+								Usage: "only show PRs by Repo ID",
+							},
 						},
 						Action: func(cCtx *cli.Context) error {
 							repoID := cCtx.Args().First()
@@ -191,10 +198,15 @@ Here's how it works:
 
 							onlyAccepted := cCtx.Bool("accepted")
 							onlyClosed := cCtx.Bool("closed")
+							onlyRepoID := cCtx.String("repo")
 
 							writer := NewTabWriter(sesh)
-							fmt.Fprintln(writer, "ID\tRepoID\tName\tStatus\tDate")
+							fmt.Fprintln(writer, "ID\tRepoID\tName\tStatus\tUser\tDate")
 							for _, req := range prs {
+								if onlyRepoID != "" && req.RepoID != onlyRepoID {
+									continue
+								}
+
 								if onlyAccepted && req.Status != "accepted" {
 									continue
 								}
@@ -207,13 +219,20 @@ Here's how it works:
 									continue
 								}
 
+								user, err := pr.GetUserByID(req.UserID)
+								if err != nil {
+									be.Logger.Error("could not get user for pr", "err", err)
+									continue
+								}
+
 								fmt.Fprintf(
 									writer,
-									"%d\t%s\t%s\t[%s]\t%s\n",
+									"%d\t%s\t%s\t[%s]\t%s\t%s\n",
 									req.ID,
 									req.RepoID,
 									req.Name,
 									req.Status,
+									user.Name,
 									req.CreatedAt.Format(time.RFC3339Nano),
 								)
 							}

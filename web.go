@@ -112,8 +112,15 @@ func repoListHandler(w http.ResponseWriter, r *http.Request) {
 		var ls *PrListData
 		if repo.PatchRequest != nil {
 			curpr := repo.PatchRequest
+			pk, err := web.Backend.PubkeyToPublicKey(repo.User.Pubkey)
+			if err != nil {
+				w.WriteHeader(http.StatusUnprocessableEntity)
+				return
+			}
+			isAdmin := web.Backend.IsAdmin(pk)
 			ls = &PrListData{
 				ID:       curpr.ID,
+				IsAdmin:  isAdmin,
 				UserName: repo.User.Name,
 				Pubkey:   repo.User.Pubkey,
 				LinkData: LinkData{
@@ -149,6 +156,7 @@ func repoListHandler(w http.ResponseWriter, r *http.Request) {
 type PrListData struct {
 	LinkData
 	ID       int64
+	IsAdmin  bool
 	UserName string
 	Pubkey   string
 	Date     string
@@ -198,8 +206,15 @@ func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			continue
 		}
+		pk, err := web.Backend.PubkeyToPublicKey(user.Pubkey)
+		if err != nil {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			return
+		}
+		isAdmin := web.Backend.IsAdmin(pk)
 		ls := PrListData{
 			ID:       curpr.ID,
+			IsAdmin:  isAdmin,
 			UserName: user.Name,
 			Pubkey:   user.Pubkey,
 			LinkData: LinkData{
@@ -496,6 +511,14 @@ func StartWebServer(cfg *GitCfg) {
 		Formatter: formatter,
 		Theme:     styles.Get("dracula"),
 	}
+
+	keys, err := getAuthorizedKeys(filepath.Join(cfg.DataPath, "authorized_keys"))
+	if err == nil {
+		cfg.Admins = keys
+	} else {
+		logger.Error("could not parse authorized keys file", "err", err)
+	}
+
 	ctx := context.Background()
 	ctx = setWebCtx(ctx, web)
 
