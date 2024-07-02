@@ -38,6 +38,8 @@ type PatchRequest struct {
 	Status    string    `db:"status"`
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
+	// only used for aggregate queries
+	LastUpdated string `db:"last_updated"`
 }
 
 // Patch is a database model for a single entry in a patchset.

@@ -159,7 +159,7 @@ func (pr PrCmd) GetRepos() ([]*Repo, error) {
 func (pr PrCmd) GetReposWithLatestPr() ([]RepoWithLatestPr, error) {
 	repos := []RepoWithLatestPr{}
 	prs := []PatchRequest{}
-	err := pr.Backend.DB.Select(&prs, "SELECT * FROM patch_requests GROUP BY repo_id ORDER BY updated_at DESC")
+	err := pr.Backend.DB.Select(&prs, "SELECT *, max(updated_at) as last_updated FROM patch_requests GROUP BY repo_id")
 	if err != nil {
 		return repos, err
 	}
