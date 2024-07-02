@@ -133,8 +133,10 @@ then remove them in subsequent patches. This is the forcing function to address
 all comments: the patch won't be merged if there are comment unaddressed in
 code; they cannot be ignored or else they will be upstreamed erroneously.
 
-# research
+# roadmap
 
-- https://git-scm.com/docs/git-format-patch
-- https://stackoverflow.com/a/42634501
-- https://lists.sr.ht/~sircmpwn/himitsu-devel/patches/47404
+- Guide for setting up `git-pr`
+- PR build steps (e.g. check that a patch can be cleanly applied)
+- Git remote for repos
+- Review patch inline (edit patch directly with comments `# xxx` then reupload)
+- TUI
