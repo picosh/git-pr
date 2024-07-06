@@ -145,11 +145,12 @@ code; they cannot be ignored or else they will be upstreamed erroneously.
 > This project is being actively developed and we have not reached alpha status
 > yet.
 
-- Publish demo video
-- PR should be displayed as an event log
-- Guide for self-hosting `git-pr`
-- **Alpha status**
-- Git remote for repos
-- PR build steps (e.g. check that a patch can be cleanly applied)
-- Review patch inline (edit patch directly with comments `# xxx` then reupload)
-- TUI
+1. Publish demo video
+1. Support user providing a config file
+1. PR should be displayed as an event log
+1. Guide for self-hosting `git-pr`
+1. **Alpha status**
+1. Git remote for repos
+1. PR build steps (e.g. check that a patch can be cleanly applied)
+1. Review patch inline (edit patch directly with comments `# xxx` then reupload)
+1. TUI?
