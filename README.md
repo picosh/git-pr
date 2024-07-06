@@ -48,7 +48,7 @@ account and then login. This adds quite a bit of friction for a self-hosted
 solution, not only for an external contributor, but also for the code owner who
 has to provision the infra. Often times they also have to fork the repo within
 the code forge before submitting a PR. Then they never make a contribution ever
-again and keep a forked repo around forever. That seems silly.
+again and a forked repo lingers. That seems silly.
 
 # introducing patch requests (PR)
 
@@ -58,7 +58,11 @@ limitations imposed by the email protocol. Further, we want the primary workflow
 to surround the local development environment. Github is bringing the IDE to the
 browser in order to support their workflow, we want to flip that idea on its
 head by making code reviews a first-class citizen inside your local development
-environment.
+environment. This has an interesting side-effect: the owner is placed in a more
+collaborative role because they must create at least one patch to submit a
+review. They are already in their local editor, they are already creating a git
+commit and "pushing" it, so naturally it is easier to make code changes during
+the review itself.
 
 We see this as a hybrid between the github workflow of a pull request and
 sending and receiving patches over email.
@@ -67,9 +71,11 @@ The basic idea is to leverage an SSH app to handle most of the interaction
 between contributor and owner of a project. Everything can be done completely
 within the terminal, in a way that is ergonomic and fully featured.
 
+The web view is mostly for discovery.
+
 Notifications would happen with RSS and all state mutations would result in the
-generation of static web assets so it can all be hosted using a simple file web
-server.
+generation of static web assets so the web views can be hosted using a simple
+web file server.
 
 ## format-patch workflow
 
@@ -77,7 +83,7 @@ server.
 # Owner hosts repo `noice.git` using github
 
 # Contributor clones repo
-git clone git@github.com:user/noice.git
+git clone git@github.com:picosh/test.git
 
 # Contributor wants to make a change
 # Contributor makes changes via commits
@@ -103,8 +109,8 @@ ssh pr.pico.sh pr close 1
 # Owner can accept a pr:
 ssh pr.pico.sh pr accept 1
 
-# Owner can cleanup PR:
-ssh pr.pico.sh pr print 1 | git am -3
+# Owner can prep PR for upstream:
+git rebase -i origin/main
 
 # Then push to upstream
 git push origin main
@@ -116,7 +122,7 @@ The fundamental collaboration tool here is `format-patch`. Whether you a
 submitting code changes or you are reviewing code changes, it all happens in
 code. Both contributor and owner are simply creating new commits and generating
 patches on top of each other. This obviates the need to have a web viewer where
-the reviewing can "comment" on a line of code block. There's no need, apply the
+the reviewer can "comment" on a line of code block. There's no need, apply the
 contributor's patches, write comments or code changes, generate a new patch,
 send the patch to the git server as a "review." This flow also works the exact
 same if two users are collaborating on a set of changes.
@@ -135,8 +141,15 @@ code; they cannot be ignored or else they will be upstreamed erroneously.
 
 # roadmap
 
-- Guide for setting up `git-pr`
-- PR build steps (e.g. check that a patch can be cleanly applied)
+> [!IMPORTANT]\
+> This project is being actively developed and we have not reached alpha status
+> yet.
+
+- Publish demo video
+- PR should be displayed as an event log
+- Guide for self-hosting `git-pr`
+- **Alpha status**
 - Git remote for repos
+- PR build steps (e.g. check that a patch can be cleanly applied)
 - Review patch inline (edit patch directly with comments `# xxx` then reupload)
 - TUI
