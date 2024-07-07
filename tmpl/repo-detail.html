@@ -23,6 +23,9 @@ git format-patch {{.Branch}} --stdout | ssh pr.pico.sh pr create {{.ID}}</pre>
     </details>
 	</div>
 </header>
+
+<hr />
+
 <main class="group">
   <h3 class="text-lg">Open PRs</h3>
   {{range .OpenPrs}}

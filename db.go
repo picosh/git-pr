@@ -125,6 +125,7 @@ CREATE TABLE IF NOT EXISTS patches (
   content_sha TEXT NOT NULL,
   review BOOLEAN NOT NULL DEFAULT false,
   raw_text TEXT NOT NULL,
+  base_commit_sha TEXT,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT pr_id_fk
     FOREIGN KEY(patch_request_id) REFERENCES patch_requests(id)
