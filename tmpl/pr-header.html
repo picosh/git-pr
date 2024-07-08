@@ -26,6 +26,10 @@ ssh pr.pico.sh pr print {{.Pr.ID}} | git am -3</pre>
 ssh pr.pico.sh pr print {{.Pr.ID}} --filter n | git am -3</pre>
       <pre class="m-0"># checkout patch range
 ssh pr.pico.sh pr print {{.Pr.ID}} --filter n:y | git am -3</pre>
+      <pre class="m-0"># accept PR
+ssh pr.pico.sh pr accept {{.Pr.ID}}</pre>
+      <pre class="m-0"># close PR
+ssh pr.pico.sh pr close {{.Pr.ID}}</pre>
     </div>
   </details>
 </header>

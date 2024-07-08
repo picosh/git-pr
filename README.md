@@ -1,3 +1,5 @@
+![git-pr-logo](logo.png)
+
 # `pico/git-pr` a self-hosted git collaboration server
 
 We are trying to build the simplest git collaboration tool. The goal is to make
