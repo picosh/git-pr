@@ -23,6 +23,10 @@ All an external contributor needs is:
 - An SSH keypair
 - An SSH client
 
+# demo video
+
+https://youtu.be/d28Dih-BBUw
+
 # the problem
 
 Email is great as a decentralized system to send and receive changes (patchsets)
