@@ -151,7 +151,6 @@ code; they cannot be ignored or else they will be upstreamed erroneously.
 > This project is being actively developed and we have not reached alpha status
 > yet.
 
-1. Publish demo video
 1. Support user providing a config file
 1. PR should be displayed as an event log
 1. Guide for self-hosting `git-pr`
