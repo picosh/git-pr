@@ -14,10 +14,10 @@ services:
       - ./data/git-caddy/data:/data
       - ./data/git-caddy/config:/config
     ports:
-      - "${GIT_HTTPS_V4:-443}:443"
-      - "${GIT_HTTP_V4:-80}:80"
-      - "${GIT_HTTPS_V6:-[::1]:443}:443"
-      - "${GIT_HTTP_V6:-[::1]:80}:80"
+      - "${GITPR_HTTPS_V4:-443}:443"
+      - "${GITPR_HTTP_V4:-80}:80"
+      - "${GITPR_HTTPS_V6:-[::1]:443}:443"
+      - "${GITPR_HTTP_V6:-[::1]:80}:80"
   web:
     networks:
       git:
@@ -33,8 +33,8 @@ services:
     env_file:
       - .env.prod
     ports:
-      - "${GIT_SSH_V4:-22}:2222"
-      - "${GIT_SSH_V6:-[::1]:22}:2222"
+      - "${GITPR_SSH_V4:-22}:2222"
+      - "${GITPR_SSH_V6:-[::1]:22}:2222"
 networks:
   git:
     driver_opts:
