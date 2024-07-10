@@ -1,5 +1,5 @@
 url = "pr.pico.sh"
-data = "ssh_data"
+data = "data"
 admins = [
   "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHM2RPNgcyt+Tpb77uj0oQYZWLadfB8x8mqJFy0C7Y8P",
   "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINlr0pScstAuTqs9Qr1KaMspHuFGO7cQMuvMMdJjbWG3"
