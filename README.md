@@ -207,9 +207,10 @@ curl localhost:3000
 > This project is being actively developed and we have not reached alpha status
 > yet.
 
-1. PR should be displayed as an event log
-1. **Alpha status**
+1. Announce **Alpha status**
+1. Remove reviews from `print` command
 1. Git remote for repos
 1. PR build steps (e.g. check that a patch can be cleanly applied)
-1. Review patch inline (edit patch directly with comments `# xxx` then reupload)
+1. Review patch inline? (e.g. edit patch directly with comments `# xxx` then
+   reupload)
 1. TUI?
