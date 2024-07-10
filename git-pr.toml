@@ -1,5 +1,8 @@
+# url is used for help commands
 url = "pr.pico.sh"
+# where we store the sqlite db, this toml file, git repos, and ssh host keys
 data_dir = "./data"
+# this gives users the ability to submit reviews and other admin permissions
 admins = [
   "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHM2RPNgcyt+Tpb77uj0oQYZWLadfB8x8mqJFy0C7Y8P",
   "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINlr0pScstAuTqs9Qr1KaMspHuFGO7cQMuvMMdJjbWG3"

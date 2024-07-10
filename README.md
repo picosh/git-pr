@@ -147,7 +147,9 @@ code; they cannot be ignored or else they will be upstreamed erroneously.
 
 # installation and setup
 
-Copy or create a `git-pr.toml` file inside `./data` directory:
+## setup
+
+[Copy](./git-pr.toml) or create a `git-pr.toml` file inside `./data` directory:
 
 ```bash
 mkdir data
@@ -155,21 +157,37 @@ vim ./data/git-pr.toml
 # configure file
 ```
 
+## docker
+
 Run the ssh app image:
 
 ```bash
-docker run -d -v ./data:/app/data \
-  --name git-pr-ssh \
-  ghcr.io/picosh/pico/git-ssh:latest
+docker run -d -v ./data:/app/data ghcr.io/picosh/pico/git-ssh:latest
 ```
 
 Run the web app image:
 
 ```bash
-docker run -d -v ./data:/app/data \
-  --name git-pr-web \
-  ghcr.io/picosh/pico/git-web:latest
+docker run -d -v ./data:/app/data ghcr.io/picosh/pico/git-web:latest
 ```
+
+## golang
+
+Clone this repo and then build the go binaries:
+
+```bash
+make build
+```
+
+```bash
+./build/ssh --config ./data/git-pr.toml
+```
+
+```bash
+./build/web --config ./data/git-pr.toml
+```
+
+## done!
 
 Access the ssh app:
 
@@ -189,7 +207,6 @@ curl localhost:3000
 > This project is being actively developed and we have not reached alpha status
 > yet.
 
-1. Guide for self-hosting `git-pr`
 1. PR should be displayed as an event log
 1. **Alpha status**
 1. Git remote for repos
