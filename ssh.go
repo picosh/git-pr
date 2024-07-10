@@ -32,7 +32,7 @@ func authHandler(pr *PrCmd) func(ctx ssh.Context, key ssh.PublicKey) bool {
 }
 
 func GitSshServer(cfg *GitCfg) {
-	dbh, err := Open(filepath.Join(cfg.DataPath, "pr.db"), cfg.Logger)
+	dbh, err := Open(filepath.Join(cfg.DataDir, "pr.db"), cfg.Logger)
 	if err != nil {
 		panic(err)
 	}
@@ -51,7 +51,7 @@ func GitSshServer(cfg *GitCfg) {
 			fmt.Sprintf("%s:%s", cfg.Host, cfg.SshPort),
 		),
 		wish.WithHostKeyPath(
-			filepath.Join(cfg.DataPath, "term_info_ed25519"),
+			filepath.Join(cfg.DataDir, "term_info_ed25519"),
 		),
 		wish.WithPublicKeyAuth(authHandler(prCmd)),
 		wish.WithMiddleware(

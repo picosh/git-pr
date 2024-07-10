@@ -18,7 +18,7 @@ type Backend struct {
 }
 
 func (be *Backend) ReposDir() string {
-	return filepath.Join(be.Cfg.DataPath, "repos")
+	return filepath.Join(be.Cfg.DataDir, "repos")
 }
 
 func (be *Backend) RepoName(id string) string {

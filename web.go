@@ -485,7 +485,7 @@ func chromaStyleHandler(w http.ResponseWriter, r *http.Request) {
 func StartWebServer(cfg *GitCfg) {
 	addr := fmt.Sprintf("%s:%s", cfg.Host, cfg.WebPort)
 
-	dbh, err := Open(filepath.Join(cfg.DataPath, "pr.db"), cfg.Logger)
+	dbh, err := Open(filepath.Join(cfg.DataDir, "pr.db"), cfg.Logger)
 	if err != nil {
 		cfg.Logger.Error("could not open db", "err", err)
 		return

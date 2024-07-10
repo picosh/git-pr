@@ -145,15 +145,52 @@ then remove them in subsequent patches. This is the forcing function to address
 all comments: the patch won't be merged if there are comment unaddressed in
 code; they cannot be ignored or else they will be upstreamed erroneously.
 
+# installation and setup
+
+Copy or create a `git-pr.toml` file inside `./data` directory:
+
+```bash
+mkdir data
+vim ./data/git-pr.toml
+# configure file
+```
+
+Run the ssh app image:
+
+```bash
+docker run -d -v ./data:/app/data \
+  --name git-pr-ssh \
+  ghcr.io/picosh/pico/git-ssh:latest
+```
+
+Run the web app image:
+
+```bash
+docker run -d -v ./data:/app/data \
+  --name git-pr-web \
+  ghcr.io/picosh/pico/git-web:latest
+```
+
+Access the ssh app:
+
+```bash
+ssh -p 2222 localhost help
+```
+
+Access the web app:
+
+```bash
+curl localhost:3000
+```
+
 # roadmap
 
 > [!IMPORTANT]\
 > This project is being actively developed and we have not reached alpha status
 > yet.
 
-1. Support user providing a config file
-1. PR should be displayed as an event log
 1. Guide for self-hosting `git-pr`
+1. PR should be displayed as an event log
 1. **Alpha status**
 1. Git remote for repos
 1. PR build steps (e.g. check that a patch can be cleanly applied)

@@ -22,7 +22,7 @@ type Repo struct {
 var k = koanf.New(".")
 
 type GitCfg struct {
-	DataPath  string          `koanf:"data"`
+	DataDir   string          `koanf:"data_dir"`
 	Repos     []*Repo         `koanf:"repo"`
 	Url       string          `koanf:"url"`
 	Host      string          `koanf:"host"`
@@ -66,8 +66,8 @@ func NewGitCfg(fpath string, logger *slog.Logger) *GitCfg {
 		logger.Info("no admin specified in config so no one can submit a review!")
 	}
 
-	if out.DataPath == "" {
-		out.DataPath = "data"
+	if out.DataDir == "" {
+		out.DataDir = "data"
 	}
 
 	if out.Host == "" {
@@ -89,7 +89,7 @@ func NewGitCfg(fpath string, logger *slog.Logger) *GitCfg {
 	logger.Info(
 		"config",
 		"url", out.Url,
-		"data", out.DataPath,
+		"data_dir", out.DataDir,
 		"host", out.Host,
 		"ssh_port", out.SshPort,
 		"web_port", out.WebPort,
