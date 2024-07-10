@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"time"
 
@@ -267,12 +268,20 @@ type PatchData struct {
 	DiffStr template.HTML
 }
 
-type PrHeaderData struct {
+type EventLogData struct {
+	*EventLog
+	UserName string
+	Pubkey   string
+	Date     string
+}
+
+type PrDetailData struct {
 	Page    string
 	Repo    LinkData
 	Pr      PrData
 	Patches []PatchData
 	Branch  string
+	Logs    []EventLogData
 }
 
 func prDetailHandler(w http.ResponseWriter, r *http.Request) {
@@ -339,8 +348,27 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	isAdmin := web.Backend.IsAdmin(pk)
+	logs, err := web.Pr.GetEventLogsByPrID(int64(prID))
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+	slices.SortFunc[[]*EventLog](logs, func(a *EventLog, b *EventLog) int {
+		return a.CreatedAt.Compare(b.CreatedAt)
+	})
 
-	err = tmpl.Execute(w, PrHeaderData{
+	logData := []EventLogData{}
+	for _, eventlog := range logs {
+		user, _ := web.Pr.GetUserByID(eventlog.UserID)
+		logData = append(logData, EventLogData{
+			EventLog: eventlog,
+			UserName: user.Name,
+			Pubkey:   user.Pubkey,
+			Date:     pr.CreatedAt.Format(time.RFC3339),
+		})
+	}
+
+	err = tmpl.Execute(w, PrDetailData{
 		Page: "pr",
 		Repo: LinkData{
 			Url:  template.URL("/repos/" + repo.ID),
@@ -348,6 +376,7 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 		},
 		Branch:  repo.DefaultBranch,
 		Patches: patchesData,
+		Logs:    logData,
 		Pr: PrData{
 			ID:       pr.ID,
 			IsAdmin:  isAdmin,

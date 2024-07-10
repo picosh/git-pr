@@ -14,6 +14,33 @@
 <hr />
 
 <main class="group">
+  <div class="box group text-sm">
+    {{range .Logs}}
+    <div>
+      <code class='pill{{if eq .Event "pr_reviewed"}}-alert{{end}}'>{{.UserName}}</code>
+      <span class="font-bold">
+        {{if eq .Event "pr_created"}}
+        created pr
+        {{else if eq .Event "pr_patchset_added"}}
+        added patches
+        {{else if eq .Event "pr_reviewed"}}
+        reviewed pr
+        {{else if eq .Event "pr_patchset_replaced"}}
+        replaced all patches
+        {{else if eq .Event "pr_status_changed"}}
+        changed status
+        {{else if eq .Event "pr_name_changed"}}
+        changed pr name
+        {{else}}
+        {{.Event}}
+        {{end}}
+      </span>
+      <span>on <date>{{.Date}}</date></span>
+      <span>{{.Data}}</span>
+    </div>
+    {{end}}
+  </div>
+
   <div class="group">
     {{range $idx, $val := .Patches}}
     <div class="box{{if $val.Review}}-alert{{end}} group" id="{{$val.Url}}">
