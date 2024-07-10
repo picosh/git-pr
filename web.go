@@ -484,17 +484,16 @@ func chromaStyleHandler(w http.ResponseWriter, r *http.Request) {
 
 func StartWebServer(cfg *GitCfg) {
 	addr := fmt.Sprintf("%s:%s", cfg.Host, cfg.WebPort)
-	logger := slog.Default()
 
-	dbh, err := Open(filepath.Join(cfg.DataPath, "pr.db"), logger)
+	dbh, err := Open(filepath.Join(cfg.DataPath, "pr.db"), cfg.Logger)
 	if err != nil {
-		logger.Error("could not open db", "err", err)
+		cfg.Logger.Error("could not open db", "err", err)
 		return
 	}
 
 	be := &Backend{
 		DB:     dbh,
-		Logger: logger,
+		Logger: cfg.Logger,
 		Cfg:    cfg,
 	}
 	prCmd := &PrCmd{
@@ -507,16 +506,9 @@ func StartWebServer(cfg *GitCfg) {
 	web := &WebCtx{
 		Pr:        prCmd,
 		Backend:   be,
-		Logger:    logger,
+		Logger:    cfg.Logger,
 		Formatter: formatter,
-		Theme:     styles.Get("dracula"),
-	}
-
-	keys, err := getAuthorizedKeys(filepath.Join(cfg.DataPath, "authorized_keys"))
-	if err == nil {
-		cfg.Admins = keys
-	} else {
-		logger.Error("could not parse authorized keys file", "err", err)
+		Theme:     styles.Get(cfg.Theme),
 	}
 
 	ctx := context.Background()
@@ -532,9 +524,9 @@ func StartWebServer(cfg *GitCfg) {
 	http.HandleFunc("GET /syntax.css", ctxMdw(ctx, chromaStyleHandler))
 	http.HandleFunc("GET /rss", ctxMdw(ctx, rssHandler))
 
-	logger.Info("starting web server", "addr", addr)
+	cfg.Logger.Info("starting web server", "addr", addr)
 	err = http.ListenAndServe(addr, nil)
 	if err != nil {
-		logger.Error("listen", "err", err)
+		cfg.Logger.Error("listen", "err", err)
 	}
 }

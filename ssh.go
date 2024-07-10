@@ -3,7 +3,6 @@ package git
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -33,27 +32,14 @@ func authHandler(pr *PrCmd) func(ctx ssh.Context, key ssh.PublicKey) bool {
 }
 
 func GitSshServer(cfg *GitCfg) {
-	opts := &slog.HandlerOptions{
-		AddSource: true,
-	}
-	logger := slog.New(
-		slog.NewTextHandler(os.Stdout, opts),
-	)
-	dbh, err := Open(filepath.Join(cfg.DataPath, "pr.db"), logger)
+	dbh, err := Open(filepath.Join(cfg.DataPath, "pr.db"), cfg.Logger)
 	if err != nil {
 		panic(err)
 	}
 
-	keys, err := getAuthorizedKeys(filepath.Join(cfg.DataPath, "authorized_keys"))
-	if err == nil {
-		cfg.Admins = keys
-	} else {
-		logger.Error("could not parse authorized keys file", "err", err)
-	}
-
 	be := &Backend{
 		DB:     dbh,
-		Logger: logger,
+		Logger: cfg.Logger,
 		Cfg:    cfg,
 	}
 	prCmd := &PrCmd{
@@ -74,25 +60,26 @@ func GitSshServer(cfg *GitCfg) {
 	)
 
 	if err != nil {
-		logger.Error("could not create server", "err", err)
+		cfg.Logger.Error("could not create server", "err", err)
+		return
 	}
 
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-	logger.Info("starting SSH server", "host", cfg.Host, "port", cfg.SshPort)
+	cfg.Logger.Info("starting SSH server", "host", cfg.Host, "port", cfg.SshPort)
 	go func() {
 		if err = s.ListenAndServe(); err != nil {
-			logger.Error("serve error", "err", err)
+			cfg.Logger.Error("serve error", "err", err)
 			os.Exit(1)
 		}
 	}()
 
 	<-done
-	logger.Info("stopping SSH server")
+	cfg.Logger.Info("stopping SSH server")
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer func() { cancel() }()
 	if err := s.Shutdown(ctx); err != nil {
-		logger.Error("shutdown", "err", err)
+		cfg.Logger.Error("shutdown", "err", err)
 		os.Exit(1)
 	}
 }

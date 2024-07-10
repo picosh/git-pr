@@ -3,9 +3,9 @@ services:
     image: ghcr.io/picosh/pico/git-web:latest
     restart: always
     volumes:
-      - ./data/git-pr/data:/app/ssh_data
+      - ./data/git-pr/data:/app/data
   ssh:
     image: ghcr.io/picosh/pico/git-ssh:latest
     restart: always
     volumes:
-      - ./data/git-pr/data:/app/ssh_data
+      - ./data/git-pr/data:/app/data

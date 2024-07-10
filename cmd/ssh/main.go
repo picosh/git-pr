@@ -1,10 +1,21 @@
 package main
 
 import (
+	"flag"
+	"log/slog"
+	"os"
+
 	git "github.com/picosh/git-pr"
-	"github.com/picosh/git-pr/cmd"
 )
 
 func main() {
-	git.GitSshServer(cmd.NewPicoCfg())
+	fpath := flag.String("config", "git-pr.toml", "configuration toml file")
+	flag.Parse()
+	opts := &slog.HandlerOptions{
+		AddSource: true,
+	}
+	logger := slog.New(
+		slog.NewTextHandler(os.Stdout, opts),
+	)
+	git.GitSshServer(git.NewGitCfg(*fpath, logger))
 }

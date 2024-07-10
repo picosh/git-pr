@@ -1,0 +1,41 @@
+url = "pr.pico.sh"
+data = "ssh_data"
+admins = [
+  "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHM2RPNgcyt+Tpb77uj0oQYZWLadfB8x8mqJFy0C7Y8P",
+  "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINlr0pScstAuTqs9Qr1KaMspHuFGO7cQMuvMMdJjbWG3"
+]
+
+[[repo]]
+id = "test"
+clone_addr = "git@github.com:picosh/test"
+desc = "test repo to play around with Patch Requests"
+
+[[repo]]
+id = "pico"
+clone_addr = "git@github.com:picosh/pico"
+desc = "open and managed web services leveraging ssh"
+
+[[repo]]
+id = "git-pr"
+clone_addr = "git@github.com:picosh/git-pr"
+desc = "the easiest git collaboration tool"
+
+[[repo]]
+id = "tunkit"
+clone_addr = "git@github.com:picosh/tunkit"
+desc = "ssh tunnel tooling"
+
+[[repo]]
+id = "pobj"
+clone_addr = "git@github.com:picosh/pobj"
+desc = "rsync, scp, sftp for your object store"
+
+[[repo]]
+id = "send"
+clone_addr = "git@github.com:picosh/send"
+desc = "ssh wish middleware for sending and receiving files from familiar tools (rsync, scp, sftp)"
+
+[[repo]]
+id = "docs"
+clone_addr = "git@github.com:picosh/docs"
+desc = "pico.sh doc site"

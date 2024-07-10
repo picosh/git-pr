@@ -45,7 +45,7 @@ WORKDIR /app
 COPY --from=builder-web /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder-web /go/bin/web ./web
 
-ENTRYPOINT ["/app/web"]
+ENTRYPOINT ["/app/web", "--config", "${GITPR_CONFIG_PATH}"]
 
 FROM scratch as release-ssh
 
@@ -55,5 +55,4 @@ ENV TERM="xterm-256color"
 COPY --from=builder-ssh /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder-ssh /go/bin/ssh ./ssh
 
-
-ENTRYPOINT ["/app/ssh"]
+ENTRYPOINT ["/app/ssh", "--config", "${GITPR_CONFIG_PATH}"]

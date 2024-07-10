@@ -1,13 +1,8 @@
 package git
 
 import (
-	"bufio"
-	"bytes"
-	"errors"
 	"fmt"
-	"io"
 	"math/rand"
-	"os"
 	"strconv"
 	"strings"
 
@@ -29,30 +24,16 @@ func truncateSha(sha string) string {
 	return sha[:7]
 }
 
-func getAuthorizedKeys(path string) ([]ssh.PublicKey, error) {
+func getAuthorizedKeys(pubkeys []string) ([]ssh.PublicKey, error) {
 	keys := []ssh.PublicKey{}
-	f, err := os.Open(path)
-	if err != nil {
-		return keys, err
-	}
-	defer f.Close() // nolint: errcheck
-
-	rd := bufio.NewReader(f)
-	for {
-		line, _, err := rd.ReadLine()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			return keys, err
-		}
-		if strings.TrimSpace(string(line)) == "" {
+	for _, pubkey := range pubkeys {
+		if strings.TrimSpace(pubkey) == "" {
 			continue
 		}
-		if bytes.HasPrefix(line, []byte{'#'}) {
+		if strings.HasPrefix(pubkey, "#") {
 			continue
 		}
-		upk, _, _, _, err := ssh.ParseAuthorizedKey(line)
+		upk, _, _, _, err := ssh.ParseAuthorizedKey([]byte(pubkey))
 		if err != nil {
 			return keys, err
 		}
