@@ -225,7 +225,7 @@ func (pr PrCmd) GetPatchesByPrID(prID int64) ([]*Patch, error) {
 	patches := []*Patch{}
 	err := pr.Backend.DB.Select(
 		&patches,
-		"SELECT * FROM patches WHERE patch_request_id=?",
+		"SELECT * FROM patches WHERE patch_request_id=? ORDER BY created_at ASC, id ASC",
 		prID,
 	)
 	if err != nil {
@@ -241,7 +241,7 @@ func (cmd PrCmd) GetPatchRequests() ([]*PatchRequest, error) {
 	prs := []*PatchRequest{}
 	err := cmd.Backend.DB.Select(
 		&prs,
-		"SELECT * FROM patch_requests",
+		"SELECT * FROM patch_requests ORDER BY created_at DESC",
 	)
 	return prs, err
 }
@@ -250,7 +250,7 @@ func (cmd PrCmd) GetPatchRequestsByRepoID(repoID string) ([]*PatchRequest, error
 	prs := []*PatchRequest{}
 	err := cmd.Backend.DB.Select(
 		&prs,
-		"SELECT * FROM patch_requests WHERE repo_id=?",
+		"SELECT * FROM patch_requests WHERE repo_id=? ORDER BY created_at DESC",
 		repoID,
 	)
 	return prs, err
@@ -260,7 +260,7 @@ func (cmd PrCmd) GetPatchRequestByID(prID int64) (*PatchRequest, error) {
 	pr := PatchRequest{}
 	err := cmd.Backend.DB.Get(
 		&pr,
-		"SELECT * FROM patch_requests WHERE id=?",
+		"SELECT * FROM patch_requests WHERE id=? ORDER BY created_at DESC",
 		prID,
 	)
 	return &pr, err

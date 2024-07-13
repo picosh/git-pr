@@ -171,6 +171,10 @@ Here's how it works:
 						ArgsUsage: "[repoID]",
 						Flags: []cli.Flag{
 							&cli.BoolFlag{
+								Name:  "open",
+								Usage: "only show open PRs",
+							},
+							&cli.BoolFlag{
 								Name:  "closed",
 								Usage: "only show closed PRs",
 							},
@@ -178,9 +182,9 @@ Here's how it works:
 								Name:  "accepted",
 								Usage: "only show accepted PRs",
 							},
-							&cli.StringFlag{
-								Name:  "repo",
-								Usage: "only show PRs by Repo ID",
+							&cli.BoolFlag{
+								Name:  "reviewed",
+								Usage: "only show reviewed PRs",
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
@@ -196,17 +200,14 @@ Here's how it works:
 								return err
 							}
 
+							onlyOpen := cCtx.Bool("open")
 							onlyAccepted := cCtx.Bool("accepted")
 							onlyClosed := cCtx.Bool("closed")
-							onlyRepoID := cCtx.String("repo")
+							onlyReviewed := cCtx.Bool("reviewed")
 
 							writer := NewTabWriter(sesh)
 							fmt.Fprintln(writer, "ID\tRepoID\tName\tStatus\tUser\tDate")
 							for _, req := range prs {
-								if onlyRepoID != "" && req.RepoID != onlyRepoID {
-									continue
-								}
-
 								if onlyAccepted && req.Status != "accepted" {
 									continue
 								}
@@ -215,7 +216,11 @@ Here's how it works:
 									continue
 								}
 
-								if !onlyAccepted && !onlyClosed && req.Status != "open" {
+								if onlyOpen && req.Status != "open" {
+									continue
+								}
+
+								if onlyReviewed && req.Status != "reviewed" {
 									continue
 								}
 
