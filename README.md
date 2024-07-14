@@ -208,6 +208,7 @@ curl localhost:3000
 > yet.
 
 1. Better `--cover-letter` support
+1. Support `git range-diff` workflow
 1. Adapter to statically generate web view
 1. Support a `diff` workflow (convert `git diff` into mbox patch format)
 
