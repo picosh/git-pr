@@ -17,6 +17,7 @@ import (
 	"github.com/charmbracelet/ssh"
 )
 
+var baseCommitRe = regexp.MustCompile(`base-commit: (.+)\s*`)
 var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 var startOfPatch = "From "
 
@@ -118,8 +119,7 @@ func splitPatchSet(patchset string) []string {
 }
 
 func findBaseCommit(patch string) string {
-	re := regexp.MustCompile(`base-commit: (.+)\s*`)
-	strs := re.FindStringSubmatch(patch)
+	strs := baseCommitRe.FindStringSubmatch(patch)
 	baseCommit := ""
 	if len(strs) > 1 {
 		baseCommit = strs[1]
@@ -202,6 +202,22 @@ func calcContentSha(diffFiles []*gitdiff.File, header *gitdiff.PatchHeader) stri
 		header.AuthorDate,
 	)
 	for _, diff := range diffFiles {
+		// we need to ignore diffs with base commit because that depends
+		// on the client that is exporting the patch
+		foundBase := false
+		for _, text := range diff.TextFragments {
+			for _, line := range text.Lines {
+				base := findBaseCommit(line.Line)
+				if base != "" {
+					foundBase = true
+				}
+			}
+		}
+
+		if foundBase {
+			continue
+		}
+
 		dff := fmt.Sprintf(
 			"%s->%s %s..%s %s->%s\n",
 			diff.OldName, diff.NewName,
