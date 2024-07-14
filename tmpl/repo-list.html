@@ -172,6 +172,46 @@
         <li>Owner applies patches locally (<code>git-am</code>)</li>
         <li>Owner marks PR as accepted and pushes code to main (<code>git-push</code>)</li>
       </ol>
+
+      <div>Example commands</div>
+
+      <pre># Owner hosts repo `test.git` using github
+
+# Contributor clones repo
+git clone git@github.com:picosh/test.git
+
+# Contributor wants to make a change
+# Contributor makes changes via commits
+git add -A && git commit -m "fix: some bugs"
+
+# Contributor runs:
+git format-patch origin/main --stdout | ssh pr.pico.sh pr create test
+# > Patch Request has been created (ID: 1)
+
+# Owner can checkout patch:
+ssh pr.pico.sh pr print 1 | git am -3
+# Owner can comment (IN CODE), commit, then send another format-patch
+# on top of the PR:
+git format-patch origin/main --stdout | ssh pr.pico.sh pr add --review 1
+# UI clearly marks patch as a review
+
+# Contributor can checkout reviews
+ssh pr.pico.sh pr print 1 | git am -3
+
+# Owner can reject a pr:
+ssh pr.pico.sh pr close 1
+
+# Owner can accept a pr:
+ssh pr.pico.sh pr accept 1
+
+# Owner can prep PR for upstream:
+git rebase -i origin/main
+
+# Then push to upstream
+git push origin main
+
+# Done!
+```</pre>
   </details>
 </header>
 

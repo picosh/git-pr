@@ -86,7 +86,7 @@ web file server.
 ## format-patch workflow
 
 ```bash
-# Owner hosts repo `noice.git` using github
+# Owner hosts repo `test.git` using github
 
 # Contributor clones repo
 git clone git@github.com:picosh/test.git
@@ -96,7 +96,7 @@ git clone git@github.com:picosh/test.git
 git add -A && git commit -m "fix: some bugs"
 
 # Contributor runs:
-git format-patch origin/main --stdout | ssh pr.pico.sh pr create noice
+git format-patch origin/main --stdout | ssh pr.pico.sh pr create test
 # > Patch Request has been created (ID: 1)
 
 # Owner can checkout patch:
@@ -207,10 +207,14 @@ curl localhost:3000
 > This project is being actively developed and we have not reached alpha status
 > yet.
 
-1. Announce **Alpha status**
-1. Remove reviews from `print` command
-1. Git remote for repos
-1. PR build steps (e.g. check that a patch can be cleanly applied)
+1. Better `--cover-letter` support
+1. Adapter to statically generate web view
+1. Support a `diff` workflow (convert `git diff` into mbox patch format)
+
+## ideas
+
+1. Git remote for repos?
+1. PR build steps? (e.g. check that a patch can be cleanly applied)
 1. Review patch inline? (e.g. edit patch directly with comments `# xxx` then
    reupload)
 1. TUI?
