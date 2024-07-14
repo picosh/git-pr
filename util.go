@@ -1,15 +1,22 @@
 package git
 
 import (
+	"crypto/sha256"
+	"database/sql"
+	"encoding/hex"
 	"fmt"
+	"io"
 	"math/rand"
+	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/bluekeyes/go-gitdiff/gitdiff"
 	"github.com/charmbracelet/ssh"
 )
 
 var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+var startOfPatch = "From "
 
 // https://stackoverflow.com/a/22892986
 func randSeq(n int) string {
@@ -102,6 +109,108 @@ func filterPatches(ranger *Ranger, patches []*Patch) []*Patch {
 		return []*Patch{patches[ranger.Left]}
 	}
 	return patches[ranger.Left:ranger.Right]
+}
+
+func splitPatchSet(patchset string) []string {
+	return strings.Split(patchset, "\n"+startOfPatch)
+}
+
+func findBaseCommit(patch string) string {
+	re := regexp.MustCompile(`base-commit: (.+)\s*`)
+	strs := re.FindStringSubmatch(patch)
+	baseCommit := ""
+	if len(strs) > 1 {
+		baseCommit = strs[1]
+	}
+	return baseCommit
+}
+
+func parsePatchSet(patchset io.Reader) ([]*Patch, error) {
+	patches := []*Patch{}
+	buf := new(strings.Builder)
+	_, err := io.Copy(buf, patchset)
+	if err != nil {
+		return nil, err
+	}
+
+	patchesRaw := splitPatchSet(buf.String())
+	for idx, patchRaw := range patchesRaw {
+		patchStr := patchRaw
+		if idx > 0 {
+			patchStr = startOfPatch + patchRaw
+		}
+		reader := strings.NewReader(patchStr)
+		diffFiles, preamble, err := gitdiff.Parse(reader)
+		if err != nil {
+			return nil, err
+		}
+		header, err := gitdiff.ParsePatchHeader(preamble)
+		if err != nil {
+			return nil, err
+		}
+
+		baseCommit := findBaseCommit(patchRaw)
+		authorName := "Unknown"
+		authorEmail := ""
+		if header.Author != nil {
+			authorName = header.Author.Name
+			authorEmail = header.Author.Email
+		}
+
+		if len(diffFiles) == 0 {
+			continue
+		}
+
+		contentSha := calcContentSha(diffFiles, header)
+
+		patches = append(patches, &Patch{
+			AuthorName:    authorName,
+			AuthorEmail:   authorEmail,
+			AuthorDate:    header.AuthorDate.UTC().String(),
+			Title:         header.Title,
+			Body:          header.Body,
+			BodyAppendix:  header.BodyAppendix,
+			CommitSha:     header.SHA,
+			ContentSha:    contentSha,
+			RawText:       patchRaw,
+			BaseCommitSha: sql.NullString{String: baseCommit},
+		})
+	}
+
+	return patches, nil
+}
+
+// calcContentSha calculates a shasum containing the important content
+// changes related to a patch.
+// We cannot rely on patch.CommitSha because it includes the commit date
+// that will change when a user fetches and applies the patch locally.
+func calcContentSha(diffFiles []*gitdiff.File, header *gitdiff.PatchHeader) string {
+	authorName := ""
+	authorEmail := ""
+	if header.Author != nil {
+		authorName = header.Author.Name
+		authorEmail = header.Author.Email
+	}
+	content := fmt.Sprintf(
+		"%s\n%s\n%s\n%s\n%s\n",
+		header.Title,
+		header.Body,
+		authorName,
+		authorEmail,
+		header.AuthorDate,
+	)
+	for _, diff := range diffFiles {
+		dff := fmt.Sprintf(
+			"%s->%s %s..%s %s->%s\n",
+			diff.OldName, diff.NewName,
+			diff.OldOIDPrefix, diff.NewOIDPrefix,
+			diff.OldMode.String(), diff.NewMode.String(),
+		)
+		content += dff
+	}
+	sha := sha256.Sum256([]byte(content))
+	shaStr := hex.EncodeToString(sha[:])
+	return shaStr
 }
 
 /* func gitServiceCommands(sesh ssh.Session, be *Backend, cmd, repoName string) error {

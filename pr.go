@@ -1,17 +1,11 @@
 package git
 
 import (
-	"crypto/sha256"
-	"database/sql"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
-	"regexp"
-	"strings"
 	"time"
 
-	"github.com/bluekeyes/go-gitdiff/gitdiff"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -336,105 +330,6 @@ func (cmd PrCmd) CreateEventLog(eventLog EventLog) error {
 	return err
 }
 
-// calcContentSha calculates a shasum containing the important content
-// changes related to a patch.
-// We cannot rely on patch.CommitSha because it includes the commit date
-// that will change when a user fetches and applies the patch locally.
-func (cmd PrCmd) calcContentSha(diffFiles []*gitdiff.File, header *gitdiff.PatchHeader) string {
-	authorName := ""
-	authorEmail := ""
-	if header.Author != nil {
-		authorName = header.Author.Name
-		authorEmail = header.Author.Email
-	}
-	content := fmt.Sprintf(
-		"%s\n%s\n%s\n%s\n%s\n",
-		header.Title,
-		header.Body,
-		authorName,
-		authorEmail,
-		header.AuthorDate,
-	)
-	for _, diff := range diffFiles {
-		dff := fmt.Sprintf(
-			"%s->%s %s..%s %s->%s\n",
-			diff.OldName, diff.NewName,
-			diff.OldOIDPrefix, diff.NewOIDPrefix,
-			diff.OldMode.String(), diff.NewMode.String(),
-		)
-		content += dff
-	}
-	sha := sha256.Sum256([]byte(content))
-	shaStr := hex.EncodeToString(sha[:])
-	return shaStr
-}
-
-func splitPatchSet(patchset string) []string {
-	return strings.Split(patchset, "\n\n\n")
-}
-
-func findBaseCommit(patch string) string {
-	re := regexp.MustCompile(`base-commit: (.+)\s*`)
-	strs := re.FindStringSubmatch(patch)
-	baseCommit := ""
-	if len(strs) > 1 {
-		baseCommit = strs[1]
-	}
-	return baseCommit
-}
-
-func (cmd PrCmd) parsePatchSet(patchset io.Reader) ([]*Patch, error) {
-	patches := []*Patch{}
-	buf := new(strings.Builder)
-	_, err := io.Copy(buf, patchset)
-	if err != nil {
-		return nil, err
-	}
-
-	patchesRaw := splitPatchSet(buf.String())
-	for _, patchRaw := range patchesRaw {
-		reader := strings.NewReader(patchRaw)
-		diffFiles, preamble, err := gitdiff.Parse(reader)
-		if err != nil {
-			return nil, err
-		}
-		header, err := gitdiff.ParsePatchHeader(preamble)
-		if err != nil {
-			return nil, err
-		}
-
-		if len(diffFiles) == 0 {
-			cmd.Backend.Logger.Info("not diff files found for patch, skipping")
-			continue
-		}
-
-		baseCommit := findBaseCommit(patchRaw)
-		authorName := "Unknown"
-		authorEmail := ""
-		if header.Author != nil {
-			authorName = header.Author.Name
-			authorEmail = header.Author.Email
-		}
-
-		contentSha := cmd.calcContentSha(diffFiles, header)
-
-		patches = append(patches, &Patch{
-			AuthorName:    authorName,
-			AuthorEmail:   authorEmail,
-			AuthorDate:    header.AuthorDate.UTC().String(),
-			Title:         header.Title,
-			Body:          header.Body,
-			BodyAppendix:  header.BodyAppendix,
-			CommitSha:     header.SHA,
-			ContentSha:    contentSha,
-			RawText:       patchRaw,
-			BaseCommitSha: sql.NullString{String: baseCommit},
-		})
-	}
-
-	return patches, nil
-}
-
 func (cmd PrCmd) createPatch(tx *sqlx.Tx, review bool, patch *Patch) (int64, error) {
 	patchExists := []Patch{}
 	_ = cmd.Backend.DB.Select(&patchExists, "SELECT * FROM patches WHERE patch_request_id=? AND content_sha=?", patch.PatchRequestID, patch.ContentSha)
@@ -479,7 +374,7 @@ func (cmd PrCmd) SubmitPatchRequest(repoID string, userID int64, patchset io.Rea
 		_ = tx.Rollback()
 	}()
 
-	patches, err := cmd.parsePatchSet(patchset)
+	patches, err := parsePatchSet(patchset)
 	if err != nil {
 		return nil, err
 	}
@@ -549,7 +444,7 @@ func (cmd PrCmd) SubmitPatchSet(prID int64, userID int64, op PatchsetOp, patchse
 		_ = tx.Rollback()
 	}()
 
-	patches, err := cmd.parsePatchSet(patchset)
+	patches, err := parsePatchSet(patchset)
 	if err != nil {
 		return fin, err
 	}
