@@ -42,24 +42,31 @@ type PatchRequest struct {
 	LastUpdated string `db:"last_updated"`
 }
 
+type Patchset struct {
+	ID             int64     `db:"id"`
+	UserID         int64     `db:"user_id"`
+	PatchRequestID int64     `db:"patch_request_id"`
+	Review         bool      `db:"review"`
+	CreatedAt      time.Time `db:"created_at"`
+}
+
 // Patch is a database model for a single entry in a patchset.
 // This usually corresponds to a git commit.
 type Patch struct {
-	ID             int64          `db:"id"`
-	UserID         int64          `db:"user_id"`
-	PatchRequestID int64          `db:"patch_request_id"`
-	AuthorName     string         `db:"author_name"`
-	AuthorEmail    string         `db:"author_email"`
-	AuthorDate     string         `db:"author_date"`
-	Title          string         `db:"title"`
-	Body           string         `db:"body"`
-	BodyAppendix   string         `db:"body_appendix"`
-	CommitSha      string         `db:"commit_sha"`
-	ContentSha     string         `db:"content_sha"`
-	BaseCommitSha  sql.NullString `db:"base_commit_sha"`
-	Review         bool           `db:"review"`
-	RawText        string         `db:"raw_text"`
-	CreatedAt      time.Time      `db:"created_at"`
+	ID            int64          `db:"id"`
+	UserID        int64          `db:"user_id"`
+	PatchsetID    int64          `db:"patchset_id"`
+	AuthorName    string         `db:"author_name"`
+	AuthorEmail   string         `db:"author_email"`
+	AuthorDate    string         `db:"author_date"`
+	Title         string         `db:"title"`
+	Body          string         `db:"body"`
+	BodyAppendix  string         `db:"body_appendix"`
+	CommitSha     string         `db:"commit_sha"`
+	ContentSha    string         `db:"content_sha"`
+	BaseCommitSha sql.NullString `db:"base_commit_sha"`
+	RawText       string         `db:"raw_text"`
+	CreatedAt     time.Time      `db:"created_at"`
 }
 
 // EventLog is a event log for RSS or other notification systems.
@@ -107,6 +114,22 @@ CREATE TABLE IF NOT EXISTS patch_requests (
   updated_at DATETIME NOT NULL,
   CONSTRAINT pr_user_id_fk
     FOREIGN KEY(user_id) REFERENCES app_users(id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS patchsets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  patch_request_id INTEGER NOT NULL,
+  review BOOLEAN NOT NULL DEFAULT false,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT patchset_user_id_fk
+    FOREIGN KEY(user_id) REFERENCES app_users(id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+  CONSTRAINT patchset_patch_request_id_fk
+    FOREIGN KEY(patch_request_id) REFERENCES patch_requests(id)
     ON DELETE CASCADE
     ON UPDATE CASCADE
 );

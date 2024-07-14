@@ -327,7 +327,14 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	patches, err := web.Pr.GetPatchesByPrID(int64(prID))
+	patchset, err := web.Pr.GetLatestPatchsetByPrID(int64(prID))
+	if err != nil {
+		web.Logger.Error("cannot get latest patchset", "err", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	patches, err := web.Pr.GetPatchesByPatchsetID(patchset.ID)
 	if err != nil {
 		web.Logger.Error("cannot get patches", "err", err)
 		w.WriteHeader(http.StatusInternalServerError)

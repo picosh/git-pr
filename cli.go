@@ -306,7 +306,12 @@ Here's how it works:
 								return err
 							}
 
-							patches, err := pr.GetPatchesByPrID(prID)
+							patchset, err := pr.GetLatestPatchsetByPrID(prID)
+							if err != nil {
+								return err
+							}
+
+							patches, err := pr.GetPatchesByPatchsetID(patchset.ID)
 							if err != nil {
 								return err
 							}
@@ -369,7 +374,12 @@ Here's how it works:
 							)
 							writer.Flush()
 
-							patches, err := pr.GetPatchesByPrID(prID)
+							patchset, err := pr.GetLatestPatchsetByPrID(prID)
+							if err != nil {
+								return err
+							}
+
+							patches, err := pr.GetPatchesByPatchsetID(patchset.ID)
 							if err != nil {
 								return err
 							}
@@ -386,7 +396,7 @@ Here's how it works:
 
 							for _, patch := range opatches {
 								reviewTxt := ""
-								if patch.Review {
+								if patchset.Review {
 									reviewTxt = "[review]"
 								}
 								timestamp := AuthorDateToTime(patch.AuthorDate, be.Logger).Format(be.Cfg.TimeFormat)
@@ -439,7 +449,12 @@ Here's how it works:
 							)
 							writer.Flush()
 
-							patches, err := pr.GetPatchesByPrID(prID)
+							patchset, err := pr.GetLatestPatchsetByPrID(prID)
+							if err != nil {
+								return err
+							}
+
+							patches, err := pr.GetPatchesByPatchsetID(patchset.ID)
 							if err != nil {
 								return err
 							}
@@ -458,7 +473,7 @@ Here's how it works:
 							fmt.Fprintln(w, "Idx\tTitle\tStatus\tCommit\tAuthor\tDate")
 							for idx, patch := range opatches {
 								reviewTxt := ""
-								if patch.Review {
+								if patchset.Review {
 									reviewTxt = "[review]"
 								}
 								timestamp := AuthorDateToTime(patch.AuthorDate, be.Logger).Format(be.Cfg.TimeFormat)
