@@ -209,13 +209,14 @@ curl localhost:3000
 
 1. Better `--cover-letter` support
 1. Support `git range-diff` workflow
+1. More robust ACL rules
 1. Adapter to statically generate web view
+1. Bulk download PRs
+1. Generate event log summary as a cover letter?
 1. Support a `diff` workflow (convert `git diff` into mbox patch format)
 
 ## ideas
 
-1. Git remote for repos?
-1. PR build steps? (e.g. check that a patch can be cleanly applied)
-1. Review patch inline? (e.g. edit patch directly with comments `# xxx` then
-   reupload)
+1. Officially support git remotes?
+1. PR build steps? (e.g. ci/cd, status checks, merge checks)
 1. TUI?
