@@ -18,14 +18,10 @@
 git format-patch {{.Branch}} --stdout | ssh {{.MetaData.URL}} pr add {{.Pr.ID}}</pre>
       <pre class="m-0"># add review to patch request
 git format-patch {{.Branch}} --stdout | ssh {{.MetaData.URL}} pr add --review {{.Pr.ID}}</pre>
-      <pre class="m-0"># overwrite patches
-git format-patch {{.Branch}} --stdout | ssh {{.MetaData.URL}} pr add --force {{.Pr.ID}}</pre>
+      <pre class="m-0"># remove patchset
+ssh {{.MetaData.URL}} ps rm ps-x</pre>
       <pre class="m-0"># checkout all patches
 ssh {{.MetaData.URL}} pr print {{.Pr.ID}} | git am -3</pre>
-      <pre class="m-0"># checkout specific patch
-ssh {{.MetaData.URL}} pr print {{.Pr.ID}} --filter n | git am -3</pre>
-      <pre class="m-0"># checkout patch range
-ssh {{.MetaData.URL}} pr print {{.Pr.ID}} --filter n:y | git am -3</pre>
       <pre class="m-0"># accept PR
 ssh {{.MetaData.URL}} pr accept {{.Pr.ID}}</pre>
       <pre class="m-0"># close PR

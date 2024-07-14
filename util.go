@@ -20,6 +20,8 @@ import (
 var baseCommitRe = regexp.MustCompile(`base-commit: (.+)\s*`)
 var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 var startOfPatch = "From "
+var patchsetPrefix = "ps-"
+var prPrefix = "pr-"
 
 // https://stackoverflow.com/a/22892986
 func randSeq(n int) string {
@@ -53,65 +55,27 @@ func getAuthorizedKeys(pubkeys []string) ([]ssh.PublicKey, error) {
 	return keys, nil
 }
 
-type Ranger struct {
-	Left  int
-	Right int
+func getFormattedPatchsetID(id int64) string {
+	if id == 0 {
+		return ""
+	}
+	return fmt.Sprintf("%s%d", patchsetPrefix, id)
 }
 
-func parseRange(rnge string, sliceLen int) (*Ranger, error) {
-	items := strings.Split(rnge, ":")
-	left := 0
-	var err error
-	if items[0] != "" {
-		left, err = strconv.Atoi(items[0])
-		if err != nil {
-			return nil, fmt.Errorf("first value before `:` must provide number")
-		}
-	}
-
-	if left < 0 {
-		return nil, fmt.Errorf("first value must be >= 0")
-	}
-
-	if left >= sliceLen {
-		return nil, fmt.Errorf("first value must be less than number of patches")
-	}
-
-	if len(items) == 1 {
-		return &Ranger{
-			Left:  left,
-			Right: left,
-		}, nil
-	}
-
-	if items[1] == "" {
-		return &Ranger{Left: left, Right: sliceLen - 1}, nil
-	}
-
-	right, err := strconv.Atoi(items[1])
+func getPrID(prID string) (int64, error) {
+	recID, err := strconv.Atoi(strings.Replace(prID, prPrefix, "", 1))
 	if err != nil {
-		return nil, fmt.Errorf("second value after `:` must provide number")
+		return 0, err
 	}
-
-	if left > right {
-		return nil, fmt.Errorf("second value must be greater than first value")
-	}
-
-	if right >= sliceLen {
-		return nil, fmt.Errorf("second value must be less than number of patches")
-	}
-
-	return &Ranger{
-		Left:  left,
-		Right: right,
-	}, nil
+	return int64(recID), nil
 }
 
-func filterPatches(ranger *Ranger, patches []*Patch) []*Patch {
-	if ranger.Left == ranger.Right {
-		return []*Patch{patches[ranger.Left]}
+func getPatchsetID(patchsetID string) (int64, error) {
+	psID, err := strconv.Atoi(strings.Replace(patchsetID, patchsetPrefix, "", 1))
+	if err != nil {
+		return 0, err
 	}
-	return patches[ranger.Left:ranger.Right]
+	return int64(psID), nil
 }
 
 func splitPatchSet(patchset string) []string {
@@ -127,7 +91,24 @@ func findBaseCommit(patch string) string {
 	return baseCommit
 }
 
-func parsePatchSet(patchset io.Reader) ([]*Patch, error) {
+func patchToDiff(patch io.Reader) (string, error) {
+	by, err := io.ReadAll(patch)
+	if err != nil {
+		return "", err
+	}
+	str := string(by)
+	idx := strings.Index(str, "diff --git")
+	if idx == -1 {
+		return "", fmt.Errorf("no diff found in patch")
+	}
+	trailIdx := strings.LastIndex(str, "-- \n")
+	if trailIdx >= 0 {
+		return str[idx:trailIdx], nil
+	}
+	return str[idx:], nil
+}
+
+func parsePatchset(patchset io.Reader) ([]*Patch, error) {
 	patches := []*Patch{}
 	buf := new(strings.Builder)
 	_, err := io.Copy(buf, patchset)
@@ -174,7 +155,7 @@ func parsePatchSet(patchset io.Reader) ([]*Patch, error) {
 			BodyAppendix:  header.BodyAppendix,
 			CommitSha:     header.SHA,
 			ContentSha:    contentSha,
-			RawText:       patchRaw,
+			RawText:       patchStr,
 			BaseCommitSha: sql.NullString{String: baseCommit},
 		})
 	}
@@ -244,6 +225,67 @@ func AuthorDateToTime(date string, logger *slog.Logger) time.Time {
 	}
 	return ds
 }
+
+/* func filterPatches(ranger *Ranger, patches []*Patch) []*Patch {
+	if ranger.Left == ranger.Right {
+		return []*Patch{patches[ranger.Left]}
+	}
+	return patches[ranger.Left:ranger.Right]
+}
+
+type Ranger struct {
+	Left  int
+	Right int
+}
+
+func parseRange(rnge string, sliceLen int) (*Ranger, error) {
+	items := strings.Split(rnge, ":")
+	left := 0
+	var err error
+	if items[0] != "" {
+		left, err = strconv.Atoi(items[0])
+		if err != nil {
+			return nil, fmt.Errorf("first value before `:` must provide number")
+		}
+	}
+
+	if left < 0 {
+		return nil, fmt.Errorf("first value must be >= 0")
+	}
+
+	if left >= sliceLen {
+		return nil, fmt.Errorf("first value must be less than number of patches")
+	}
+
+	if len(items) == 1 {
+		return &Ranger{
+			Left:  left,
+			Right: left,
+		}, nil
+	}
+
+	if items[1] == "" {
+		return &Ranger{Left: left, Right: sliceLen - 1}, nil
+	}
+
+	right, err := strconv.Atoi(items[1])
+	if err != nil {
+		return nil, fmt.Errorf("second value after `:` must provide number")
+	}
+
+	if left > right {
+		return nil, fmt.Errorf("second value must be greater than first value")
+	}
+
+	if right >= sliceLen {
+		return nil, fmt.Errorf("second value must be less than number of patches")
+	}
+
+	return &Ranger{
+		Left:  left,
+		Right: right,
+	}, nil
+} */
 
 /* func gitServiceCommands(sesh ssh.Session, be *Backend, cmd, repoName string) error {
 	name := utils.SanitizeRepo(repoName)

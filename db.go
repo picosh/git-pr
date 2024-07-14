@@ -42,35 +42,43 @@ type PatchRequest struct {
 	LastUpdated string `db:"last_updated"`
 }
 
+type Patchset struct {
+	ID             int64     `db:"id"`
+	UserID         int64     `db:"user_id"`
+	PatchRequestID int64     `db:"patch_request_id"`
+	Review         bool      `db:"review"`
+	CreatedAt      time.Time `db:"created_at"`
+}
+
 // Patch is a database model for a single entry in a patchset.
 // This usually corresponds to a git commit.
 type Patch struct {
-	ID             int64          `db:"id"`
-	UserID         int64          `db:"user_id"`
-	PatchRequestID int64          `db:"patch_request_id"`
-	AuthorName     string         `db:"author_name"`
-	AuthorEmail    string         `db:"author_email"`
-	AuthorDate     string         `db:"author_date"`
-	Title          string         `db:"title"`
-	Body           string         `db:"body"`
-	BodyAppendix   string         `db:"body_appendix"`
-	CommitSha      string         `db:"commit_sha"`
-	ContentSha     string         `db:"content_sha"`
-	BaseCommitSha  sql.NullString `db:"base_commit_sha"`
-	Review         bool           `db:"review"`
-	RawText        string         `db:"raw_text"`
-	CreatedAt      time.Time      `db:"created_at"`
+	ID            int64          `db:"id"`
+	UserID        int64          `db:"user_id"`
+	PatchsetID    int64          `db:"patchset_id"`
+	AuthorName    string         `db:"author_name"`
+	AuthorEmail   string         `db:"author_email"`
+	AuthorDate    string         `db:"author_date"`
+	Title         string         `db:"title"`
+	Body          string         `db:"body"`
+	BodyAppendix  string         `db:"body_appendix"`
+	CommitSha     string         `db:"commit_sha"`
+	ContentSha    string         `db:"content_sha"`
+	BaseCommitSha sql.NullString `db:"base_commit_sha"`
+	RawText       string         `db:"raw_text"`
+	CreatedAt     time.Time      `db:"created_at"`
 }
 
 // EventLog is a event log for RSS or other notification systems.
 type EventLog struct {
-	ID             int64     `db:"id"`
-	UserID         int64     `db:"user_id"`
-	RepoID         string    `db:"repo_id"`
-	PatchRequestID int64     `db:"patch_request_id"`
-	Event          string    `db:"event"`
-	Data           string    `db:"data"`
-	CreatedAt      time.Time `db:"created_at"`
+	ID             int64         `db:"id"`
+	UserID         int64         `db:"user_id"`
+	RepoID         string        `db:"repo_id"`
+	PatchRequestID sql.NullInt64 `db:"patch_request_id"`
+	PatchsetID     sql.NullInt64 `db:"patchset_id"`
+	Event          string        `db:"event"`
+	Data           string        `db:"data"`
+	CreatedAt      time.Time     `db:"created_at"`
 }
 
 // DB is the interface for a pico/git database.
@@ -111,54 +119,76 @@ CREATE TABLE IF NOT EXISTS patch_requests (
     ON UPDATE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS patches (
+CREATE TABLE IF NOT EXISTS patchsets (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
   patch_request_id INTEGER NOT NULL,
-  author_name TEXT NOT NULL,
-  author_email TEXT NOT NULL,
-  author_date DATETIME NOT NULL,
-  title TEXT NOT NULL,
-  body TEXT NOT NULL,
-  body_appendix TEXT NOT NULL,
-  commit_sha TEXT NOT NULL,
-  content_sha TEXT NOT NULL,
   review BOOLEAN NOT NULL DEFAULT false,
-  raw_text TEXT NOT NULL,
-  base_commit_sha TEXT,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT pr_id_fk
-    FOREIGN KEY(patch_request_id) REFERENCES patch_requests(id)
+  CONSTRAINT patchset_user_id_fk
+    FOREIGN KEY(user_id) REFERENCES app_users(id)
     ON DELETE CASCADE
     ON UPDATE CASCADE,
-  CONSTRAINT patches_user_id_fk
-    FOREIGN KEY(user_id) REFERENCES app_users(id)
+  CONSTRAINT patchset_patch_request_id_fk
+    FOREIGN KEY(patch_request_id) REFERENCES patch_requests(id)
     ON DELETE CASCADE
     ON UPDATE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS patches (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	user_id INTEGER NOT NULL,
+	patchset_id INTEGER NOT NULL,
+	author_name TEXT NOT NULL,
+	author_email TEXT NOT NULL,
+	author_date DATETIME NOT NULL,
+	title TEXT NOT NULL,
+	body TEXT NOT NULL,
+	body_appendix TEXT NOT NULL,
+	commit_sha TEXT NOT NULL,
+	content_sha TEXT NOT NULL,
+	raw_text TEXT NOT NULL,
+	base_commit_sha TEXT,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	CONSTRAINT patches_user_id_fk
+		FOREIGN KEY(user_id) REFERENCES app_users(id)
+		ON DELETE CASCADE
+		ON UPDATE CASCADE,
+	CONSTRAINT patches_patchset_id_fk
+		FOREIGN KEY(patchset_id) REFERENCES patchsets(id)
+		ON DELETE CASCADE
+		ON UPDATE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS event_logs (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL,
-  repo_id TEXT,
-  patch_request_id INTEGER,
-  event TEXT NOT NULL,
-  data TEXT,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT event_logs_pr_id_fk
-  FOREIGN KEY(patch_request_id) REFERENCES patch_requests(id)
-  ON DELETE CASCADE
-  ON UPDATE CASCADE,
-  CONSTRAINT event_logs_user_id_fk
-    FOREIGN KEY(user_id) REFERENCES app_users(id)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	user_id INTEGER NOT NULL,
+	repo_id TEXT,
+	patch_request_id INTEGER,
+	patchset_id INTEGER,
+	event TEXT NOT NULL,
+	data TEXT,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	CONSTRAINT event_logs_pr_id_fk
+		FOREIGN KEY(patch_request_id) REFERENCES patch_requests(id)
+		ON DELETE CASCADE
+		ON UPDATE CASCADE,
+	CONSTRAINT event_logs_patchset_id_fk
+		FOREIGN KEY(patchset_id) REFERENCES patchsets(id)
+		ON DELETE CASCADE
+		ON UPDATE CASCADE,
+	CONSTRAINT event_logs_user_id_fk
+		FOREIGN KEY(user_id) REFERENCES app_users(id)
+		ON DELETE CASCADE
+		ON UPDATE CASCADE
 );
 `
 
 var sqliteMigrations = []string{
 	"", // migration #0 is reserved for schema initialization
 	"ALTER TABLE patches ADD COLUMN base_commit_sha TEXT",
+	`
+	`,
 }
 
 // Open opens a database connection.
@@ -199,7 +229,7 @@ func (db *DB) upgrade() error {
 		return fmt.Errorf("git-pr (version %d) older than schema (version %d)", len(sqliteMigrations), version)
 	}
 
-	tx, err := db.Begin()
+	tx, err := db.Beginx()
 	if err != nil {
 		return err
 	}

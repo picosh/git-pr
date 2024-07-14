@@ -19,18 +19,20 @@
 
 <main class="group">
   <div class="box group text-sm">
+    <h3 class="text-lg">Logs</h3>
+
     {{range .Logs}}
     <div>
       <code class='pill{{if eq .Event "pr_reviewed"}}-alert{{end}}'>{{.UserName}}</code>
       <span class="font-bold">
         {{if eq .Event "pr_created"}}
-          created pr
+          created pr with <code>{{.FormattedPatchsetID}}</code>
         {{else if eq .Event "pr_patchset_added"}}
-          added patches
+          added <code>{{.FormattedPatchsetID}}</code>
         {{else if eq .Event "pr_reviewed"}}
-          reviewed pr
+          reviewed pr with <code class="pill-alert">{{.FormattedPatchsetID}}</code>
         {{else if eq .Event "pr_patchset_replaced"}}
-          replaced all patches
+          replaced <code>{{.FormattedPatchsetID}}</code>
         {{else if eq .Event "pr_status_changed"}}
           changed status
         {{else if eq .Event "pr_name_changed"}}
@@ -40,36 +42,44 @@
         {{end}}
       </span>
       <span>on <date>{{.Date}}</date></span>
-      <span>{{.Data}}</span>
+      {{if .Data}}<code>{{.Data}}</code>{{end}}
     </div>
     {{end}}
   </div>
 
+  <div class="box group text-sm">
+    <h3 class="text-lg">Patchsets</h3>
+
+    {{range .Patchsets}}
+      <details>
+        <summary class="text-sm">Diff ↕</summary>
+        <div class="group">
+          {{range .DiffPatches}}
+            <div class="box-sm{{if .Review}}-alert{{end}} group" id="{{.Url}}">
+              {{template "patch" .}}
+            </div>
+          {{else}}
+            No patches found, that doesn't seem right.
+          {{end}}
+        </div>
+      </details>
+
+      <div>
+        <code class="{{if .Review}}pill-alert{{end}}">{{.FormattedID}}</code>
+        <span> by </span>
+        <code class="pill{{if .Review}}-alert{{end}}">{{.UserName}}</code>
+        <span>on <date>{{.Date}}</date></span>
+      </div>
+    {{end}}
+  </div>
+
+  <hr class="w-full" />
+
   <div class="group">
     {{range $idx, $val := .Patches}}
-    <div class="box{{if $val.Review}}-alert{{end}} group" id="{{$val.Url}}">
-      <div>
-        <h2 class="text-lg m-0 p-0 mb">
-          <code>{{$idx}}</code>
-          {{if $val.Review}}<code class="pill-alert">REVIEW</code>{{end}}
-          <a href="#{{$val.Url}}">{{$val.Title}}</a>
-        </h2>
-
-        <div class="group-h text-sm">
-          <code class="pill{{if $val.Review}}-alert{{end}}">{{$val.AuthorName}} &lt;{{$val.AuthorEmail}}&gt;</code>
-          <date>{{$val.FormattedAuthorDate}}</date>
-        </div>
+      <div class="box{{if .Review}}-alert{{end}} group" id="{{.Url}}">
+        {{template "patch" .}}
       </div>
-
-      {{if $val.Body}}<pre class="m-0">{{$val.Body}}</pre>{{end}}
-
-      <pre class="m-0">{{$val.BodyAppendix}}</pre>
-
-      <details>
-        <summary>Patch</summary>
-        <div>{{$val.DiffStr}}</div>
-      </details>
-    </div>
     {{else}}
     <div class="box">
       No patches found for patch request.

@@ -71,6 +71,7 @@ func getTemplate(file string) *template.Template {
 		template.ParseFS(
 			tmplFS,
 			filepath.Join("tmpl", file),
+			filepath.Join("tmpl", "patch.html"),
 			filepath.Join("tmpl", "pr-header.html"),
 			filepath.Join("tmpl", "pr-list-item.html"),
 			filepath.Join("tmpl", "pr-status.html"),
@@ -279,23 +280,35 @@ type PatchData struct {
 	*Patch
 	Url                 template.URL
 	DiffStr             template.HTML
+	Review              bool
 	FormattedAuthorDate string
 }
 
 type EventLogData struct {
 	*EventLog
-	UserName string
-	Pubkey   string
-	Date     string
+	FormattedPatchsetID string
+	UserName            string
+	Pubkey              string
+	Date                string
+}
+
+type PatchsetData struct {
+	*Patchset
+	FormattedID string
+	UserName    string
+	Pubkey      string
+	Date        string
+	DiffPatches []PatchData
 }
 
 type PrDetailData struct {
-	Page    string
-	Repo    LinkData
-	Pr      PrData
-	Patches []PatchData
-	Branch  string
-	Logs    []EventLogData
+	Page      string
+	Repo      LinkData
+	Pr        PrData
+	Patches   []PatchData
+	Branch    string
+	Logs      []EventLogData
+	Patchsets []PatchsetData
 	MetaData
 }
 
@@ -327,28 +340,96 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	patches, err := web.Pr.GetPatchesByPrID(int64(prID))
+	patchsets, err := web.Pr.GetPatchsetsByPrID(int64(prID))
 	if err != nil {
-		web.Logger.Error("cannot get patches", "err", err)
+		web.Logger.Error("cannot get latest patchset", "err", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	patchesData := []PatchData{}
-	for _, patch := range patches {
-		diffStr, err := parseText(web.Formatter, web.Theme, patch.RawText)
+	// get patchsets and diff from previous patchset
+	patchsetsData := []PatchsetData{}
+	for idx, patchset := range patchsets {
+		user, err := web.Pr.GetUserByID(patchset.UserID)
 		if err != nil {
-			w.WriteHeader(http.StatusUnprocessableEntity)
+			web.Logger.Error("could not get user for patch", "err", err)
+			continue
+		}
+
+		var prevPatchset *Patchset
+		if idx > 0 {
+			prevPatchset = patchsets[idx-1]
+		}
+		patches, err := web.Pr.DiffPatchsets(prevPatchset, patchset)
+		if err != nil {
+			web.Logger.Error("could not diff patchset", "err", err)
+			continue
+		}
+
+		patchesData := []PatchData{}
+		for _, patch := range patches {
+			diffStr, err := parseText(web.Formatter, web.Theme, patch.RawText)
+			if err != nil {
+				web.Logger.Error("cannot parse patch", "err", err)
+				w.WriteHeader(http.StatusUnprocessableEntity)
+				return
+			}
+
+			patchesData = append(patchesData, PatchData{
+				Patch:   patch,
+				Url:     template.URL(fmt.Sprintf("patch-%d", patch.ID)),
+				DiffStr: template.HTML(diffStr),
+				Review:  patchset.Review,
+			})
+		}
+
+		patchsetsData = append(patchsetsData, PatchsetData{
+			Patchset:    patchset,
+			FormattedID: getFormattedPatchsetID(patchset.ID),
+			UserName:    user.Name,
+			Pubkey:      user.Pubkey,
+			Date:        patchset.CreatedAt.Format(time.RFC3339),
+			DiffPatches: patchesData,
+		})
+	}
+
+	patchesData := []PatchData{}
+	if len(patchsetsData) >= 1 {
+		latest := patchsetsData[len(patchsets)-1]
+		patches, err := web.Pr.GetPatchesByPatchsetID(latest.ID)
+		if err != nil {
+			web.Logger.Error("cannot get patches", "err", err)
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		timestamp := AuthorDateToTime(patch.AuthorDate, web.Logger).Format(web.Backend.Cfg.TimeFormat)
-		patchesData = append(patchesData, PatchData{
-			Patch:               patch,
-			Url:                 template.URL(fmt.Sprintf("patch-%d", patch.ID)),
-			DiffStr:             template.HTML(diffStr),
-			FormattedAuthorDate: timestamp,
-		})
+		for _, patch := range patches {
+			timestamp := AuthorDateToTime(patch.AuthorDate, web.Logger).Format(web.Backend.Cfg.TimeFormat)
+			diffStr, err := parseText(web.Formatter, web.Theme, patch.RawText)
+			if err != nil {
+				web.Logger.Error("cannot parse patch", "err", err)
+				w.WriteHeader(http.StatusUnprocessableEntity)
+				return
+			}
+
+			// highlight review
+			isReview := false
+			if latest.Review {
+				for _, diffPatch := range latest.DiffPatches {
+					if diffPatch.ID == patch.ID {
+						isReview = true
+					}
+				}
+			}
+
+			patchesData = append(patchesData, PatchData{
+				Patch:               patch,
+				Url:                 template.URL(fmt.Sprintf("patch-%d", patch.ID)),
+				DiffStr:             template.HTML(diffStr),
+				Review:              isReview,
+				FormattedAuthorDate: timestamp,
+			})
+		}
 	}
 
 	user, err := web.Pr.GetUserByID(pr.UserID)
@@ -361,12 +442,14 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 	tmpl := getTemplate("pr-detail.html")
 	pk, err := web.Backend.PubkeyToPublicKey(user.Pubkey)
 	if err != nil {
+		web.Logger.Error("cannot parse pubkey for pr user", "err", err)
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		return
 	}
 	isAdmin := web.Backend.IsAdmin(pk)
 	logs, err := web.Pr.GetEventLogsByPrID(int64(prID))
 	if err != nil {
+		web.Logger.Error("cannot get logs for pr", "err", err)
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		return
 	}
@@ -378,10 +461,11 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 	for _, eventlog := range logs {
 		user, _ := web.Pr.GetUserByID(eventlog.UserID)
 		logData = append(logData, EventLogData{
-			EventLog: eventlog,
-			UserName: user.Name,
-			Pubkey:   user.Pubkey,
-			Date:     pr.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
+			EventLog:            eventlog,
+			FormattedPatchsetID: getFormattedPatchsetID(eventlog.PatchsetID.Int64),
+			UserName:            user.Name,
+			Pubkey:              user.Pubkey,
+			Date:                pr.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
 		})
 	}
 
@@ -391,9 +475,10 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 			Url:  template.URL("/repos/" + repo.ID),
 			Text: repo.ID,
 		},
-		Branch:  repo.DefaultBranch,
-		Patches: patchesData,
-		Logs:    logData,
+		Branch:    repo.DefaultBranch,
+		Patches:   patchesData,
+		Patchsets: patchsetsData,
+		Logs:      logData,
 		Pr: PrData{
 			ID:       pr.ID,
 			IsAdmin:  isAdmin,
@@ -465,16 +550,16 @@ func rssHandler(w http.ResponseWriter, r *http.Request) {
 
 	var feedItems []*feeds.Item
 	for _, eventLog := range eventLogs {
-		realUrl := fmt.Sprintf("%s/prs/%d", web.Backend.Cfg.Url, eventLog.PatchRequestID)
+		realUrl := fmt.Sprintf("%s/prs/%d", web.Backend.Cfg.Url, eventLog.PatchRequestID.Int64)
 		content := fmt.Sprintf(
 			"<div><div>RepoID: %s</div><div>PatchRequestID: %d</div><div>Event: %s</div><div>Created: %s</div><div>Data: %s</div></div>",
 			eventLog.RepoID,
-			eventLog.PatchRequestID,
+			eventLog.PatchRequestID.Int64,
 			eventLog.Event,
 			eventLog.CreatedAt.Format(time.RFC3339Nano),
 			eventLog.Data,
 		)
-		pr, err := web.Pr.GetPatchRequestByID(eventLog.PatchRequestID)
+		pr, err := web.Pr.GetPatchRequestByID(eventLog.PatchRequestID.Int64)
 		if err != nil {
 			continue
 		}
@@ -489,7 +574,7 @@ func rssHandler(w http.ResponseWriter, r *http.Request) {
 			eventLog.Event,
 			eventLog.RepoID,
 			pr.Name,
-			eventLog.PatchRequestID,
+			eventLog.PatchRequestID.Int64,
 		)
 		item := &feeds.Item{
 			Id:          fmt.Sprintf("%d", eventLog.ID),

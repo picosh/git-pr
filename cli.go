@@ -17,9 +17,44 @@ func NewTabWriter(out io.Writer) *tabwriter.Writer {
 	return tabwriter.NewWriter(out, 0, 0, 1, ' ', tabwriter.TabIndent)
 }
 
-func getPrID(str string) (int64, error) {
+func strToInt(str string) (int64, error) {
 	prID, err := strconv.ParseInt(str, 10, 64)
 	return prID, err
+}
+
+func getPatchsetFromOpt(patchsets []*Patchset, optPatchsetID string) (*Patchset, error) {
+	if optPatchsetID == "" {
+		return patchsets[len(patchsets)-1], nil
+	}
+
+	id, err := getPatchsetID(optPatchsetID)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, ps := range patchsets {
+		if ps.ID == id {
+			return ps, nil
+		}
+	}
+
+	return nil, fmt.Errorf("cannot find patchset: %s", optPatchsetID)
+}
+
+func printPatches(sesh ssh.Session, patches []*Patch) {
+	wish.Println(sesh, "/* vim: set filetype=diff : */")
+	if len(patches) == 1 {
+		wish.Println(sesh, patches[0].RawText)
+		return
+	}
+
+	opatches := patches
+	for idx, patch := range opatches {
+		wish.Println(sesh, patch.RawText)
+		if idx < len(patches)-1 {
+			wish.Printf(sesh, "\n\n\n")
+		}
+	}
 }
 
 func NewCli(sesh ssh.Session, be *Backend, pr GitPatchRequest) *cli.App {
@@ -50,12 +85,12 @@ Here's how it works:
 		ErrWriter:   sesh,
 		ExitErrHandler: func(cCtx *cli.Context, err error) {
 			if err != nil {
-				wish.Fatalln(sesh, err)
+				wish.Fatalln(sesh, fmt.Errorf("err: %w", err))
 			}
 		},
 		OnUsageError: func(cCtx *cli.Context, err error, isSubcommand bool) error {
 			if err != nil {
-				wish.Fatalln(sesh, err)
+				wish.Fatalln(sesh, fmt.Errorf("err: %w", err))
 			}
 			return nil
 		},
@@ -143,13 +178,14 @@ Here's how it works:
 						return err
 					}
 					writer := NewTabWriter(sesh)
-					fmt.Fprintln(writer, "RepoID\tPrID\tEvent\tCreated\tData")
+					fmt.Fprintln(writer, "RepoID\tPrID\tPatchsetID\tEvent\tCreated\tData")
 					for _, eventLog := range eventLogs {
 						fmt.Fprintf(
 							writer,
-							"%s\t%d\t%s\t%s\t%s\n",
+							"%s\t%d\t%s\t%s\t%s\t%s\n",
 							eventLog.RepoID,
-							eventLog.PatchRequestID,
+							eventLog.PatchRequestID.Int64,
+							getFormattedPatchsetID(eventLog.PatchsetID.Int64),
 							eventLog.Event,
 							eventLog.CreatedAt.Format(be.Cfg.TimeFormat),
 							eventLog.Data,
@@ -157,6 +193,30 @@ Here's how it works:
 					}
 					writer.Flush()
 					return nil
+				},
+			},
+			{
+				Name:  "ps",
+				Usage: "Mange patchsets",
+				Subcommands: []*cli.Command{
+					{
+						Name:      "rm",
+						Usage:     "Remove a patchset with its patches",
+						Args:      true,
+						ArgsUsage: "[patchsetID]",
+						Action: func(cCtx *cli.Context) error {
+							args := cCtx.Args()
+							if !args.Present() {
+								return fmt.Errorf("must provide a patchset ID")
+							}
+
+							patchsetID, err := getPatchsetID(args.First())
+							if err != nil {
+								return err
+							}
+							return pr.DeletePatchsetByID(patchsetID)
+						},
+					},
 				},
 			},
 			{
@@ -191,9 +251,10 @@ Here's how it works:
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							repoID := cCtx.Args().First()
-							var prs []*PatchRequest
+							args := cCtx.Args()
+							repoID := args.First()
 							var err error
+							var prs []*PatchRequest
 							if repoID == "" {
 								prs, err = pr.GetPatchRequests()
 							} else {
@@ -210,7 +271,7 @@ Here's how it works:
 							onlyMine := cCtx.Bool("mine")
 
 							writer := NewTabWriter(sesh)
-							fmt.Fprintln(writer, "ID\tRepoID\tName\tStatus\tUser\tDate")
+							fmt.Fprintln(writer, "ID\tRepoID\tName\tStatus\tPatchsets\tUser\tDate")
 							for _, req := range prs {
 								if onlyAccepted && req.Status != "accepted" {
 									continue
@@ -238,13 +299,20 @@ Here's how it works:
 									continue
 								}
 
+								patchsets, err := pr.GetPatchsetsByPrID(req.ID)
+								if err != nil {
+									be.Logger.Error("could not get patchsets for pr", "err", err)
+									continue
+								}
+
 								fmt.Fprintf(
 									writer,
-									"%d\t%s\t%s\t[%s]\t%s\t%s\n",
+									"%d\t%s\t%s\t[%s]\t%d\t%s\t%s\n",
 									req.ID,
 									req.RepoID,
 									req.Name,
 									req.Status,
+									len(patchsets),
 									user.Name,
 									req.CreatedAt.Format(be.Cfg.TimeFormat),
 								)
@@ -264,7 +332,12 @@ Here's how it works:
 								return err
 							}
 
-							repoID := cCtx.Args().First()
+							args := cCtx.Args()
+							if !args.Present() {
+								return fmt.Errorf("must provide a repo ID")
+							}
+
+							repoID := args.First()
 							prq, err := pr.SubmitPatchRequest(repoID, user.ID, sesh)
 							if err != nil {
 								return err
@@ -289,138 +362,101 @@ Here's how it works:
 						},
 					},
 					{
+						Name:      "diff",
+						Usage:     "Print a diff between the last two patchsets in a PR",
+						Args:      true,
+						ArgsUsage: "[prID]",
+						Action: func(cCtx *cli.Context) error {
+							args := cCtx.Args()
+							if !args.Present() {
+								return fmt.Errorf("must provide a patch request ID")
+							}
+
+							prID, err := strToInt(args.First())
+							if err != nil {
+								return err
+							}
+
+							patchsets, err := pr.GetPatchsetsByPrID(prID)
+							if err != nil {
+								be.Logger.Error("cannot get latest patchset", "err", err)
+								return err
+							}
+
+							if len(patchsets) == 0 {
+								return fmt.Errorf("no patchsets found for pr: %d", prID)
+							}
+
+							latest := patchsets[len(patchsets)-1]
+							var prev *Patchset
+							if len(patchsets) > 1 {
+								prev = patchsets[len(patchsets)-2]
+							}
+
+							patches, err := pr.DiffPatchsets(prev, latest)
+							if err != nil {
+								be.Logger.Error("could not diff patchset", "err", err)
+								return err
+							}
+
+							printPatches(sesh, patches)
+							return nil
+						},
+					},
+					{
 						Name:      "print",
 						Usage:     "Print the patches for a PR",
 						Args:      true,
 						ArgsUsage: "[prID]",
 						Flags: []cli.Flag{
 							&cli.StringFlag{
-								Name:    "filter",
-								Usage:   "Only print patches in sequence range (x:y) (x:) (:y)",
-								Aliases: []string{"f"},
+								Name:    "patchset",
+								Usage:   "Provide patchset ID to print a specific patchset (`patchset-xxx`, default is latest)",
+								Aliases: []string{"ps"},
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							prID, err := getPrID(cCtx.Args().First())
+							args := cCtx.Args()
+							if !args.Present() {
+								return fmt.Errorf("must provide a patch request ID")
+							}
+
+							prID, err := strToInt(args.First())
 							if err != nil {
 								return err
 							}
 
-							patches, err := pr.GetPatchesByPrID(prID)
+							patchsets, err := pr.GetPatchsetsByPrID(prID)
 							if err != nil {
 								return err
 							}
 
-							if len(patches) == 1 {
-								wish.Println(sesh, patches[0].RawText)
-								return nil
-							}
-
-							rnge := cCtx.String("filter")
-							opatches := patches
-							if rnge != "" {
-								ranger, err := parseRange(rnge, len(patches))
-								if err != nil {
-									return err
-								}
-								opatches = filterPatches(ranger, patches)
-							}
-
-							for idx, patch := range opatches {
-								wish.Println(sesh, patch.RawText)
-								if idx < len(patches)-1 {
-									wish.Printf(sesh, "\n\n\n")
-								}
-							}
-
-							return nil
-						},
-					},
-					{
-						Name:      "stats",
-						Usage:     "Print PR with diff stats",
-						Args:      true,
-						ArgsUsage: "[prID]",
-						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name:    "filter",
-								Usage:   "Only print patches in sequence range (x:y) (x:) (:y)",
-								Aliases: []string{"f"},
-							},
-						},
-						Action: func(cCtx *cli.Context) error {
-							prID, err := getPrID(cCtx.Args().First())
+							patchset, err := getPatchsetFromOpt(patchsets, cCtx.String("patchset"))
 							if err != nil {
 								return err
 							}
 
-							request, err := pr.GetPatchRequestByID(prID)
+							patches, err := pr.GetPatchesByPatchsetID(patchset.ID)
 							if err != nil {
 								return err
 							}
 
-							writer := NewTabWriter(sesh)
-							fmt.Fprintln(writer, "ID\tName\tStatus\tDate")
-							fmt.Fprintf(
-								writer,
-								"%d\t%s\t[%s]\t%s\n%s\n\n",
-								request.ID, request.Name, request.Status, request.CreatedAt.Format(be.Cfg.TimeFormat),
-								request.Text,
-							)
-							writer.Flush()
-
-							patches, err := pr.GetPatchesByPrID(prID)
-							if err != nil {
-								return err
-							}
-
-							rnge := cCtx.String("filter")
-							opatches := patches
-							if rnge != "" {
-								ranger, err := parseRange(rnge, len(patches))
-								if err != nil {
-									return err
-								}
-								opatches = filterPatches(ranger, patches)
-							}
-
-							for _, patch := range opatches {
-								reviewTxt := ""
-								if patch.Review {
-									reviewTxt = "[review]"
-								}
-								timestamp := AuthorDateToTime(patch.AuthorDate, be.Logger).Format(be.Cfg.TimeFormat)
-								wish.Printf(
-									sesh,
-									"%s %s %s\n%s <%s>\n%s\n\n---\n%s\n%s\n\n\n",
-									patch.Title,
-									reviewTxt,
-									truncateSha(patch.CommitSha),
-									patch.AuthorName,
-									patch.AuthorEmail,
-									timestamp,
-									patch.BodyAppendix,
-									patch.Body,
-								)
-							}
-
+							printPatches(sesh, patches)
 							return nil
 						},
 					},
 					{
 						Name:      "summary",
-						Usage:     "List patches in PRs",
+						Usage:     "Display metadata related to a PR",
 						Args:      true,
 						ArgsUsage: "[prID]",
-						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name:    "filter",
-								Usage:   "Only print patches in sequence range (x:y) (x:) (:y)",
-								Aliases: []string{"f"},
-							},
-						},
 						Action: func(cCtx *cli.Context) error {
-							prID, err := getPrID(cCtx.Args().First())
+							args := cCtx.Args()
+							if !args.Present() {
+								return fmt.Errorf("must provide a patch request ID")
+							}
+
+							prID, err := strToInt(args.First())
 							if err != nil {
 								return err
 							}
@@ -429,45 +465,70 @@ Here's how it works:
 								return err
 							}
 
+							wish.Printf(sesh, "Info\n====\n")
+
 							writer := NewTabWriter(sesh)
 							fmt.Fprintln(writer, "ID\tName\tStatus\tDate")
 							fmt.Fprintf(
 								writer,
-								"%d\t%s\t[%s]\t%s\n%s\n",
+								"%d\t%s\t[%s]\t%s\n",
 								request.ID, request.Name, request.Status, request.CreatedAt.Format(be.Cfg.TimeFormat),
-								request.Text,
 							)
 							writer.Flush()
 
-							patches, err := pr.GetPatchesByPrID(prID)
+							patchsets, err := pr.GetPatchsetsByPrID(prID)
 							if err != nil {
 								return err
 							}
 
-							rnge := cCtx.String("filter")
-							opatches := patches
-							if rnge != "" {
-								ranger, err := parseRange(rnge, len(patches))
+							wish.Printf(sesh, "\nPatchsets\n====\n")
+
+							writerSet := NewTabWriter(sesh)
+							fmt.Fprintln(writerSet, "ID\tType\tUser\tDate")
+							for _, patchset := range patchsets {
+								user, err := pr.GetUserByID(patchset.UserID)
 								if err != nil {
-									return err
+									be.Logger.Error("cannot find user for patchset", "err", err)
+									continue
 								}
-								opatches = filterPatches(ranger, patches)
+								isReview := ""
+								if patchset.Review {
+									isReview = "[review]"
+								}
+
+								fmt.Fprintf(
+									writerSet,
+									"%s\t%s\t%s\t%s\n",
+									getFormattedPatchsetID(patchset.ID),
+									isReview,
+									user.Name,
+									patchset.CreatedAt.Format(be.Cfg.TimeFormat),
+								)
+							}
+							writerSet.Flush()
+
+							latest, err := getPatchsetFromOpt(patchsets, "")
+							if err != nil {
+								return err
 							}
 
+							patches, err := pr.GetPatchesByPatchsetID(latest.ID)
+							if err != nil {
+								return err
+							}
+
+							wish.Printf(sesh, "\nPatches from latest patchset\n====\n")
+
+							opatches := patches
 							w := NewTabWriter(sesh)
-							fmt.Fprintln(w, "Idx\tTitle\tStatus\tCommit\tAuthor\tDate")
+							fmt.Fprintln(w, "Idx\tTitle\tCommit\tAuthor\tDate")
 							for idx, patch := range opatches {
-								reviewTxt := ""
-								if patch.Review {
-									reviewTxt = "[review]"
-								}
 								timestamp := AuthorDateToTime(patch.AuthorDate, be.Logger).Format(be.Cfg.TimeFormat)
 								fmt.Fprintf(
 									w,
-									"%d\t%s\t%s\t%s\t%s <%s>\t%s\n",
+									"%d\t%s\t%s\t%s <%s>\t%s\n",
 									idx,
 									patch.Title,
-									reviewTxt,
 									truncateSha(patch.CommitSha),
 									patch.AuthorName,
 									patch.AuthorEmail,
@@ -485,7 +546,12 @@ Here's how it works:
 						Args:      true,
 						ArgsUsage: "[prID]",
 						Action: func(cCtx *cli.Context) error {
-							prID, err := getPrID(cCtx.Args().First())
+							args := cCtx.Args()
+							if !args.Present() {
+								return fmt.Errorf("must provide a patch request ID")
+							}
+
+							prID, err := strToInt(args.First())
 							if err != nil {
 								return err
 							}
@@ -522,7 +588,12 @@ Here's how it works:
 						Args:      true,
 						ArgsUsage: "[prID]",
 						Action: func(cCtx *cli.Context) error {
-							prID, err := getPrID(cCtx.Args().First())
+							args := cCtx.Args()
+							if !args.Present() {
+								return fmt.Errorf("must provide a patch request ID")
+							}
+
+							prID, err := strToInt(args.First())
 							if err != nil {
 								return err
 							}
@@ -560,7 +631,12 @@ Here's how it works:
 						Args:      true,
 						ArgsUsage: "[prID]",
 						Action: func(cCtx *cli.Context) error {
-							prID, err := getPrID(cCtx.Args().First())
+							args := cCtx.Args()
+							if !args.Present() {
+								return fmt.Errorf("must provide a patch request ID")
+							}
+
+							prID, err := strToInt(args.First())
 							if err != nil {
 								return err
 							}
@@ -599,7 +675,12 @@ Here's how it works:
 						Args:      true,
 						ArgsUsage: "[prID] [title]",
 						Action: func(cCtx *cli.Context) error {
-							prID, err := getPrID(cCtx.Args().First())
+							args := cCtx.Args()
+							if !args.Present() {
+								return fmt.Errorf("must provide a patch request ID")
+							}
+
+							prID, err := strToInt(args.First())
 							if err != nil {
 								return err
 							}
@@ -639,7 +720,7 @@ Here's how it works:
 					},
 					{
 						Name:      "add",
-						Usage:     "Append a patch to a PR",
+						Usage:     "Add a new patchset to a PR",
 						Args:      true,
 						ArgsUsage: "[prID]",
 						Flags: []cli.Flag{
@@ -647,13 +728,14 @@ Here's how it works:
 								Name:  "review",
 								Usage: "mark patch as a review",
 							},
-							&cli.BoolFlag{
-								Name:  "force",
-								Usage: "replace patchset with new patchset -- including reviews",
-							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							prID, err := getPrID(cCtx.Args().First())
+							args := cCtx.Args()
+							if !args.Present() {
+								return fmt.Errorf("must provide a patch request ID")
+							}
+
+							prID, err := strToInt(args.First())
 							if err != nil {
 								return err
 							}
@@ -669,7 +751,6 @@ Here's how it works:
 
 							isAdmin := be.IsAdmin(sesh.PublicKey())
 							isReview := cCtx.Bool("review")
-							isReplace := cCtx.Bool("force")
 							isPrOwner := be.IsPrOwner(prq.UserID, user.ID)
 							if !isAdmin && !isPrOwner {
 								return fmt.Errorf("unauthorized, you are not the owner of this PR")
@@ -679,12 +760,9 @@ Here's how it works:
 							if isReview {
 								wish.Println(sesh, "Marking new patchset as a review")
 								op = OpReview
-							} else if isReplace {
-								wish.Println(sesh, "Replacing current patchset with new one")
-								op = OpReplace
 							}
 
-							patches, err := pr.SubmitPatchSet(prID, user.ID, op, sesh)
+							patches, err := pr.SubmitPatchset(prID, user.ID, op, sesh)
 							if err != nil {
 								return err
 							}
