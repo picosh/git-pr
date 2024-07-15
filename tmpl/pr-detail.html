@@ -15,6 +15,8 @@
 
 <main class="group">
   <div class="box group text-sm">
+    <h3 class="text-lg">Logs</h3>
+
     {{range .Logs}}
     <div>
       <code class='pill{{if eq .Event "pr_reviewed"}}-alert{{end}}'>{{.UserName}}</code>
@@ -22,11 +24,11 @@
         {{if eq .Event "pr_created"}}
           created pr
         {{else if eq .Event "pr_patchset_added"}}
-          added patches
+          added <code>patchset-{{.PatchsetID.Int64}}</code>
         {{else if eq .Event "pr_reviewed"}}
           reviewed pr
         {{else if eq .Event "pr_patchset_replaced"}}
-          replaced all patches
+          replaced <code>patchset-{{.PatchsetID.Int64}}</code>
         {{else if eq .Event "pr_status_changed"}}
           changed status
         {{else if eq .Event "pr_name_changed"}}
@@ -41,14 +43,27 @@
     {{end}}
   </div>
 
+  <div class="box group text-sm">
+    <h3 class="text-lg">Patchsets</h3>
+
+    {{range .Patchsets}}
+      <div>
+        <code class="{{if .Review}}pill-alert{{end}}">patchset-{{.ID}}</code>
+        <span> by </span>
+        <code class="pill{{if .Review}}-alert{{end}}">{{.UserName}}</code>
+        <span>on <date>{{.Date}}</date></span>
+      </div>
+    {{end}}
+  </div>
+
   <div class="group">
     {{range $idx, $val := .Patches}}
     <div class="box group" id="{{$val.Url}}">
       <div>
-        <h2 class="text-lg m-0 p-0 mb">
+        <h3 class="text-lg m-0 p-0 mb">
           <code>{{$idx}}</code>
           <a href="#{{$val.Url}}">{{$val.Title}}</a>
-        </h2>
+        </h3>
 
         <div class="group-h text-sm">
           <code class="pill{{if $val.Review}}-alert{{end}}">{{$val.AuthorName}} &lt;{{$val.AuthorEmail}}&gt;</code>

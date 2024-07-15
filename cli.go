@@ -149,7 +149,7 @@ Here's how it works:
 							writer,
 							"%s\t%d\t%s\t%s\t%s\n",
 							eventLog.RepoID,
-							eventLog.PatchRequestID,
+							eventLog.PatchRequestID.Int64,
 							eventLog.Event,
 							eventLog.CreatedAt.Format(be.Cfg.TimeFormat),
 							eventLog.Data,

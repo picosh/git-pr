@@ -1,6 +1,7 @@
 package git
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -292,7 +293,7 @@ func (cmd PrCmd) UpdatePatchRequestStatus(prID int64, userID int64, status strin
 	)
 	_ = cmd.CreateEventLog(EventLog{
 		UserID:         userID,
-		PatchRequestID: prID,
+		PatchRequestID: sql.NullInt64{Int64: prID},
 		Event:          "pr_status_changed",
 		Data:           fmt.Sprintf(`{"status":"%s"}`, status),
 	})
@@ -311,7 +312,7 @@ func (cmd PrCmd) UpdatePatchRequestName(prID int64, userID int64, name string) e
 	)
 	_ = cmd.CreateEventLog(EventLog{
 		UserID:         userID,
-		PatchRequestID: prID,
+		PatchRequestID: sql.NullInt64{Int64: prID},
 		Event:          "pr_name_changed",
 		Data:           fmt.Sprintf(`{"name":"%s"}`, name),
 	})
@@ -319,7 +320,7 @@ func (cmd PrCmd) UpdatePatchRequestName(prID int64, userID int64, name string) e
 }
 
 func (cmd PrCmd) CreateEventLog(eventLog EventLog) error {
-	if eventLog.RepoID == "" && eventLog.PatchRequestID != 0 {
+	if eventLog.RepoID == "" && eventLog.PatchRequestID.Valid {
 		var pr PatchRequest
 		err := cmd.Backend.DB.Get(
 			&pr,
@@ -337,10 +338,11 @@ func (cmd PrCmd) CreateEventLog(eventLog EventLog) error {
 	}
 
 	_, err := cmd.Backend.DB.Exec(
-		"INSERT INTO event_logs (user_id, repo_id, patch_request_id, event, data) VALUES (?, ?, ?, ?, ?)",
+		"INSERT INTO event_logs (user_id, repo_id, patch_request_id, patchset_id, event, data) VALUES (?, ?, ?, ?, ?, ?)",
 		eventLog.UserID,
 		eventLog.RepoID,
-		eventLog.PatchRequestID,
+		eventLog.PatchRequestID.Int64,
+		eventLog.PatchsetID.Int64,
 		eventLog.Event,
 		eventLog.Data,
 	)
@@ -465,8 +467,15 @@ func (cmd PrCmd) SubmitPatchRequest(repoID string, userID int64, patchset io.Rea
 
 	_ = cmd.CreateEventLog(EventLog{
 		UserID:         userID,
-		PatchRequestID: prID,
+		PatchRequestID: sql.NullInt64{Int64: prID},
 		Event:          "pr_created",
+	})
+
+	_ = cmd.CreateEventLog(EventLog{
+		UserID:         userID,
+		PatchRequestID: sql.NullInt64{Int64: prID},
+		PatchsetID:     sql.NullInt64{Int64: patchsetID},
+		Event:          "pr_patchset_added",
 	})
 
 	var pr PatchRequest
@@ -541,7 +550,8 @@ func (cmd PrCmd) SubmitPatchset(prID int64, userID int64, op PatchsetOp, patchse
 
 		_ = cmd.CreateEventLog(EventLog{
 			UserID:         userID,
-			PatchRequestID: prID,
+			PatchRequestID: sql.NullInt64{Int64: prID},
+			PatchsetID:     sql.NullInt64{Int64: patchsetID},
 			Event:          event,
 		})
 	}
