@@ -29,7 +29,7 @@ type GitPatchRequest interface {
 	GetReposWithLatestPr() ([]RepoWithLatestPr, error)
 	GetRepoByID(repoID string) (*Repo, error)
 	SubmitPatchRequest(repoID string, userID int64, patchset io.Reader) (*PatchRequest, error)
-	SubmitPatchSet(prID, userID int64, op PatchsetOp, patchset io.Reader) ([]*Patch, error)
+	SubmitPatchset(prID, userID int64, op PatchsetOp, patchset io.Reader) ([]*Patch, error)
 	GetPatchRequestByID(prID int64) (*PatchRequest, error)
 	GetPatchRequests() ([]*PatchRequest, error)
 	GetPatchRequestsByRepoID(repoID string) ([]*PatchRequest, error)
@@ -402,7 +402,7 @@ func (cmd PrCmd) SubmitPatchRequest(repoID string, userID int64, patchset io.Rea
 		_ = tx.Rollback()
 	}()
 
-	patches, err := parsePatchSet(patchset)
+	patches, err := parsePatchset(patchset)
 	if err != nil {
 		return nil, err
 	}
@@ -480,7 +480,7 @@ func (cmd PrCmd) SubmitPatchRequest(repoID string, userID int64, patchset io.Rea
 	return &pr, err
 }
 
-func (cmd PrCmd) SubmitPatchSet(prID int64, userID int64, op PatchsetOp, patchset io.Reader) ([]*Patch, error) {
+func (cmd PrCmd) SubmitPatchset(prID int64, userID int64, op PatchsetOp, patchset io.Reader) ([]*Patch, error) {
 	fin := []*Patch{}
 	tx, err := cmd.Backend.DB.Beginx()
 	if err != nil {
@@ -491,7 +491,7 @@ func (cmd PrCmd) SubmitPatchSet(prID int64, userID int64, op PatchsetOp, patchse
 		_ = tx.Rollback()
 	}()
 
-	patches, err := parsePatchSet(patchset)
+	patches, err := parsePatchset(patchset)
 	if err != nil {
 		return fin, err
 	}

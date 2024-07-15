@@ -13,7 +13,7 @@ func TestParsePatchsetWithCover(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	actual, err := parsePatchSet(file)
+	actual, err := parsePatchset(file)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}

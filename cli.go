@@ -699,7 +699,7 @@ Here's how it works:
 								op = OpReplace
 							}
 
-							patches, err := pr.SubmitPatchSet(prID, user.ID, op, sesh)
+							patches, err := pr.SubmitPatchset(prID, user.ID, op, sesh)
 							if err != nil {
 								return err
 							}

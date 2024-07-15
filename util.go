@@ -127,7 +127,7 @@ func findBaseCommit(patch string) string {
 	return baseCommit
 }
 
-func parsePatchSet(patchset io.Reader) ([]*Patch, error) {
+func parsePatchset(patchset io.Reader) ([]*Patch, error) {
 	patches := []*Patch{}
 	buf := new(strings.Builder)
 	_, err := io.Copy(buf, patchset)
