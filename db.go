@@ -135,29 +135,29 @@ CREATE TABLE IF NOT EXISTS patchsets (
 );
 
 CREATE TABLE IF NOT EXISTS patches (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL,
-  patch_request_id INTEGER NOT NULL,
-  author_name TEXT NOT NULL,
-  author_email TEXT NOT NULL,
-  author_date DATETIME NOT NULL,
-  title TEXT NOT NULL,
-  body TEXT NOT NULL,
-  body_appendix TEXT NOT NULL,
-  commit_sha TEXT NOT NULL,
-  content_sha TEXT NOT NULL,
-  review BOOLEAN NOT NULL DEFAULT false,
-  raw_text TEXT NOT NULL,
-  base_commit_sha TEXT,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT pr_id_fk
-    FOREIGN KEY(patch_request_id) REFERENCES patch_requests(id)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE,
-  CONSTRAINT patches_user_id_fk
-    FOREIGN KEY(user_id) REFERENCES app_users(id)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	user_id INTEGER NOT NULL,
+	patchset_id INTEGER NOT NULL,
+	author_name TEXT NOT NULL,
+	author_email TEXT NOT NULL,
+	author_date DATETIME NOT NULL,
+	title TEXT NOT NULL,
+	body TEXT NOT NULL,
+	body_appendix TEXT NOT NULL,
+	commit_sha TEXT NOT NULL,
+	content_sha TEXT NOT NULL,
+	review BOOLEAN NOT NULL DEFAULT false,
+	raw_text TEXT NOT NULL,
+	base_commit_sha TEXT,
+	created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	CONSTRAINT patches_user_id_fk
+		FOREIGN KEY(user_id) REFERENCES app_users(id)
+		ON DELETE CASCADE
+		ON UPDATE CASCADE,
+	CONSTRAINT patches_patchset_id_fk
+		FOREIGN KEY(patchset_id) REFERENCES patchsets(id)
+		ON DELETE CASCADE
+		ON UPDATE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS event_logs (
@@ -182,6 +182,28 @@ CREATE TABLE IF NOT EXISTS event_logs (
 var sqliteMigrations = []string{
 	"", // migration #0 is reserved for schema initialization
 	"ALTER TABLE patches ADD COLUMN base_commit_sha TEXT",
+	`
+	CREATE TABLE IF NOT EXISTS patchsets (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id INTEGER NOT NULL,
+		patch_request_id INTEGER NOT NULL,
+		review BOOLEAN NOT NULL DEFAULT false,
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		CONSTRAINT patchset_user_id_fk
+			FOREIGN KEY(user_id) REFERENCES app_users(id)
+			ON DELETE CASCADE
+			ON UPDATE CASCADE,
+		CONSTRAINT patchset_patch_request_id_fk
+			FOREIGN KEY(patch_request_id) REFERENCES patch_requests(id)
+			ON DELETE CASCADE
+			ON UPDATE CASCADE
+	);
+	ALTER TABLE patches ADD COLUMN patchset_id INTEGER;
+	ALTER TABLE ADD CONSTRAINT patches_patchset_id_fk
+		FOREIGN KEY(patchset_id) REFERENCES patchset(id)
+		ON DELETE CASCADE
+		ON UPDATE CASCADE;
+	`,
 }
 
 // Open opens a database connection.
@@ -208,6 +230,71 @@ func Open(dsn string, logger *slog.Logger) (*DB, error) {
 // Close implements db.DB.
 func (d *DB) Close() error {
 	return d.DB.Close()
+}
+
+type OldPatch struct {
+	ID             int64 `db:"id"`
+	UserID         int64 `db:"user_id"`
+	PatchRequestID int64 `db:"patch_request_id"`
+	Review         bool  `db:"review"`
+}
+
+func (db *DB) migrateToPatchsets() error {
+	tx, err := db.Beginx()
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	var patches []*OldPatch
+	err = db.Select(&patches, "SELECT id, user_id, patch_request_id, review FROM patches")
+	if err != nil {
+		return err
+	}
+	var patchsetID int64
+	for _, patch := range patches {
+		rev := "0"
+		if patch.Review {
+			rev = "1"
+		}
+		var patchset *Patchset
+		err := db.Get(
+			&patchset,
+			"SELECT * FROM patchsets WHERE patch_request_id=? and review='?' LIMIT 1",
+			patch.PatchRequestID,
+			rev,
+		)
+		if err != nil {
+			continue
+		}
+		// upsert
+		if patchset == nil {
+			row := db.QueryRow(
+				"INSERT INTO patchsets (user_id, patch_request_id, review) VALUES(?, ?, ?) RETURNING id;",
+				patch.UserID,
+				patch.PatchRequestID,
+				rev,
+			)
+			err := row.Scan(&patchsetID)
+			if err != nil {
+				return err
+			}
+		}
+
+		_, err = db.Exec(
+			"UPDATE patches SET patchset_id=? WHERE id=?",
+			patchsetID,
+			patch.ID,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 func (db *DB) upgrade() error {
@@ -239,6 +326,10 @@ func (db *DB) upgrade() error {
 			if _, err := tx.Exec(sqliteMigrations[i]); err != nil {
 				return fmt.Errorf("failed to execute migration #%v: %v", i, err)
 			}
+		}
+		err = db.migrateToPatchsets()
+		if err != nil {
+			return fmt.Errorf("failed to migrate to patchsets: %v", err)
 		}
 	}
 
