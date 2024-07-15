@@ -468,14 +468,8 @@ func (cmd PrCmd) SubmitPatchRequest(repoID string, userID int64, patchset io.Rea
 	_ = cmd.CreateEventLog(EventLog{
 		UserID:         userID,
 		PatchRequestID: sql.NullInt64{Int64: prID},
-		Event:          "pr_created",
-	})
-
-	_ = cmd.CreateEventLog(EventLog{
-		UserID:         userID,
-		PatchRequestID: sql.NullInt64{Int64: prID},
 		PatchsetID:     sql.NullInt64{Int64: patchsetID},
-		Event:          "pr_patchset_added",
+		Event:          "pr_created",
 	})
 
 	var pr PatchRequest
