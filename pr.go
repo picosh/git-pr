@@ -383,6 +383,11 @@ func (cmd PrCmd) SubmitPatchRequest(repoID string, userID int64, patchset io.Rea
 		return nil, fmt.Errorf("after parsing patchset we did't find any patches, did you send us an empty patchset?")
 	}
 
+	_, err = cmd.GetRepoByID(repoID)
+	if err != nil {
+		return nil, fmt.Errorf("repo does not exist")
+	}
+
 	prName := ""
 	prText := ""
 	if len(patches) > 0 {
