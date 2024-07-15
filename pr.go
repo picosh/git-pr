@@ -251,13 +251,7 @@ func (pr PrCmd) GetPatchesByPatchsetID(patchsetID int64) ([]*Patch, error) {
 		"SELECT * FROM patches WHERE patchset_id=? ORDER BY created_at ASC, id ASC",
 		patchsetID,
 	)
-	if err != nil {
-		return patches, err
-	}
-	if len(patches) == 0 {
-		return patches, fmt.Errorf("no patches found for patchset: %d", patchsetID)
-	}
-	return patches, nil
+	return patches, err
 }
 
 func (cmd PrCmd) GetPatchRequests() ([]*PatchRequest, error) {
@@ -368,7 +362,7 @@ func (cmd PrCmd) createPatch(tx *sqlx.Tx, patch *Patch) (int64, error) {
 
 	var patchID int64
 	row := tx.QueryRow(
-		"INSERT INTO patches (user_id, patchset_id, author_name, author_email, author_date, title, body, body_appendix, commit_sha, content_sha, base_commit_sha, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
+		"INSERT INTO patches (user_id, patchset_id, author_name, author_email, author_date, title, body, body_appendix, commit_sha, content_sha, base_commit_sha, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
 		patch.UserID,
 		patch.PatchsetID,
 		patch.AuthorName,
