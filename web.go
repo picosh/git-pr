@@ -130,7 +130,7 @@ func repoListHandler(w http.ResponseWriter, r *http.Request) {
 					Url:  template.URL(fmt.Sprintf("/prs/%d", curpr.ID)),
 					Text: curpr.Name,
 				},
-				Date:   curpr.CreatedAt.Format(time.RFC3339),
+				Date:   curpr.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
 				Status: curpr.Status,
 			}
 		}
@@ -232,7 +232,7 @@ func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 				Url:  template.URL(fmt.Sprintf("/prs/%d", curpr.ID)),
 				Text: curpr.Name,
 			},
-			Date:   curpr.CreatedAt.Format(time.RFC3339),
+			Date:   curpr.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
 			Status: curpr.Status,
 		}
 		if curpr.Status == "open" {
@@ -378,7 +378,7 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 			EventLog: eventlog,
 			UserName: user.Name,
 			Pubkey:   user.Pubkey,
-			Date:     pr.CreatedAt.Format(time.RFC3339),
+			Date:     pr.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
 		})
 	}
 
@@ -397,7 +397,7 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 			Title:    pr.Name,
 			UserName: user.Name,
 			Pubkey:   user.Pubkey,
-			Date:     pr.CreatedAt.Format(time.RFC3339),
+			Date:     pr.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
 			Status:   pr.Status,
 		},
 		MetaData: MetaData{

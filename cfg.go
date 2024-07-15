@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/ssh"
 	"github.com/knadh/koanf/parsers/toml"
@@ -22,16 +23,17 @@ type Repo struct {
 var k = koanf.New(".")
 
 type GitCfg struct {
-	DataDir   string          `koanf:"data_dir"`
-	Repos     []*Repo         `koanf:"repo"`
-	Url       string          `koanf:"url"`
-	Host      string          `koanf:"host"`
-	SshPort   string          `koanf:"ssh_port"`
-	WebPort   string          `koanf:"web_port"`
-	AdminsStr []string        `koanf:"admins"`
-	Admins    []ssh.PublicKey `koanf:"admins_pk"`
-	Theme     string          `koanf:"theme"`
-	Logger    *slog.Logger
+	DataDir    string          `koanf:"data_dir"`
+	Repos      []*Repo         `koanf:"repo"`
+	Url        string          `koanf:"url"`
+	Host       string          `koanf:"host"`
+	SshPort    string          `koanf:"ssh_port"`
+	WebPort    string          `koanf:"web_port"`
+	AdminsStr  []string        `koanf:"admins"`
+	Admins     []ssh.PublicKey `koanf:"admins_pk"`
+	Theme      string          `koanf:"theme"`
+	TimeFormat string          `koanf:"time_format"`
+	Logger     *slog.Logger
 }
 
 func NewGitCfg(fpath string, logger *slog.Logger) *GitCfg {
@@ -86,6 +88,10 @@ func NewGitCfg(fpath string, logger *slog.Logger) *GitCfg {
 		out.Theme = "dracula"
 	}
 
+	if out.TimeFormat == "" {
+		out.TimeFormat = time.RFC3339
+	}
+
 	logger.Info(
 		"config",
 		"url", out.Url,
@@ -94,6 +100,7 @@ func NewGitCfg(fpath string, logger *slog.Logger) *GitCfg {
 		"ssh_port", out.SshPort,
 		"web_port", out.WebPort,
 		"theme", out.Theme,
+		"time_format", out.TimeFormat,
 	)
 
 	for _, pubkey := range out.AdminsStr {

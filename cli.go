@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 	"text/tabwriter"
-	"time"
 
 	"github.com/charmbracelet/soft-serve/pkg/utils"
 	"github.com/charmbracelet/ssh"
@@ -152,7 +151,7 @@ Here's how it works:
 							eventLog.RepoID,
 							eventLog.PatchRequestID,
 							eventLog.Event,
-							eventLog.CreatedAt.Format(time.RFC3339Nano),
+							eventLog.CreatedAt.Format(be.Cfg.TimeFormat),
 							eventLog.Data,
 						)
 					}
@@ -238,7 +237,7 @@ Here's how it works:
 									req.Name,
 									req.Status,
 									user.Name,
-									req.CreatedAt.Format(time.RFC3339Nano),
+									req.CreatedAt.Format(be.Cfg.TimeFormat),
 								)
 							}
 							writer.Flush()
@@ -356,7 +355,7 @@ Here's how it works:
 							fmt.Fprintf(
 								writer,
 								"%d\t%s\t[%s]\t%s\n%s\n\n",
-								request.ID, request.Name, request.Status, request.CreatedAt.Format(time.RFC3339Nano),
+								request.ID, request.Name, request.Status, request.CreatedAt.Format(be.Cfg.TimeFormat),
 								request.Text,
 							)
 							writer.Flush()
@@ -425,7 +424,7 @@ Here's how it works:
 							fmt.Fprintf(
 								writer,
 								"%d\t%s\t[%s]\t%s\n%s\n",
-								request.ID, request.Name, request.Status, request.CreatedAt.Format(time.RFC3339Nano),
+								request.ID, request.Name, request.Status, request.CreatedAt.Format(be.Cfg.TimeFormat),
 								request.Text,
 							)
 							writer.Flush()
