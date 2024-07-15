@@ -208,12 +208,13 @@ curl localhost:3000
 > yet.
 
 1. Better `--cover-letter` support
-1. Support `git range-diff` workflow
-1. More robust ACL rules
+1. Support `git range-diff` workflow (in web view?)
+1. More robust ACL rules (OR integrate with self-hosted git repos like gitolite)
 1. Adapter to statically generate web view
-1. Bulk download PRs
+1. Bulk modify PRs (rsync, sftp, sshfs)
 1. Generate event log summary as a cover letter?
 1. Support a `diff` workflow (convert `git diff` into mbox patch format)
+1. Pubsub system to send events
 
 ## ideas
 
