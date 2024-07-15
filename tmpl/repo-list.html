@@ -16,7 +16,7 @@
     <a href="https://github.com/picosh/git-pr">github</a> &middot;
     <a href="https://youtu.be/d28Dih-BBUw">demo video</a>
   </div>
-  <pre class="m-0">ssh pr.pico.sh help</pre>
+  <pre class="m-0">ssh {{.MetaData.URL}} help</pre>
   <details>
     <summary>Intro</summary>
 
@@ -185,24 +185,24 @@ git clone git@github.com:picosh/test.git
 git add -A && git commit -m "fix: some bugs"
 
 # Contributor runs:
-git format-patch origin/main --stdout | ssh pr.pico.sh pr create test
+git format-patch origin/main --stdout | ssh {{.MetaData.URL}} pr create test
 # > Patch Request has been created (ID: 1)
 
 # Owner can checkout patch:
-ssh pr.pico.sh pr print 1 | git am -3
+ssh {{.MetaData.URL}} pr print 1 | git am -3
 # Owner can comment (IN CODE), commit, then send another format-patch
 # on top of the PR:
-git format-patch origin/main --stdout | ssh pr.pico.sh pr add --review 1
+git format-patch origin/main --stdout | ssh {{.MetaData.URL}} pr add --review 1
 # UI clearly marks patch as a review
 
 # Contributor can checkout reviews
-ssh pr.pico.sh pr print 1 | git am -3
+ssh {{.MetaData.URL}} pr print 1 | git am -3
 
 # Owner can reject a pr:
-ssh pr.pico.sh pr close 1
+ssh {{.MetaData.URL}} pr close 1
 
 # Owner can accept a pr:
-ssh pr.pico.sh pr accept 1
+ssh {{.MetaData.URL}} pr accept 1
 
 # Owner can prep PR for upstream:
 git rebase -i origin/main

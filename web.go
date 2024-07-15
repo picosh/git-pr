@@ -40,6 +40,7 @@ func getWebCtx(r *http.Request) (*WebCtx, error) {
 	}
 	return data, nil
 }
+
 func setWebCtx(ctx context.Context, web *WebCtx) context.Context {
 	return context.WithValue(ctx, ctxWeb{}, web)
 }
@@ -92,6 +93,7 @@ type RepoData struct {
 
 type RepoListData struct {
 	Repos []RepoData
+	MetaData
 }
 
 func repoListHandler(w http.ResponseWriter, r *http.Request) {
@@ -148,10 +150,17 @@ func repoListHandler(w http.ResponseWriter, r *http.Request) {
 	tmpl := getTemplate("repo-list.html")
 	err = tmpl.Execute(w, RepoListData{
 		Repos: repoData,
+		MetaData: MetaData{
+			URL: web.Backend.Cfg.Url,
+		},
 	})
 	if err != nil {
 		web.Backend.Logger.Error("cannot execute template", "err", err)
 	}
+}
+
+type MetaData struct {
+	URL string
 }
 
 type PrListData struct {
@@ -172,6 +181,7 @@ type RepoDetailData struct {
 	AcceptedPrs []PrListData
 	ClosedPrs   []PrListData
 	ReviewedPrs []PrListData
+	MetaData
 }
 
 func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
@@ -246,6 +256,9 @@ func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 		AcceptedPrs: acceptedList,
 		ClosedPrs:   closedList,
 		ReviewedPrs: reviewedList,
+		MetaData: MetaData{
+			URL: web.Backend.Cfg.Url,
+		},
 	})
 	if err != nil {
 		web.Backend.Logger.Error("cannot execute template", "err", err)
@@ -282,6 +295,7 @@ type PrDetailData struct {
 	Patches []PatchData
 	Branch  string
 	Logs    []EventLogData
+	MetaData
 }
 
 func prDetailHandler(w http.ResponseWriter, r *http.Request) {
@@ -385,6 +399,9 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 			Pubkey:   user.Pubkey,
 			Date:     pr.CreatedAt.Format(time.RFC3339),
 			Status:   pr.Status,
+		},
+		MetaData: MetaData{
+			URL: web.Backend.Cfg.Url,
 		},
 	})
 	if err != nil {

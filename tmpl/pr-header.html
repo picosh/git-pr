@@ -15,21 +15,21 @@
     <summary>Help</summary>
     <div class="group">
       <pre class="m-0"># add changes to patch request
-git format-patch {{.Branch}} --stdout | ssh pr.pico.sh pr add {{.Pr.ID}}</pre>
+git format-patch {{.Branch}} --stdout | ssh {{.MetaData.URL}} pr add {{.Pr.ID}}</pre>
       <pre class="m-0"># add review to patch request
-git format-patch {{.Branch}} --stdout | ssh pr.pico.sh pr add --review {{.Pr.ID}}</pre>
+git format-patch {{.Branch}} --stdout | ssh {{.MetaData.URL}} pr add --review {{.Pr.ID}}</pre>
       <pre class="m-0"># overwrite patches
-git format-patch {{.Branch}} --stdout | ssh pr.pico.sh pr add --force {{.Pr.ID}}</pre>
+git format-patch {{.Branch}} --stdout | ssh {{.MetaData.URL}} pr add --force {{.Pr.ID}}</pre>
       <pre class="m-0"># checkout all patches
-ssh pr.pico.sh pr print {{.Pr.ID}} | git am -3</pre>
+ssh {{.MetaData.URL}} pr print {{.Pr.ID}} | git am -3</pre>
       <pre class="m-0"># checkout specific patch
-ssh pr.pico.sh pr print {{.Pr.ID}} --filter n | git am -3</pre>
+ssh {{.MetaData.URL}} pr print {{.Pr.ID}} --filter n | git am -3</pre>
       <pre class="m-0"># checkout patch range
-ssh pr.pico.sh pr print {{.Pr.ID}} --filter n:y | git am -3</pre>
+ssh {{.MetaData.URL}} pr print {{.Pr.ID}} --filter n:y | git am -3</pre>
       <pre class="m-0"># accept PR
-ssh pr.pico.sh pr accept {{.Pr.ID}}</pre>
+ssh {{.MetaData.URL}} pr accept {{.Pr.ID}}</pre>
       <pre class="m-0"># close PR
-ssh pr.pico.sh pr close {{.Pr.ID}}</pre>
+ssh {{.MetaData.URL}} pr close {{.Pr.ID}}</pre>
     </div>
   </details>
 </header>
