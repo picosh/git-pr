@@ -38,7 +38,7 @@
         {{end}}
       </span>
       <span>on <date>{{.Date}}</date></span>
-      <span>{{.Data}}</span>
+      {{if .Data}}<code>{{.Data}}</code>{{end}}
     </div>
     {{end}}
   </div>
@@ -47,6 +47,19 @@
     <h3 class="text-lg">Patchsets</h3>
 
     {{range .Patchsets}}
+      <details>
+        <summary>/\ Diff \/</summary>
+        <div class="group">
+          {{range .DiffPatches}}
+            <div class="box-sm{{if .Review}}-alert{{end}} group" id="{{.Url}}">
+              {{template "patch" .}}
+            </div>
+          {{else}}
+            No patches found, that doesn't seem right.
+          {{end}}
+        </div>
+      </details>
+
       <div>
         <code class="{{if .Review}}pill-alert{{end}}">patchset-{{.ID}}</code>
         <span> by </span>
@@ -58,28 +71,9 @@
 
   <div class="group">
     {{range $idx, $val := .Patches}}
-    <div class="box group" id="{{$val.Url}}">
-      <div>
-        <h3 class="text-lg m-0 p-0 mb">
-          <code>{{$idx}}</code>
-          <a href="#{{$val.Url}}">{{$val.Title}}</a>
-        </h3>
-
-        <div class="group-h text-sm">
-          <code class="pill{{if $val.Review}}-alert{{end}}">{{$val.AuthorName}} &lt;{{$val.AuthorEmail}}&gt;</code>
-          <date>{{$val.FormattedAuthorDate}}</date>
-        </div>
+      <div class="box{{if .Review}}-alert{{end}} group" id="{{.Url}}">
+        {{template "patch" .}}
       </div>
-
-      {{if $val.Body}}<pre class="m-0">{{$val.Body}}</pre>{{end}}
-
-      <pre class="m-0">{{$val.BodyAppendix}}</pre>
-
-      <details>
-        <summary>Patch</summary>
-        <div>{{$val.DiffStr}}</div>
-      </details>
-    </div>
     {{else}}
     <div class="box">
       No patches found for patch request.

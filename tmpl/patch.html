@@ -1,0 +1,22 @@
+{{define "patch"}}
+<div>
+  <h3 class="text-lg m-0 p-0 mb">
+    {{if .Review}}<code class="pill-alert">REVIEW</code>{{end}}
+    <a href="#{{.Url}}">{{.Title}}</a>
+  </h3>
+
+  <div class="group-h text-sm">
+    <code class="pill{{if .Review}}-alert{{end}}">{{.AuthorName}} &lt;{{.AuthorEmail}}&gt;</code>
+    <date>{{.FormattedAuthorDate}}</date>
+  </div>
+</div>
+
+{{if .Body}}<pre class="m-0">{{.Body}}</pre>{{end}}
+
+<pre class="m-0">{{.BodyAppendix}}</pre>
+
+<details>
+  <summary>Patch</summary>
+  <div>{{.DiffStr}}</div>
+</details>
+{{end}}

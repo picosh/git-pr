@@ -71,6 +71,7 @@ func getTemplate(file string) *template.Template {
 		template.ParseFS(
 			tmplFS,
 			filepath.Join("tmpl", file),
+			filepath.Join("tmpl", "patch.html"),
 			filepath.Join("tmpl", "pr-header.html"),
 			filepath.Join("tmpl", "pr-list-item.html"),
 			filepath.Join("tmpl", "pr-status.html"),
@@ -279,6 +280,7 @@ type PatchData struct {
 	*Patch
 	Url                 template.URL
 	DiffStr             template.HTML
+	Review              bool
 	FormattedAuthorDate string
 }
 
@@ -291,9 +293,10 @@ type EventLogData struct {
 
 type PatchsetData struct {
 	*Patchset
-	UserName string
-	Pubkey   string
-	Date     string
+	UserName    string
+	Pubkey      string
+	Date        string
+	DiffPatches []PatchData
 }
 
 type PrDetailData struct {
@@ -342,24 +345,54 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// get patchsets and diff from previous patchset
 	patchsetsData := []PatchsetData{}
-	for _, patchset := range patchsets {
+	for idx, patchset := range patchsets {
 		user, err := web.Pr.GetUserByID(patchset.UserID)
 		if err != nil {
+			web.Logger.Error("could not get user for patch", "err", err)
 			continue
 		}
+
+		var prevPatchset *Patchset
+		if idx > 0 {
+			prevPatchset = patchsets[idx-1]
+		}
+		patches, err := web.Pr.DiffPatchsets(prevPatchset, patchset)
+		if err != nil {
+			web.Logger.Error("could not diff patchset", "err", err)
+			continue
+		}
+
+		patchesData := []PatchData{}
+		for _, patch := range patches {
+			diffStr, err := parseText(web.Formatter, web.Theme, patch.RawText)
+			if err != nil {
+				web.Logger.Error("cannot parse patch", "err", err)
+				w.WriteHeader(http.StatusUnprocessableEntity)
+				return
+			}
+
+			patchesData = append(patchesData, PatchData{
+				Patch:   patch,
+				Url:     template.URL(fmt.Sprintf("patch-%d", patch.ID)),
+				DiffStr: template.HTML(diffStr),
+				Review:  patchset.Review,
+			})
+		}
+
 		patchsetsData = append(patchsetsData, PatchsetData{
-			Patchset: patchset,
-			UserName: user.Name,
-			Pubkey:   user.Pubkey,
-			Date:     patchset.CreatedAt.Format(time.RFC3339),
+			Patchset:    patchset,
+			UserName:    user.Name,
+			Pubkey:      user.Pubkey,
+			Date:        patchset.CreatedAt.Format(time.RFC3339),
+			DiffPatches: patchesData,
 		})
 	}
 
 	patchesData := []PatchData{}
-	fmt.Println(patchsets)
-	if len(patchsets) >= 1 {
-		latest := patchsets[len(patchsets)-1]
+	if len(patchsetsData) >= 1 {
+		latest := patchsetsData[len(patchsets)-1]
 		patches, err := web.Pr.GetPatchesByPatchsetID(latest.ID)
 		if err != nil {
 			web.Logger.Error("cannot get patches", "err", err)
@@ -376,10 +409,21 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
+			// highlight review
+			isReview := false
+			if latest.Review {
+				for _, diffPatch := range latest.DiffPatches {
+					if diffPatch.ID == patch.ID {
+						isReview = true
+					}
+				}
+			}
+
 			patchesData = append(patchesData, PatchData{
 				Patch:               patch,
 				Url:                 template.URL(fmt.Sprintf("patch-%d", patch.ID)),
 				DiffStr:             template.HTML(diffStr),
+				Review:              isReview,
 				FormattedAuthorDate: timestamp,
 			})
 		}

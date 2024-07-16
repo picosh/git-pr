@@ -45,6 +45,7 @@ type GitPatchRequest interface {
 	GetEventLogsByRepoID(repoID string) ([]*EventLog, error)
 	GetEventLogsByPrID(prID int64) ([]*EventLog, error)
 	GetEventLogsByUserID(userID int64) ([]*EventLog, error)
+	DiffPatchsets(aset *Patchset, bset *Patchset) ([]*Patch, error)
 }
 
 type PrCmd struct {
@@ -604,4 +605,36 @@ func (cmd PrCmd) GetEventLogsByUserID(userID int64) ([]*EventLog, error) {
 		userID,
 	)
 	return eventLogs, err
+}
+
+func (cmd PrCmd) DiffPatchsets(prev *Patchset, next *Patchset) ([]*Patch, error) {
+	patches, err := cmd.GetPatchesByPatchsetID(next.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	if prev == nil {
+		return patches, nil
+	}
+
+	prevPatches, err := cmd.GetPatchesByPatchsetID(prev.ID)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get previous patchset patches: %w", err)
+	}
+
+	diffPatches := []*Patch{}
+	for _, patch := range patches {
+		foundPatch := false
+		for _, prev := range prevPatches {
+			if prev.ContentSha == patch.ContentSha {
+				foundPatch = true
+			}
+		}
+
+		if !foundPatch {
+			diffPatches = append(diffPatches, patch)
+		}
+	}
+
+	return diffPatches, nil
 }
