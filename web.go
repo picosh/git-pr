@@ -286,13 +286,15 @@ type PatchData struct {
 
 type EventLogData struct {
 	*EventLog
-	UserName string
-	Pubkey   string
-	Date     string
+	FormattedPatchsetID string
+	UserName            string
+	Pubkey              string
+	Date                string
 }
 
 type PatchsetData struct {
 	*Patchset
+	FormattedID string
 	UserName    string
 	Pubkey      string
 	Date        string
@@ -383,6 +385,7 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 
 		patchsetsData = append(patchsetsData, PatchsetData{
 			Patchset:    patchset,
+			FormattedID: getFormattedPatchsetID(patchset.ID),
 			UserName:    user.Name,
 			Pubkey:      user.Pubkey,
 			Date:        patchset.CreatedAt.Format(time.RFC3339),
@@ -458,10 +461,11 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 	for _, eventlog := range logs {
 		user, _ := web.Pr.GetUserByID(eventlog.UserID)
 		logData = append(logData, EventLogData{
-			EventLog: eventlog,
-			UserName: user.Name,
-			Pubkey:   user.Pubkey,
-			Date:     pr.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
+			EventLog:            eventlog,
+			FormattedPatchsetID: getFormattedPatchsetID(eventlog.PatchsetID.Int64),
+			UserName:            user.Name,
+			Pubkey:              user.Pubkey,
+			Date:                pr.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
 		})
 	}
 

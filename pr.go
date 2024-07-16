@@ -17,7 +17,6 @@ type PatchsetOp int
 const (
 	OpNormal PatchsetOp = iota
 	OpReview
-	OpReplace
 )
 
 type GitPatchRequest interface {
@@ -39,7 +38,7 @@ type GitPatchRequest interface {
 	GetPatchesByPatchsetID(prID int64) ([]*Patch, error)
 	UpdatePatchRequestStatus(prID, userID int64, status string) error
 	UpdatePatchRequestName(prID, userID int64, name string) error
-	DeletePatchesByPrID(prID int64) error
+	DeletePatchsetByID(patchsetID int64) error
 	CreateEventLog(eventLog EventLog) error
 	GetEventLogs() ([]*EventLog, error)
 	GetEventLogsByRepoID(repoID string) ([]*EventLog, error)
@@ -494,13 +493,6 @@ func (cmd PrCmd) SubmitPatchset(prID int64, userID int64, op PatchsetOp, patchse
 		return fin, err
 	}
 
-	if op == OpReplace {
-		err = cmd.DeletePatchesByPrID(prID)
-		if err != nil {
-			return fin, err
-		}
-	}
-
 	var patchsetID int64
 	row := tx.QueryRow(
 		"INSERT INTO patchsets (user_id, patch_request_id, review) VALUES(?, ?, ?) RETURNING id",
@@ -539,8 +531,6 @@ func (cmd PrCmd) SubmitPatchset(prID int64, userID int64, op PatchsetOp, patchse
 		event := "pr_patchset_added"
 		if op == OpReview {
 			event = "pr_reviewed"
-		} else if op == OpReplace {
-			event = "pr_patchset_replaced"
 		}
 
 		_ = cmd.CreateEventLog(EventLog{
@@ -554,9 +544,9 @@ func (cmd PrCmd) SubmitPatchset(prID int64, userID int64, op PatchsetOp, patchse
 	return fin, err
 }
 
-func (cmd PrCmd) DeletePatchesByPrID(prID int64) error {
+func (cmd PrCmd) DeletePatchsetByID(patchsetID int64) error {
 	_, err := cmd.Backend.DB.Exec(
-		"DELETE FROM patches WHERE patch_request_id=?", prID,
+		"DELETE FROM patchsets WHERE id=?", patchsetID,
 	)
 	return err
 }

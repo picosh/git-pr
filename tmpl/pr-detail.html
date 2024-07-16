@@ -22,13 +22,13 @@
       <code class='pill{{if eq .Event "pr_reviewed"}}-alert{{end}}'>{{.UserName}}</code>
       <span class="font-bold">
         {{if eq .Event "pr_created"}}
-          created pr with <code>patchset-{{.PatchsetID.Int64}}</code>
+          created pr with <code>{{.FormattedPatchsetID}}</code>
         {{else if eq .Event "pr_patchset_added"}}
-          added <code>patchset-{{.PatchsetID.Int64}}</code>
+          added <code>{{.FormattedPatchsetID}}</code>
         {{else if eq .Event "pr_reviewed"}}
-          reviewed pr with <code class="pill-alert">patchset-{{.PatchsetID.Int64}}</code>
+          reviewed pr with <code class="pill-alert">{{.FormattedPatchsetID}}</code>
         {{else if eq .Event "pr_patchset_replaced"}}
-          replaced <code>patchset-{{.PatchsetID.Int64}}</code>
+          replaced <code>{{.FormattedPatchsetID}}</code>
         {{else if eq .Event "pr_status_changed"}}
           changed status
         {{else if eq .Event "pr_name_changed"}}
@@ -48,7 +48,7 @@
 
     {{range .Patchsets}}
       <details>
-        <summary>/\ Diff \/</summary>
+        <summary class="text-sm">Diff ↕</summary>
         <div class="group">
           {{range .DiffPatches}}
             <div class="box-sm{{if .Review}}-alert{{end}} group" id="{{.Url}}">
@@ -61,13 +61,15 @@
       </details>
 
       <div>
-        <code class="{{if .Review}}pill-alert{{end}}">patchset-{{.ID}}</code>
+        <code class="{{if .Review}}pill-alert{{end}}">{{.FormattedID}}</code>
         <span> by </span>
         <code class="pill{{if .Review}}-alert{{end}}">{{.UserName}}</code>
         <span>on <date>{{.Date}}</date></span>
       </div>
     {{end}}
   </div>
+
+  <hr class="w-full" />
 
   <div class="group">
     {{range $idx, $val := .Patches}}
