@@ -6,10 +6,12 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log/slog"
 	"math/rand"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/bluekeyes/go-gitdiff/gitdiff"
 	"github.com/charmbracelet/ssh"
@@ -211,6 +213,20 @@ func calcContentSha(diffFiles []*gitdiff.File, header *gitdiff.PatchHeader) stri
 	sha := sha256.Sum256([]byte(content))
 	shaStr := hex.EncodeToString(sha[:])
 	return shaStr
+}
+
+func AuthorDateToTime(date string, logger *slog.Logger) time.Time {
+	// TODO: convert sql column to DATETIME
+	ds, err := time.Parse("2006-01-02T15:04:05Z", date)
+	if err != nil {
+		logger.Error(
+			"cannot parse author date for patch",
+			"datetime", date,
+			"err", err,
+		)
+		return time.Now()
+	}
+	return ds
 }
 
 /* func gitServiceCommands(sesh ssh.Session, be *Backend, cmd, repoName string) error {

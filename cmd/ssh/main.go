@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	fpath := flag.String("config", "git-pr.toml", "configuration toml file")
+	fpath := flag.String("config", "example.toml", "configuration toml file")
 	flag.Parse()
 	opts := &slog.HandlerOptions{
 		AddSource: true,

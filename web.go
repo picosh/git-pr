@@ -277,8 +277,9 @@ type PrData struct {
 
 type PatchData struct {
 	*Patch
-	Url     template.URL
-	DiffStr template.HTML
+	Url                 template.URL
+	DiffStr             template.HTML
+	FormattedAuthorDate string
 }
 
 type EventLogData struct {
@@ -341,10 +342,12 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		timestamp := AuthorDateToTime(patch.AuthorDate, web.Logger).Format(web.Backend.Cfg.TimeFormat)
 		patchesData = append(patchesData, PatchData{
-			Patch:   patch,
-			Url:     template.URL(fmt.Sprintf("patch-%d", patch.ID)),
-			DiffStr: template.HTML(diffStr),
+			Patch:               patch,
+			Url:                 template.URL(fmt.Sprintf("patch-%d", patch.ID)),
+			DiffStr:             template.HTML(diffStr),
+			FormattedAuthorDate: timestamp,
 		})
 	}
 

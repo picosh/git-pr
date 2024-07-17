@@ -380,6 +380,7 @@ Here's how it works:
 								if patch.Review {
 									reviewTxt = "[review]"
 								}
+								timestamp := AuthorDateToTime(patch.AuthorDate, be.Logger).Format(be.Cfg.TimeFormat)
 								wish.Printf(
 									sesh,
 									"%s %s %s\n%s <%s>\n%s\n\n---\n%s\n%s\n\n\n",
@@ -388,7 +389,7 @@ Here's how it works:
 									truncateSha(patch.CommitSha),
 									patch.AuthorName,
 									patch.AuthorEmail,
-									patch.AuthorDate,
+									timestamp,
 									patch.BodyAppendix,
 									patch.Body,
 								)
@@ -451,6 +452,7 @@ Here's how it works:
 								if patch.Review {
 									reviewTxt = "[review]"
 								}
+								timestamp := AuthorDateToTime(patch.AuthorDate, be.Logger).Format(be.Cfg.TimeFormat)
 								fmt.Fprintf(
 									w,
 									"%d\t%s\t%s\t%s\t%s <%s>\t%s\n",
@@ -460,7 +462,7 @@ Here's how it works:
 									truncateSha(patch.CommitSha),
 									patch.AuthorName,
 									patch.AuthorEmail,
-									patch.AuthorDate,
+									timestamp,
 								)
 							}
 							w.Flush()
