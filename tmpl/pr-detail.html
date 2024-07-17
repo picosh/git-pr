@@ -6,6 +6,10 @@
 <link rel="alternate" type="application/atom+xml"
       title="RSS feed for git collaboration server"
       href="/prs/{{.Pr.ID}}/rss" />
+<meta property="og:title" content="{{.Pr.Title}}" />
+<meta property="og:url" content="https://{{.MetaData.URL}}/prs/{{.Pr.ID}}" />
+<meta property="og:type" content="object" />
+<meta property="og:site_name" content="{{.MetaData.URL}}" />
 {{end}}
 
 {{define "body"}}
