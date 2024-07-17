@@ -185,6 +185,10 @@ Here's how it works:
 								Name:  "reviewed",
 								Usage: "only show reviewed PRs",
 							},
+							&cli.BoolFlag{
+								Name:  "mine",
+								Usage: "only show your own PRs",
+							},
 						},
 						Action: func(cCtx *cli.Context) error {
 							repoID := cCtx.Args().First()
@@ -203,6 +207,7 @@ Here's how it works:
 							onlyAccepted := cCtx.Bool("accepted")
 							onlyClosed := cCtx.Bool("closed")
 							onlyReviewed := cCtx.Bool("reviewed")
+							onlyMine := cCtx.Bool("mine")
 
 							writer := NewTabWriter(sesh)
 							fmt.Fprintln(writer, "ID\tRepoID\tName\tStatus\tUser\tDate")
@@ -226,6 +231,10 @@ Here's how it works:
 								user, err := pr.GetUserByID(req.UserID)
 								if err != nil {
 									be.Logger.Error("could not get user for pr", "err", err)
+									continue
+								}
+
+								if onlyMine && user.Name != userName {
 									continue
 								}
 
