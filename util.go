@@ -20,6 +20,7 @@ import (
 var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 var startOfPatch = "From "
 var patchsetPrefix = "ps-"
+var prPrefix = "pr-"
 
 // https://stackoverflow.com/a/22892986
 func randSeq(n int) string {
@@ -58,6 +59,14 @@ func getFormattedPatchsetID(id int64) string {
 		return ""
 	}
 	return fmt.Sprintf("%s%d", patchsetPrefix, id)
+}
+
+func getPrID(prID string) (int64, error) {
+	recID, err := strconv.Atoi(strings.Replace(prID, prPrefix, "", 1))
+	if err != nil {
+		return 0, err
+	}
+	return int64(recID), nil
 }
 
 func getPatchsetID(patchsetID string) (int64, error) {

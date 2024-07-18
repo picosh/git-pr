@@ -17,7 +17,7 @@ func NewTabWriter(out io.Writer) *tabwriter.Writer {
 	return tabwriter.NewWriter(out, 0, 0, 1, ' ', tabwriter.TabIndent)
 }
 
-func getPrID(str string) (int64, error) {
+func strToInt(str string) (int64, error) {
 	prID, err := strconv.ParseInt(str, 10, 64)
 	return prID, err
 }
@@ -189,7 +189,12 @@ Here's how it works:
 						Args:      true,
 						ArgsUsage: "[patchsetID]",
 						Action: func(cCtx *cli.Context) error {
-							patchsetID, err := getPatchsetID(cCtx.Args().First())
+							args := cCtx.Args()
+							if !args.Present() {
+								return fmt.Errorf("must provide a patchset ID")
+							}
+
+							patchsetID, err := getPatchsetID(args.First())
 							if err != nil {
 								return err
 							}
@@ -230,9 +235,14 @@ Here's how it works:
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							repoID := cCtx.Args().First()
-							var prs []*PatchRequest
+							args := cCtx.Args()
+							if !args.Present() {
+								return fmt.Errorf("must provide a repo ID")
+							}
+
+							repoID := args.First()
 							var err error
+							var prs []*PatchRequest
 							if repoID == "" {
 								prs, err = pr.GetPatchRequests()
 							} else {
@@ -310,7 +320,12 @@ Here's how it works:
 								return err
 							}
 
-							repoID := cCtx.Args().First()
+							args := cCtx.Args()
+							if !args.Present() {
+								return fmt.Errorf("must provide a repo ID")
+							}
+
+							repoID := args.First()
 							prq, err := pr.SubmitPatchRequest(repoID, user.ID, sesh)
 							if err != nil {
 								return err
@@ -347,7 +362,12 @@ Here's how it works:
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							prID, err := getPrID(cCtx.Args().First())
+							args := cCtx.Args()
+							if !args.Present() {
+								return fmt.Errorf("must provide a patch request ID")
+							}
+
+							prID, err := strToInt(args.First())
 							if err != nil {
 								return err
 							}
@@ -389,7 +409,12 @@ Here's how it works:
 						Args:      true,
 						ArgsUsage: "[prID]",
 						Action: func(cCtx *cli.Context) error {
-							prID, err := getPrID(cCtx.Args().First())
+							args := cCtx.Args()
+							if !args.Present() {
+								return fmt.Errorf("must provide a patch request ID")
+							}
+
+							prID, err := strToInt(args.First())
 							if err != nil {
 								return err
 							}
@@ -479,7 +504,12 @@ Here's how it works:
 						Args:      true,
 						ArgsUsage: "[prID]",
 						Action: func(cCtx *cli.Context) error {
-							prID, err := getPrID(cCtx.Args().First())
+							args := cCtx.Args()
+							if !args.Present() {
+								return fmt.Errorf("must provide a patch request ID")
+							}
+
+							prID, err := strToInt(args.First())
 							if err != nil {
 								return err
 							}
@@ -516,7 +546,12 @@ Here's how it works:
 						Args:      true,
 						ArgsUsage: "[prID]",
 						Action: func(cCtx *cli.Context) error {
-							prID, err := getPrID(cCtx.Args().First())
+							args := cCtx.Args()
+							if !args.Present() {
+								return fmt.Errorf("must provide a patch request ID")
+							}
+
+							prID, err := strToInt(args.First())
 							if err != nil {
 								return err
 							}
@@ -554,7 +589,12 @@ Here's how it works:
 						Args:      true,
 						ArgsUsage: "[prID]",
 						Action: func(cCtx *cli.Context) error {
-							prID, err := getPrID(cCtx.Args().First())
+							args := cCtx.Args()
+							if !args.Present() {
+								return fmt.Errorf("must provide a patch request ID")
+							}
+
+							prID, err := strToInt(args.First())
 							if err != nil {
 								return err
 							}
@@ -593,7 +633,12 @@ Here's how it works:
 						Args:      true,
 						ArgsUsage: "[prID] [title]",
 						Action: func(cCtx *cli.Context) error {
-							prID, err := getPrID(cCtx.Args().First())
+							args := cCtx.Args()
+							if !args.Present() {
+								return fmt.Errorf("must provide a patch request ID")
+							}
+
+							prID, err := strToInt(args.First())
 							if err != nil {
 								return err
 							}
@@ -643,7 +688,12 @@ Here's how it works:
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
-							prID, err := getPrID(cCtx.Args().First())
+							args := cCtx.Args()
+							if !args.Present() {
+								return fmt.Errorf("must provide a patch request ID")
+							}
+
+							prID, err := strToInt(args.First())
 							if err != nil {
 								return err
 							}
