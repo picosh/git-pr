@@ -4,7 +4,7 @@ go 1.22
 
 require (
 	github.com/alecthomas/chroma/v2 v2.13.0
-	github.com/bluekeyes/go-gitdiff v0.7.2
+	github.com/bluekeyes/go-gitdiff v0.7.4-0.20240715034416-0a4e55f9a190
 	github.com/charmbracelet/soft-serve v0.7.4
 	github.com/charmbracelet/ssh v0.0.0-20240301204039-e79ff702f5b3
 	github.com/charmbracelet/wish v1.3.2
