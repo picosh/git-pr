@@ -404,7 +404,7 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, patch := range patches {
-			timestamp := AuthorDateToTime(patch.AuthorDate, web.Logger).Format(web.Backend.Cfg.TimeFormat)
+			timestamp := patch.AuthorDate.Format(web.Backend.Cfg.TimeFormat)
 			diffStr, err := parseText(web.Formatter, web.Theme, patch.RawText)
 			if err != nil {
 				web.Logger.Error("cannot parse patch", "err", err)

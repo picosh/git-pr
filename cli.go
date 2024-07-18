@@ -523,7 +523,7 @@ Here's how it works:
 							w := NewTabWriter(sesh)
 							fmt.Fprintln(w, "Idx\tTitle\tCommit\tAuthor\tDate")
 							for idx, patch := range opatches {
-								timestamp := AuthorDateToTime(patch.AuthorDate, be.Logger).Format(be.Cfg.TimeFormat)
+								timestamp := patch.AuthorDate.Format(be.Cfg.TimeFormat)
 								fmt.Fprintf(
 									w,
 									"%d\t%s\t%s\t%s <%s>\t%s\n",

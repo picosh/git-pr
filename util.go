@@ -149,7 +149,7 @@ func parsePatchset(patchset io.Reader) ([]*Patch, error) {
 		patches = append(patches, &Patch{
 			AuthorName:    authorName,
 			AuthorEmail:   authorEmail,
-			AuthorDate:    header.AuthorDate.UTC().String(),
+			AuthorDate:    header.AuthorDate.UTC(),
 			Title:         header.Title,
 			Body:          header.Body,
 			BodyAppendix:  header.BodyAppendix,

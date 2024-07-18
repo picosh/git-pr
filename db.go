@@ -58,7 +58,7 @@ type Patch struct {
 	PatchsetID    int64          `db:"patchset_id"`
 	AuthorName    string         `db:"author_name"`
 	AuthorEmail   string         `db:"author_email"`
-	AuthorDate    string         `db:"author_date"`
+	AuthorDate    time.Time      `db:"author_date"`
 	Title         string         `db:"title"`
 	Body          string         `db:"body"`
 	BodyAppendix  string         `db:"body_appendix"`
