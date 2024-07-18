@@ -22,10 +22,12 @@
 
     <details>
       <summary>Help</summary>
-      <pre class="m-0"># submit a new patch request
+      <div class="group">
+        <pre class="m-0"># submit a new patch request
 git format-patch {{.Branch}} --stdout | ssh {{.MetaData.URL}} pr create {{.ID}}</pre>
-      <pre class="m-0"># list prs for repo
+        <pre class="m-0"># list prs for repo
 ssh {{.MetaData.URL}} pr ls {{.ID}}</pre>
+      </div>
     </details>
 	</div>
 </header>
