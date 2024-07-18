@@ -138,10 +138,6 @@ func parsePatchset(patchset io.Reader) ([]*Patch, error) {
 			authorEmail = header.Author.Email
 		}
 
-		if len(diffFiles) == 0 {
-			continue
-		}
-
 		contentSha := calcContentSha(diffFiles, header)
 
 		patches = append(patches, &Patch{

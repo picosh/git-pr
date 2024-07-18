@@ -20,7 +20,7 @@ func TestParsePatchsetWithCover(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 	expected := []*Patch{
-		// {Title: "Add torch deps"},
+		{Title: "Add torch deps"},
 		{Title: "feat: lets build an rnn"},
 		{Title: "chore: add torch to requirements"},
 	}
