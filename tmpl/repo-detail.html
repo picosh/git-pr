@@ -13,6 +13,10 @@
   <h1 class="text-2xl mb"><a href="/">repos</a> / {{.ID}}</h1>
   <div class="group">
     <div>
+      {{.Desc}}
+    </div>
+
+    <div>
       <code>git clone {{.CloneAddr}}</code>
     </div>
 
@@ -20,6 +24,8 @@
       <summary>Help</summary>
       <pre class="m-0"># submit a new patch request
 git format-patch {{.Branch}} --stdout | ssh {{.MetaData.URL}} pr create {{.ID}}</pre>
+      <pre class="m-0"># list prs for repo
+ssh {{.MetaData.URL}} pr ls {{.ID}}</pre>
     </details>
 	</div>
 </header>

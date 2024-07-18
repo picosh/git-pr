@@ -178,6 +178,7 @@ type RepoDetailData struct {
 	ID          string
 	CloneAddr   string
 	Branch      string
+	Desc        string
 	OpenPrs     []PrListData
 	AcceptedPrs []PrListData
 	ClosedPrs   []PrListData
@@ -252,6 +253,7 @@ func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 	err = tmpl.Execute(w, RepoDetailData{
 		ID:          repo.ID,
 		CloneAddr:   repo.CloneAddr,
+		Desc:        repo.Desc,
 		Branch:      repo.DefaultBranch,
 		OpenPrs:     openList,
 		AcceptedPrs: acceptedList,
