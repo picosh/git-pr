@@ -138,7 +138,7 @@ func parsePatchset(patchset io.Reader) ([]*Patch, error) {
 			BodyAppendix:  header.BodyAppendix,
 			CommitSha:     header.SHA,
 			ContentSha:    contentSha,
-			RawText:       patchRaw,
+			RawText:       patchStr,
 			BaseCommitSha: sql.NullString{String: baseCommit},
 		})
 	}

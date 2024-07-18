@@ -41,6 +41,22 @@ func getPatchsetFromOpt(patchsets []*Patchset, optPatchsetID string) (*Patchset,
 	return nil, fmt.Errorf("cannot find patchset: %s", optPatchsetID)
 }
 
+func printPatches(sesh ssh.Session, patches []*Patch) {
+	wish.Println(sesh, "/* vim: set filetype=diff : */")
+	if len(patches) == 1 {
+		wish.Println(sesh, patches[0].RawText)
+		return
+	}
+
+	opatches := patches
+	for idx, patch := range opatches {
+		wish.Println(sesh, patch.RawText)
+		if idx < len(patches)-1 {
+			wish.Printf(sesh, "\n\n\n")
+		}
+	}
+}
+
 func NewCli(sesh ssh.Session, be *Backend, pr GitPatchRequest) *cli.App {
 	desc := `Patch requests (PR) are the simplest way to submit, review, and accept changes to your git repository.
 Here's how it works:
@@ -69,12 +85,12 @@ Here's how it works:
 		ErrWriter:   sesh,
 		ExitErrHandler: func(cCtx *cli.Context, err error) {
 			if err != nil {
-				wish.Fatalln(sesh, err)
+				wish.Fatalln(sesh, fmt.Errorf("err: %w", err))
 			}
 		},
 		OnUsageError: func(cCtx *cli.Context, err error, isSubcommand bool) error {
 			if err != nil {
-				wish.Fatalln(sesh, err)
+				wish.Fatalln(sesh, fmt.Errorf("err: %w", err))
 			}
 			return nil
 		},
@@ -236,10 +252,6 @@ Here's how it works:
 						},
 						Action: func(cCtx *cli.Context) error {
 							args := cCtx.Args()
-							if !args.Present() {
-								return fmt.Errorf("must provide a repo ID")
-							}
-
 							repoID := args.First()
 							var err error
 							var prs []*PatchRequest
@@ -350,6 +362,48 @@ Here's how it works:
 						},
 					},
 					{
+						Name:      "diff",
+						Usage:     "Print a diff between the last two patchsets in a PR",
+						Args:      true,
+						ArgsUsage: "[prID]",
+						Action: func(cCtx *cli.Context) error {
+							args := cCtx.Args()
+							if !args.Present() {
+								return fmt.Errorf("must provide a patch request ID")
+							}
+
+							prID, err := strToInt(args.First())
+							if err != nil {
+								return err
+							}
+
+							patchsets, err := pr.GetPatchsetsByPrID(prID)
+							if err != nil {
+								be.Logger.Error("cannot get latest patchset", "err", err)
+								return err
+							}
+
+							if len(patchsets) == 0 {
+								return fmt.Errorf("no patchsets found for pr: %d", prID)
+							}
+
+							latest := patchsets[len(patchsets)-1]
+							var prev *Patchset
+							if len(patchsets) > 1 {
+								prev = patchsets[len(patchsets)-2]
+							}
+
+							patches, err := pr.DiffPatchsets(prev, latest)
+							if err != nil {
+								be.Logger.Error("could not diff patchset", "err", err)
+								return err
+							}
+
+							printPatches(sesh, patches)
+							return nil
+						},
+					},
+					{
 						Name:      "print",
 						Usage:     "Print the patches for a PR",
 						Args:      true,
@@ -387,19 +441,7 @@ Here's how it works:
 								return err
 							}
 
-							if len(patches) == 1 {
-								wish.Println(sesh, patches[0].RawText)
-								return nil
-							}
-
-							opatches := patches
-							for idx, patch := range opatches {
-								wish.Println(sesh, patch.RawText)
-								if idx < len(patches)-1 {
-									wish.Printf(sesh, "\n\n\n")
-								}
-							}
-
+							printPatches(sesh, patches)
 							return nil
 						},
 					},
