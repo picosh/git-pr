@@ -34,6 +34,7 @@ type GitPatchRequest interface {
 	GetPatchRequests() ([]*PatchRequest, error)
 	GetPatchRequestsByRepoID(repoID string) ([]*PatchRequest, error)
 	GetPatchsetsByPrID(prID int64) ([]*Patchset, error)
+	GetPatchsetByID(patchsetID int64) (*Patchset, error)
 	GetLatestPatchsetByPrID(prID int64) (*Patchset, error)
 	GetPatchesByPatchsetID(prID int64) ([]*Patch, error)
 	UpdatePatchRequestStatus(prID, userID int64, status string) error
@@ -232,6 +233,16 @@ func (pr PrCmd) GetPatchsetsByPrID(prID int64) ([]*Patchset, error) {
 		return patchsets, fmt.Errorf("no patchsets found for patch request: %d", prID)
 	}
 	return patchsets, nil
+}
+
+func (pr PrCmd) GetPatchsetByID(patchsetID int64) (*Patchset, error) {
+	var patchset Patchset
+	err := pr.Backend.DB.Get(
+		&patchset,
+		"SELECT * FROM patchsets WHERE id=?",
+		patchsetID,
+	)
+	return &patchset, err
 }
 
 func (pr PrCmd) GetLatestPatchsetByPrID(prID int64) (*Patchset, error) {

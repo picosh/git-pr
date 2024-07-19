@@ -213,7 +213,30 @@ Here's how it works:
 							if err != nil {
 								return err
 							}
-							return pr.DeletePatchsetByID(patchsetID)
+
+							patchset, err := pr.GetPatchsetByID(patchsetID)
+							if err != nil {
+								return err
+							}
+
+							user, err := pr.GetUserByID(patchset.UserID)
+							if err != nil {
+								return err
+							}
+
+							pk := sesh.PublicKey()
+							isAdmin := be.IsAdmin(pk)
+							isContrib := pubkey == user.Pubkey
+							if !isAdmin && !isContrib {
+								return fmt.Errorf("you are not authorized to delete a patchset")
+							}
+
+							err = pr.DeletePatchsetByID(patchsetID)
+							if err != nil {
+								return err
+							}
+							wish.Printf(sesh, "successfully removed patchset: %d\n", patchsetID)
+							return nil
 						},
 					},
 				},
@@ -597,17 +620,18 @@ Here's how it works:
 								return err
 							}
 
-							user, err := pr.UpsertUser(pubkey, userName)
-							if err != nil {
-								return err
-							}
-
 							patchReq, err := pr.GetPatchRequestByID(prID)
 							if err != nil {
 								return err
 							}
+
+							user, err := pr.GetUserByID(patchReq.UserID)
+							if err != nil {
+								return err
+							}
+
 							pk := sesh.PublicKey()
-							isContrib := be.Pubkey(pk) == user.Pubkey
+							isContrib := pubkey == user.Pubkey
 							isAdmin := be.IsAdmin(pk)
 							if !isAdmin && !isContrib {
 								return fmt.Errorf("you are not authorized to change PR status")
@@ -645,13 +669,13 @@ Here's how it works:
 								return err
 							}
 
-							user, err := pr.UpsertUser(pubkey, userName)
+							user, err := pr.GetUserByID(patchReq.UserID)
 							if err != nil {
 								return err
 							}
 
 							pk := sesh.PublicKey()
-							isContrib := be.Pubkey(pk) == user.Pubkey
+							isContrib := pubkey == user.Pubkey
 							isAdmin := be.IsAdmin(pk)
 							if !isAdmin && !isContrib {
 								return fmt.Errorf("you are not authorized to change PR status")
