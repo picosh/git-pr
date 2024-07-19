@@ -187,6 +187,8 @@ CREATE TABLE IF NOT EXISTS event_logs (
 var sqliteMigrations = []string{
 	"", // migration #0 is reserved for schema initialization
 	"ALTER TABLE patches ADD COLUMN base_commit_sha TEXT",
+	// added this by accident
+	"",
 }
 
 // Open opens a database connection.
