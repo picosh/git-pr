@@ -453,7 +453,7 @@ func (cmd PrCmd) SubmitPatchRequest(repoID string, userID int64, patchset io.Rea
 
 	for _, patch := range patches {
 		patch.UserID = userID
-		patch.PatchsetID = prID
+		patch.PatchsetID = patchsetID
 		_, err = cmd.createPatch(tx, patch)
 		if err != nil {
 			return nil, err
