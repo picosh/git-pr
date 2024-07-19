@@ -26,3 +26,8 @@ bp: bp-setup
 	$(DOCKER_BUILDX_BUILD) -t "ghcr.io/picosh/pico/git-ssh:$(DOCKER_TAG)" --target release-ssh .
 	$(DOCKER_BUILDX_BUILD) -t "ghcr.io/picosh/pico/git-web:$(DOCKER_TAG)" --target release-web .
 .PHONY: bp
+
+smol:
+	curl https://pico.sh/smol.css -o ./static/smol.css
+	cat patches/smol.diff | git apply
+.PHONY: smol

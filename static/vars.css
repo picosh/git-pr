@@ -1,0 +1,18 @@
+:root {
+  --main-hue: 250;
+  --white: #f2f2f2;
+  --white-light: #f2f2f2;
+  --white-dark: #e8e8e8;
+  --code: #414558;
+  --pre: #252525;
+  --bg-color: #282a36;
+  --text-color: #f2f2f2;
+  --link-color: #8be9fd;
+  --visited: #bd93f9;
+  --blockquote: #bd93f9;
+  --blockquote-bg: #353548;
+  --hover: #ff80bf;
+  --grey: #414558;
+  --grey-light: #6a708e;
+  --shadow: #252525;
+}

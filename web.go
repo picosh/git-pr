@@ -6,8 +6,12 @@ import (
 	"embed"
 	"fmt"
 	"html/template"
+	"io"
+	"io/fs"
 	"log/slog"
+	"mime"
 	"net/http"
+	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -22,6 +26,9 @@ import (
 
 //go:embed tmpl/*
 var tmplFS embed.FS
+
+//go:embed static/*
+var embedStaticFS embed.FS
 
 type WebCtx struct {
 	Pr        *PrCmd
@@ -618,13 +625,81 @@ func chromaStyleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func serveFile(userfs fs.FS, embedfs fs.FS) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		web, err := getWebCtx(r)
+		if err != nil {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			return
+		}
+		logger := web.Logger
+
+		file := r.PathValue("file")
+
+		logger.Info("serving file", "file", file)
+		// merging both embedded fs and whatever user provides
+		var reader fs.File
+		if userfs == nil {
+			reader, err = embedfs.Open(file)
+		} else {
+			reader, err = userfs.Open(file)
+			if err != nil {
+				// serve embeded static folder
+				reader, err = embedfs.Open(file)
+			}
+		}
+
+		if err != nil {
+			logger.Error(err.Error())
+			http.Error(w, "file not found", 404)
+			return
+		}
+
+		contents, err := io.ReadAll(reader)
+		if err != nil {
+			logger.Error(err.Error())
+			http.Error(w, "file not found", 404)
+			return
+		}
+		contentType := mime.TypeByExtension(filepath.Ext(file))
+		if contentType == "" {
+			contentType = http.DetectContentType(contents)
+		}
+		w.Header().Add("Content-Type", contentType)
+
+		_, err = w.Write(contents)
+		if err != nil {
+			logger.Error(err.Error())
+			http.Error(w, "server error", 500)
+			return
+		}
+	}
+}
+
+func getUserDefinedFS(datadir, dirName string) fs.FS {
+	dir := filepath.Join(datadir, dirName)
+	_, err := os.Stat(dir)
+	if err != nil {
+		return nil
+	}
+	return os.DirFS(dir)
+}
+
+func getEmbedFS(ffs embed.FS, dirName string) (fs.FS, error) {
+	fsys, err := fs.Sub(ffs, dirName)
+	if err != nil {
+		return nil, err
+	}
+	return fsys, nil
+}
+
 func StartWebServer(cfg *GitCfg) {
 	addr := fmt.Sprintf("%s:%s", cfg.Host, cfg.WebPort)
 
 	dbpath := filepath.Join(cfg.DataDir, "pr.db")
 	dbh, err := Open(dbpath, cfg.Logger)
 	if err != nil {
-		panic(fmt.Sprintf("cannot find database file, check folder and perms: %s", dbpath))
+		panic(fmt.Sprintf("cannot find database file, check folder and perms: %s: %s", dbpath, err))
 	}
 
 	be := &Backend{
@@ -659,6 +734,13 @@ func StartWebServer(cfg *GitCfg) {
 	http.HandleFunc("GET /", ctxMdw(ctx, repoListHandler))
 	http.HandleFunc("GET /syntax.css", ctxMdw(ctx, chromaStyleHandler))
 	http.HandleFunc("GET /rss", ctxMdw(ctx, rssHandler))
+	embedFS, err := getEmbedFS(embedStaticFS, "static")
+	if err != nil {
+		panic(err)
+	}
+	userFS := getUserDefinedFS(cfg.DataDir, "static")
+
+	http.HandleFunc("GET /static/{file}", ctxMdw(ctx, serveFile(userFS, embedFS)))
 
 	cfg.Logger.Info("starting web server", "addr", addr)
 	err = http.ListenAndServe(addr, nil)

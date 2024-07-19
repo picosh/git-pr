@@ -35,7 +35,7 @@ func GitSshServer(cfg *GitCfg) {
 	dbpath := filepath.Join(cfg.DataDir, "pr.db")
 	dbh, err := Open(dbpath, cfg.Logger)
 	if err != nil {
-		panic(fmt.Sprintf("cannot find database file, check folder and perms: %s", dbpath))
+		panic(fmt.Sprintf("cannot find database file, check folder and perms: %s: %s", dbpath, err))
 	}
 
 	be := &Backend{
