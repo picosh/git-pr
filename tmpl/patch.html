@@ -1,12 +1,12 @@
 {{define "patch"}}
 <div>
   <h3 class="text-lg m-0 p-0 mb">
-    {{if .Review}}<code class="pill-alert">REVIEW</code>{{end}}
+    {{if .Review}}<code class="pill-review">REVIEW</code>{{end}}
     <a href="#{{.Url}}">{{.Title}}</a>
   </h3>
 
   <div class="group-h text-sm">
-    <code class="pill{{if .Review}}-alert{{end}}">{{.AuthorName}} &lt;{{.AuthorEmail}}&gt;</code>
+    <code class="pill{{if .Review}}-review{{end}}">{{.AuthorName}} &lt;{{.AuthorEmail}}&gt;</code>
     <date>{{.FormattedAuthorDate}}</date>
   </div>
 </div>

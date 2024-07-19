@@ -23,14 +23,14 @@
 
     {{range .Logs}}
     <div>
-      <code class='pill{{if eq .Event "pr_reviewed"}}-alert{{end}}'>{{.UserName}}</code>
+      <code class='pill{{if .UserData.IsAdmin}}-admin{{end}}' title="{{.UserData.Pubkey}}">{{.UserData.Name}}</code>
       <span class="font-bold">
         {{if eq .Event "pr_created"}}
           created pr with <code>{{.FormattedPatchsetID}}</code>
         {{else if eq .Event "pr_patchset_added"}}
           added <code>{{.FormattedPatchsetID}}</code>
         {{else if eq .Event "pr_reviewed"}}
-          reviewed pr with <code class="pill-alert">{{.FormattedPatchsetID}}</code>
+          reviewed pr with <code class="pill-review">{{.FormattedPatchsetID}}</code>
         {{else if eq .Event "pr_patchset_replaced"}}
           replaced <code>{{.FormattedPatchsetID}}</code>
         {{else if eq .Event "pr_status_changed"}}
@@ -55,7 +55,7 @@
         <summary class="text-sm">Diff ↕</summary>
         <div class="group">
           {{range .DiffPatches}}
-            <div class="box-sm{{if .Review}}-alert{{end}} group" id="{{.Url}}">
+            <div class="box-sm{{if .Review}}-review{{end}} group" id="{{.Url}}">
               {{template "patch" .}}
             </div>
           {{else}}
@@ -65,9 +65,9 @@
       </details>
 
       <div>
-        <code class="{{if .Review}}pill-alert{{end}}">{{.FormattedID}}</code>
+        <code class="{{if .Review}}pill-review{{end}}">{{.FormattedID}}</code>
         <span> by </span>
-        <code class="pill{{if .Review}}-alert{{end}}">{{.UserName}}</code>
+        <code class="pill{{if .UserData.IsAdmin}}-admin{{end}}" title="{{.UserData.Pubkey}}">{{.UserData.Name}}</code>
         <span>on <date>{{.Date}}</date></span>
       </div>
     {{end}}
@@ -77,7 +77,7 @@
 
   <div class="group">
     {{range $idx, $val := .Patches}}
-      <div class="box{{if .Review}}-alert{{end}} group" id="{{.Url}}">
+      <div class="box{{if .Review}}-review{{end}} group" id="{{.Url}}">
         {{template "patch" .}}
       </div>
     {{else}}

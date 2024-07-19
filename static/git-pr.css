@@ -1,0 +1,20 @@
+.pill-review {
+  border: 1px solid var(--review);
+  color: var(--review);
+}
+
+.box-sm-review {
+  border: 2px solid var(--review);
+  padding: 0.15rem 0.35rem;
+}
+
+.box-review {
+  border: 2px solid var(--review);
+  padding: 0.5rem 0.75rem;
+}
+
+.pill-admin {
+  border: 1px solid var(--admin);
+  color: var(--admin);
+}
+

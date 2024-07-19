@@ -130,10 +130,12 @@ func repoListHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			isAdmin := web.Backend.IsAdmin(pk)
 			ls = &PrListData{
-				ID:       curpr.ID,
-				IsAdmin:  isAdmin,
-				UserName: repo.User.Name,
-				Pubkey:   repo.User.Pubkey,
+				ID: curpr.ID,
+				UserData: UserData{
+					Name:    repo.User.Name,
+					IsAdmin: isAdmin,
+					Pubkey:  repo.User.Pubkey,
+				},
 				LinkData: LinkData{
 					Url:  template.URL(fmt.Sprintf("/prs/%d", curpr.ID)),
 					Text: curpr.Name,
@@ -167,18 +169,22 @@ func repoListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type UserData struct {
+	Name    string
+	IsAdmin bool
+	Pubkey  string
+}
+
 type MetaData struct {
 	URL string
 }
 
 type PrListData struct {
 	LinkData
-	ID       int64
-	IsAdmin  bool
-	UserName string
-	Pubkey   string
-	Date     string
-	Status   string
+	UserData
+	ID     int64
+	Date   string
+	Status string
 }
 
 type RepoDetailData struct {
@@ -233,10 +239,12 @@ func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		isAdmin := web.Backend.IsAdmin(pk)
 		ls := PrListData{
-			ID:       curpr.ID,
-			IsAdmin:  isAdmin,
-			UserName: user.Name,
-			Pubkey:   user.Pubkey,
+			ID: curpr.ID,
+			UserData: UserData{
+				Name:    user.Name,
+				IsAdmin: isAdmin,
+				Pubkey:  user.Pubkey,
+			},
 			LinkData: LinkData{
 				Url:  template.URL(fmt.Sprintf("/prs/%d", curpr.ID)),
 				Text: curpr.Name,
@@ -276,13 +284,11 @@ func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PrData struct {
-	ID       int64
-	IsAdmin  bool
-	Title    string
-	Date     string
-	UserName string
-	Pubkey   string
-	Status   string
+	UserData
+	ID     int64
+	Title  string
+	Date   string
+	Status string
 }
 
 type PatchData struct {
@@ -295,17 +301,15 @@ type PatchData struct {
 
 type EventLogData struct {
 	*EventLog
+	UserData
 	FormattedPatchsetID string
-	UserName            string
-	Pubkey              string
 	Date                string
 }
 
 type PatchsetData struct {
 	*Patchset
+	UserData
 	FormattedID string
-	UserName    string
-	Pubkey      string
 	Date        string
 	DiffPatches []PatchData
 }
@@ -392,11 +396,21 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 
+		pk, err := web.Backend.PubkeyToPublicKey(user.Pubkey)
+		if err != nil {
+			web.Logger.Error("cannot parse pubkey for pr user", "err", err)
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			return
+		}
+
 		patchsetsData = append(patchsetsData, PatchsetData{
 			Patchset:    patchset,
 			FormattedID: getFormattedPatchsetID(patchset.ID),
-			UserName:    user.Name,
-			Pubkey:      user.Pubkey,
+			UserData: UserData{
+				Name:    user.Name,
+				IsAdmin: web.Backend.IsAdmin(pk),
+				Pubkey:  user.Pubkey,
+			},
 			Date:        patchset.CreatedAt.Format(time.RFC3339),
 			DiffPatches: patchesData,
 		})
@@ -469,12 +483,22 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 	logData := []EventLogData{}
 	for _, eventlog := range logs {
 		user, _ := web.Pr.GetUserByID(eventlog.UserID)
+		pk, err := web.Backend.PubkeyToPublicKey(user.Pubkey)
+		if err != nil {
+			web.Logger.Error("cannot parse pubkey for pr user", "err", err)
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			return
+		}
+
 		logData = append(logData, EventLogData{
 			EventLog:            eventlog,
 			FormattedPatchsetID: getFormattedPatchsetID(eventlog.PatchsetID.Int64),
-			UserName:            user.Name,
-			Pubkey:              user.Pubkey,
-			Date:                pr.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
+			UserData: UserData{
+				Name:    user.Name,
+				IsAdmin: web.Backend.IsAdmin(pk),
+				Pubkey:  user.Pubkey,
+			},
+			Date: pr.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
 		})
 	}
 
@@ -489,13 +513,15 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 		Patchsets: patchsetsData,
 		Logs:      logData,
 		Pr: PrData{
-			ID:       pr.ID,
-			IsAdmin:  isAdmin,
-			Title:    pr.Name,
-			UserName: user.Name,
-			Pubkey:   user.Pubkey,
-			Date:     pr.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
-			Status:   pr.Status,
+			ID: pr.ID,
+			UserData: UserData{
+				Name:    user.Name,
+				IsAdmin: isAdmin,
+				Pubkey:  user.Pubkey,
+			},
+			Title:  pr.Name,
+			Date:   pr.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
+			Status: pr.Status,
 		},
 		MetaData: MetaData{
 			URL: web.Backend.Cfg.Url,
