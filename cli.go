@@ -42,7 +42,6 @@ func getPatchsetFromOpt(patchsets []*Patchset, optPatchsetID string) (*Patchset,
 }
 
 func printPatches(sesh ssh.Session, patches []*Patch) {
-	wish.Println(sesh, "/* vim: set filetype=diff : */")
 	if len(patches) == 1 {
 		wish.Println(sesh, patches[0].RawText)
 		return
