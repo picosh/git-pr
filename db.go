@@ -187,12 +187,11 @@ CREATE TABLE IF NOT EXISTS event_logs (
 var sqliteMigrations = []string{
 	"", // migration #0 is reserved for schema initialization
 	"ALTER TABLE patches ADD COLUMN base_commit_sha TEXT",
-	`
-	`,
 }
 
 // Open opens a database connection.
 func Open(dsn string, logger *slog.Logger) (*DB, error) {
+	logger.Info("opening db file", "dsn", dsn)
 	db, err := sqlx.Connect("sqlite", dsn)
 	if err != nil {
 		return nil, err

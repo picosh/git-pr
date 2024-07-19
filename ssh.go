@@ -32,9 +32,10 @@ func authHandler(pr *PrCmd) func(ctx ssh.Context, key ssh.PublicKey) bool {
 }
 
 func GitSshServer(cfg *GitCfg) {
-	dbh, err := Open(filepath.Join(cfg.DataDir, "pr.db"), cfg.Logger)
+	dbpath := filepath.Join(cfg.DataDir, "pr.db")
+	dbh, err := Open(dbpath, cfg.Logger)
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("cannot find database file, check folder and perms: %s", dbpath))
 	}
 
 	be := &Backend{

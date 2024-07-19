@@ -3,6 +3,7 @@ package git
 import (
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -37,13 +38,17 @@ type GitCfg struct {
 }
 
 func NewGitCfg(fpath string, logger *slog.Logger) *GitCfg {
-	logger.Info("loading configuration file", "fpath", fpath)
+	fpp, err := filepath.Abs(fpath)
+	if err != nil {
+		panic(err)
+	}
+	logger.Info("loading configuration file", "fpath", fpp)
 
-	if err := k.Load(file.Provider(fpath), toml.Parser()); err != nil {
+	if err := k.Load(file.Provider(fpp), toml.Parser()); err != nil {
 		panic(fmt.Sprintf("error loading config: %v", err))
 	}
 
-	err := k.Load(env.Provider("GITPR_", ".", func(s string) string {
+	err = k.Load(env.Provider("GITPR_", ".", func(s string) string {
 		keyword := strings.ToLower(strings.TrimPrefix(s, "GITPR_"))
 		return keyword
 	}), nil)
@@ -68,8 +73,15 @@ func NewGitCfg(fpath string, logger *slog.Logger) *GitCfg {
 		logger.Info("no admin specified in config so no one can submit a review!")
 	}
 
+	// make datadir absolute
+	tmpdir := out.DataDir
 	if out.DataDir == "" {
-		out.DataDir = "data"
+		tmpdir = "./data"
+	}
+	datadir, err := filepath.Abs(tmpdir)
+	out.DataDir = datadir
+	if err != nil {
+		panic(err)
 	}
 
 	if out.Host == "" {

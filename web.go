@@ -621,10 +621,10 @@ func chromaStyleHandler(w http.ResponseWriter, r *http.Request) {
 func StartWebServer(cfg *GitCfg) {
 	addr := fmt.Sprintf("%s:%s", cfg.Host, cfg.WebPort)
 
-	dbh, err := Open(filepath.Join(cfg.DataDir, "pr.db"), cfg.Logger)
+	dbpath := filepath.Join(cfg.DataDir, "pr.db")
+	dbh, err := Open(dbpath, cfg.Logger)
 	if err != nil {
-		cfg.Logger.Error("could not open db", "err", err)
-		return
+		panic(fmt.Sprintf("cannot find database file, check folder and perms: %s", dbpath))
 	}
 
 	be := &Backend{
