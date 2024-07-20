@@ -124,11 +124,11 @@ git push origin main
 # Done!
 ```
 
-The fundamental collaboration tool here is `format-patch`. Whether you a
-submitting code changes or you are reviewing code changes, it all happens in
-code. Both contributor and owner are simply creating new commits and generating
-patches on top of each other. This obviates the need to have a web viewer where
-the reviewer can "comment" on a line of code block. There's no need, apply the
+The fundamental collaboration tool here is `format-patch`. Whether you are
+submitting code changes or reviewing them, it all happens in code. Both
+contributor and owner are simply creating new commits and generating patches
+on top of each other. This obviates the need to have a web viewer where the
+reviewer can "comment" on a line of code block. There's no need, apply the
 contributor's patches, write comments or code changes, generate a new patch,
 send the patch to the git server as a "review." This flow also works the exact
 same if two users are collaborating on a set of changes.
