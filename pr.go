@@ -39,8 +39,8 @@ type GitPatchRequest interface {
 	GetPatchesByPatchsetID(prID int64) ([]*Patch, error)
 	UpdatePatchRequestStatus(prID, userID int64, status string) error
 	UpdatePatchRequestName(prID, userID int64, name string) error
-	DeletePatchsetByID(patchsetID int64) error
-	CreateEventLog(eventLog EventLog) error
+	DeletePatchsetByID(userID, prID int64, patchsetID int64) error
+	CreateEventLog(tx *sqlx.Tx, eventLog EventLog) error
 	GetEventLogs() ([]*EventLog, error)
 	GetEventLogsByRepoID(repoID string) ([]*EventLog, error)
 	GetEventLogsByPrID(prID int64) ([]*EventLog, error)
@@ -297,18 +297,35 @@ func (cmd PrCmd) GetPatchRequestByID(prID int64) (*PatchRequest, error) {
 
 // Status types: open, closed, accepted, reviewed.
 func (cmd PrCmd) UpdatePatchRequestStatus(prID int64, userID int64, status string) error {
-	_, err := cmd.Backend.DB.Exec(
+	tx, err := cmd.Backend.DB.Beginx()
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	_, err = tx.Exec(
 		"UPDATE patch_requests SET status=? WHERE id=?",
 		status,
 		prID,
 	)
-	_ = cmd.CreateEventLog(EventLog{
+	if err != nil {
+		return err
+	}
+
+	err = cmd.CreateEventLog(tx, EventLog{
 		UserID:         userID,
 		PatchRequestID: sql.NullInt64{Int64: prID},
 		Event:          "pr_status_changed",
 		Data:           fmt.Sprintf(`{"status":"%s"}`, status),
 	})
-	return err
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (cmd PrCmd) UpdatePatchRequestName(prID int64, userID int64, name string) error {
@@ -316,24 +333,41 @@ func (cmd PrCmd) UpdatePatchRequestName(prID int64, userID int64, name string) e
 		return fmt.Errorf("must provide name or text in order to update patch request")
 	}
 
-	_, err := cmd.Backend.DB.Exec(
+	tx, err := cmd.Backend.DB.Beginx()
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	_, err = tx.Exec(
 		"UPDATE patch_requests SET name=? WHERE id=?",
 		name,
 		prID,
 	)
-	_ = cmd.CreateEventLog(EventLog{
+	if err != nil {
+		return err
+	}
+
+	err = cmd.CreateEventLog(tx, EventLog{
 		UserID:         userID,
 		PatchRequestID: sql.NullInt64{Int64: prID},
 		Event:          "pr_name_changed",
 		Data:           fmt.Sprintf(`{"name":"%s"}`, name),
 	})
-	return err
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
-func (cmd PrCmd) CreateEventLog(eventLog EventLog) error {
+func (cmd PrCmd) CreateEventLog(tx *sqlx.Tx, eventLog EventLog) error {
 	if eventLog.RepoID == "" && eventLog.PatchRequestID.Valid {
 		var pr PatchRequest
-		err := cmd.Backend.DB.Get(
+		err := tx.Get(
 			&pr,
 			"SELECT repo_id FROM patch_requests WHERE id=?",
 			eventLog.PatchRequestID,
@@ -348,7 +382,7 @@ func (cmd PrCmd) CreateEventLog(eventLog EventLog) error {
 		eventLog.RepoID = pr.RepoID
 	}
 
-	_, err := cmd.Backend.DB.Exec(
+	_, err := tx.Exec(
 		"INSERT INTO event_logs (user_id, repo_id, patch_request_id, patchset_id, event, data) VALUES (?, ?, ?, ?, ?, ?)",
 		eventLog.UserID,
 		eventLog.RepoID,
@@ -471,17 +505,20 @@ func (cmd PrCmd) SubmitPatchRequest(repoID string, userID int64, patchset io.Rea
 		}
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return nil, err
-	}
-
-	_ = cmd.CreateEventLog(EventLog{
+	err = cmd.CreateEventLog(tx, EventLog{
 		UserID:         userID,
 		PatchRequestID: sql.NullInt64{Int64: prID},
 		PatchsetID:     sql.NullInt64{Int64: patchsetID},
 		Event:          "pr_created",
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return nil, err
+	}
 
 	var pr PatchRequest
 	err = cmd.Backend.DB.Get(&pr, "SELECT * FROM patch_requests WHERE id=?", prID)
@@ -533,33 +570,59 @@ func (cmd PrCmd) SubmitPatchset(prID int64, userID int64, op PatchsetOp, patchse
 		}
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return fin, err
-	}
-
 	if len(fin) > 0 {
 		event := "pr_patchset_added"
 		if op == OpReview {
 			event = "pr_reviewed"
 		}
 
-		_ = cmd.CreateEventLog(EventLog{
+		err = cmd.CreateEventLog(tx, EventLog{
 			UserID:         userID,
 			PatchRequestID: sql.NullInt64{Int64: prID},
 			PatchsetID:     sql.NullInt64{Int64: patchsetID},
 			Event:          event,
 		})
+		if err != nil {
+			return fin, err
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fin, err
 	}
 
 	return fin, err
 }
 
-func (cmd PrCmd) DeletePatchsetByID(patchsetID int64) error {
-	_, err := cmd.Backend.DB.Exec(
+func (cmd PrCmd) DeletePatchsetByID(userID int64, prID int64, patchsetID int64) error {
+	tx, err := cmd.Backend.DB.Beginx()
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	_, err = tx.Exec(
 		"DELETE FROM patchsets WHERE id=?", patchsetID,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	err = cmd.CreateEventLog(tx, EventLog{
+		UserID:         userID,
+		PatchRequestID: sql.NullInt64{Int64: prID},
+		PatchsetID:     sql.NullInt64{Int64: patchsetID},
+		Event:          "pr_patchset_deleted",
+	})
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (cmd PrCmd) GetEventLogs() ([]*EventLog, error) {

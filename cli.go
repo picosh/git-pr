@@ -231,7 +231,7 @@ Here's how it works:
 								return fmt.Errorf("you are not authorized to delete a patchset")
 							}
 
-							err = pr.DeletePatchsetByID(patchsetID)
+							err = pr.DeletePatchsetByID(user.ID, patchset.PatchRequestID, patchsetID)
 							if err != nil {
 								return err
 							}

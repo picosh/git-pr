@@ -29,6 +29,8 @@
           created pr with <code>{{.FormattedPatchsetID}}</code>
         {{else if eq .Event "pr_patchset_added"}}
           added <code>{{.FormattedPatchsetID}}</code>
+        {{else if eq .Event "pr_patchset_deleted"}}
+          deleted <code>{{.FormattedPatchsetID}}</code>
         {{else if eq .Event "pr_reviewed"}}
           reviewed pr with <code class="pill-review">{{.FormattedPatchsetID}}</code>
         {{else if eq .Event "pr_patchset_replaced"}}
