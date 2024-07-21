@@ -224,7 +224,7 @@ git push origin main
       <h3 class="text-lg m-0 p-0"><a href="{{.Url}}">{{.Text}}</a></h3>
       <div class="text-sm">{{.Desc}}</div>
       {{if .LatestPr}}
-        <div class="text-xs mt box-sm">{{template "pr-list-item" .LatestPr}}</div>
+        <div class="text-xs mt ml">{{template "pr-list-item" .LatestPr}}</div>
       {{end}}
     </div>
     {{end}}
