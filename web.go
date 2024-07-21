@@ -31,11 +31,12 @@ var tmplFS embed.FS
 var embedStaticFS embed.FS
 
 type WebCtx struct {
-	Pr        *PrCmd
-	Backend   *Backend
-	Formatter *formatterHtml.Formatter
-	Logger    *slog.Logger
-	Theme     *chroma.Style
+	Pr         *PrCmd
+	Backend    *Backend
+	Formatter  *formatterHtml.Formatter
+	Logger     *slog.Logger
+	Theme      *chroma.Style
+	UserTmplFS fs.FS
 }
 
 type ctxWeb struct{}
@@ -73,10 +74,14 @@ func ctxMdw(ctx context.Context, handler http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func getTemplate(file string) *template.Template {
+func getTemplate(ctx *WebCtx, file string) *template.Template {
+	var ffs fs.FS = tmplFS
+	if ctx.UserTmplFS != nil {
+		ffs = ctx.UserTmplFS
+	}
 	tmpl := template.Must(
 		template.ParseFS(
-			tmplFS,
+			ffs,
 			filepath.Join("tmpl", file),
 			filepath.Join("tmpl", "patch.html"),
 			filepath.Join("tmpl", "pr-header.html"),
@@ -157,7 +162,7 @@ func repoListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("content-type", "text/html")
-	tmpl := getTemplate("repo-list.html")
+	tmpl := getTemplate(web, "repo-list.html")
 	err = tmpl.Execute(w, RepoListData{
 		Repos: repoData,
 		MetaData: MetaData{
@@ -264,7 +269,7 @@ func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("content-type", "text/html")
-	tmpl := getTemplate("repo-detail.html")
+	tmpl := getTemplate(web, "repo-detail.html")
 	err = tmpl.Execute(w, RepoDetailData{
 		ID:          repo.ID,
 		CloneAddr:   repo.CloneAddr,
@@ -462,7 +467,7 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("content-type", "text/html")
-	tmpl := getTemplate("pr-detail.html")
+	tmpl := getTemplate(web, "pr-detail.html")
 	pk, err := web.Backend.PubkeyToPublicKey(user.Pubkey)
 	if err != nil {
 		web.Logger.Error("cannot parse pubkey for pr user", "err", err)
@@ -741,11 +746,12 @@ func StartWebServer(cfg *GitCfg) {
 		formatterHtml.WithClasses(true),
 	)
 	web := &WebCtx{
-		Pr:        prCmd,
-		Backend:   be,
-		Logger:    cfg.Logger,
-		Formatter: formatter,
-		Theme:     styles.Get(cfg.Theme),
+		Pr:         prCmd,
+		Backend:    be,
+		Logger:     cfg.Logger,
+		Formatter:  formatter,
+		Theme:      styles.Get(cfg.Theme),
+		UserTmplFS: getUserDefinedFS(cfg.DataDir, "tmpl"),
 	}
 
 	ctx := context.Background()
