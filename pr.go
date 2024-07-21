@@ -543,12 +543,13 @@ func (cmd PrCmd) SubmitPatchset(prID int64, userID int64, op PatchsetOp, patchse
 		return fin, err
 	}
 
+	isReview := op == OpReview || op == OpAccept || op == OpClose
 	var patchsetID int64
 	row := tx.QueryRow(
 		"INSERT INTO patchsets (user_id, patch_request_id, review) VALUES(?, ?, ?) RETURNING id",
 		userID,
 		prID,
-		op == OpReview,
+		isReview,
 	)
 	err = row.Scan(&patchsetID)
 	if err != nil {
