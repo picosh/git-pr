@@ -17,6 +17,8 @@ type PatchsetOp int
 const (
 	OpNormal PatchsetOp = iota
 	OpReview
+	OpAccept
+	OpClose
 )
 
 type GitPatchRequest interface {

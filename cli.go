@@ -56,6 +56,87 @@ func printPatches(sesh ssh.Session, patches []*Patch) {
 	}
 }
 
+func prSummary(be *Backend, pr GitPatchRequest, sesh ssh.Session, prID int64) error {
+	request, err := pr.GetPatchRequestByID(prID)
+	if err != nil {
+		return err
+	}
+
+	wish.Printf(sesh, "Info\n====\n")
+	wish.Printf(sesh, "URL: https://%s/prs/%d\n\n", be.Cfg.Url, prID)
+
+	writer := NewTabWriter(sesh)
+	fmt.Fprintln(writer, "ID\tName\tStatus\tDate")
+	fmt.Fprintf(
+		writer,
+		"%d\t%s\t[%s]\t%s\n",
+		request.ID, request.Name, request.Status, request.CreatedAt.Format(be.Cfg.TimeFormat),
+	)
+	writer.Flush()
+
+	patchsets, err := pr.GetPatchsetsByPrID(prID)
+	if err != nil {
+		return err
+	}
+
+	wish.Printf(sesh, "\nPatchsets\n====\n")
+
+	writerSet := NewTabWriter(sesh)
+	fmt.Fprintln(writerSet, "ID\tType\tUser\tDate")
+	for _, patchset := range patchsets {
+		user, err := pr.GetUserByID(patchset.UserID)
+		if err != nil {
+			be.Logger.Error("cannot find user for patchset", "err", err)
+			continue
+		}
+		isReview := ""
+		if patchset.Review {
+			isReview = "[review]"
+		}
+
+		fmt.Fprintf(
+			writerSet,
+			"%s\t%s\t%s\t%s\n",
+			getFormattedPatchsetID(patchset.ID),
+			isReview,
+			user.Name,
+			patchset.CreatedAt.Format(be.Cfg.TimeFormat),
+		)
+	}
+	writerSet.Flush()
+
+	latest, err := getPatchsetFromOpt(patchsets, "")
+	if err != nil {
+		return err
+	}
+
+	patches, err := pr.GetPatchesByPatchsetID(latest.ID)
+	if err != nil {
+		return err
+	}
+
+	wish.Printf(sesh, "\nPatches from latest patchset\n====\n")
+
+	opatches := patches
+	w := NewTabWriter(sesh)
+	fmt.Fprintln(w, "Idx\tTitle\tCommit\tAuthor\tDate")
+	for idx, patch := range opatches {
+		timestamp := patch.AuthorDate.Format(be.Cfg.TimeFormat)
+		fmt.Fprintf(
+			w,
+			"%d\t%s\t%s\t%s <%s>\t%s\n",
+			idx,
+			patch.Title,
+			truncateSha(patch.CommitSha),
+			patch.AuthorName,
+			patch.AuthorEmail,
+			timestamp,
+		)
+	}
+	w.Flush()
+	return nil
+}
+
 func NewCli(sesh ssh.Session, be *Backend, pr GitPatchRequest) *cli.App {
 	desc := `Patch requests (PR) are the simplest way to submit, review, and accept changes to your git repository.
 Here's how it works:
@@ -369,18 +450,7 @@ Here's how it works:
 								"PR submitted! Use the ID for interacting with this PR.",
 							)
 
-							writer := NewTabWriter(sesh)
-							fmt.Fprintln(writer, "ID\tName\tURL")
-							fmt.Fprintf(
-								writer,
-								"%d\t%s\t%s\n",
-								prq.ID,
-								prq.Name,
-								fmt.Sprintf("https://%s/prs/%d", be.Cfg.Url, prq.ID),
-							)
-							writer.Flush()
-
-							return nil
+							return prSummary(be, pr, sesh, prq.ID)
 						},
 					},
 					{
@@ -482,84 +552,7 @@ Here's how it works:
 							if err != nil {
 								return err
 							}
-							request, err := pr.GetPatchRequestByID(prID)
-							if err != nil {
-								return err
-							}
-
-							wish.Printf(sesh, "Info\n====\n")
-
-							writer := NewTabWriter(sesh)
-							fmt.Fprintln(writer, "ID\tName\tStatus\tDate")
-							fmt.Fprintf(
-								writer,
-								"%d\t%s\t[%s]\t%s\n",
-								request.ID, request.Name, request.Status, request.CreatedAt.Format(be.Cfg.TimeFormat),
-							)
-							writer.Flush()
-
-							patchsets, err := pr.GetPatchsetsByPrID(prID)
-							if err != nil {
-								return err
-							}
-
-							wish.Printf(sesh, "\nPatchsets\n====\n")
-
-							writerSet := NewTabWriter(sesh)
-							fmt.Fprintln(writerSet, "ID\tType\tUser\tDate")
-							for _, patchset := range patchsets {
-								user, err := pr.GetUserByID(patchset.UserID)
-								if err != nil {
-									be.Logger.Error("cannot find user for patchset", "err", err)
-									continue
-								}
-								isReview := ""
-								if patchset.Review {
-									isReview = "[review]"
-								}
-
-								fmt.Fprintf(
-									writerSet,
-									"%s\t%s\t%s\t%s\n",
-									getFormattedPatchsetID(patchset.ID),
-									isReview,
-									user.Name,
-									patchset.CreatedAt.Format(be.Cfg.TimeFormat),
-								)
-							}
-							writerSet.Flush()
-
-							latest, err := getPatchsetFromOpt(patchsets, "")
-							if err != nil {
-								return err
-							}
-
-							patches, err := pr.GetPatchesByPatchsetID(latest.ID)
-							if err != nil {
-								return err
-							}
-
-							wish.Printf(sesh, "\nPatches from latest patchset\n====\n")
-
-							opatches := patches
-							w := NewTabWriter(sesh)
-							fmt.Fprintln(w, "Idx\tTitle\tCommit\tAuthor\tDate")
-							for idx, patch := range opatches {
-								timestamp := patch.AuthorDate.Format(be.Cfg.TimeFormat)
-								fmt.Fprintf(
-									w,
-									"%d\t%s\t%s\t%s <%s>\t%s\n",
-									idx,
-									patch.Title,
-									truncateSha(patch.CommitSha),
-									patch.AuthorName,
-									patch.AuthorEmail,
-									timestamp,
-								)
-							}
-							w.Flush()
-
-							return nil
+							return prSummary(be, pr, sesh, prID)
 						},
 					},
 					{
@@ -598,10 +591,11 @@ Here's how it works:
 							}
 
 							err = pr.UpdatePatchRequestStatus(prID, user.ID, "accepted")
-							if err == nil {
-								wish.Printf(sesh, "Accepted PR %s (#%d)\n", patchReq.Name, patchReq.ID)
+							if err != nil {
+								return err
 							}
-							return err
+							wish.Printf(sesh, "Accepted PR %s (#%d)\n", patchReq.Name, patchReq.ID)
+							return prSummary(be, pr, sesh, prID)
 						},
 					},
 					{
@@ -642,10 +636,11 @@ Here's how it works:
 							}
 
 							err = pr.UpdatePatchRequestStatus(prID, user.ID, "closed")
-							if err == nil {
-								wish.Printf(sesh, "Closed PR %s (#%d)\n", patchReq.Name, patchReq.ID)
+							if err != nil {
+								return err
 							}
-							return err
+							wish.Printf(sesh, "Closed PR %s (#%d)\n", patchReq.Name, patchReq.ID)
+							return prSummary(be, pr, sesh, prID)
 						},
 					},
 					{
@@ -689,7 +684,7 @@ Here's how it works:
 							if err == nil {
 								wish.Printf(sesh, "Reopened PR %s (#%d)\n", patchReq.Name, patchReq.ID)
 							}
-							return err
+							return prSummary(be, pr, sesh, prID)
 						},
 					},
 					{
@@ -749,7 +744,15 @@ Here's how it works:
 						Flags: []cli.Flag{
 							&cli.BoolFlag{
 								Name:  "review",
-								Usage: "mark patch as a review",
+								Usage: "submit patchset and mark PR as reviewed",
+							},
+							&cli.BoolFlag{
+								Name:  "accept",
+								Usage: "submit patchset and mark PR as accepted",
+							},
+							&cli.BoolFlag{
+								Name:  "close",
+								Usage: "submit patchset and mark PR as closed",
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
@@ -774,15 +777,27 @@ Here's how it works:
 
 							isAdmin := be.IsAdmin(sesh.PublicKey())
 							isReview := cCtx.Bool("review")
+							isAccept := cCtx.Bool("accept")
+							isClose := cCtx.Bool("close")
 							isPrOwner := be.IsPrOwner(prq.UserID, user.ID)
 							if !isAdmin && !isPrOwner {
 								return fmt.Errorf("unauthorized, you are not the owner of this PR")
 							}
 
 							op := OpNormal
+							nextStatus := "open"
 							if isReview {
-								wish.Println(sesh, "Marking new patchset as a review")
+								wish.Println(sesh, "Marking PR as reviewed")
+								nextStatus = "reviewed"
 								op = OpReview
+							} else if isAccept {
+								wish.Println(sesh, "Marking PR as accepted")
+								nextStatus = "accepted"
+								op = OpAccept
+							} else if isClose {
+								wish.Println(sesh, "Marking PR as closed")
+								nextStatus = "closed"
+								op = OpClose
 							}
 
 							patches, err := pr.SubmitPatchset(prID, user.ID, op, sesh)
@@ -795,37 +810,15 @@ Here's how it works:
 								return nil
 							}
 
-							reviewTxt := ""
-							if isReview {
-								err = pr.UpdatePatchRequestStatus(prID, user.ID, "reviewed")
+							if nextStatus != "" {
+								err = pr.UpdatePatchRequestStatus(prID, user.ID, nextStatus)
 								if err != nil {
 									return err
 								}
-								reviewTxt = "[review]"
 							}
 
 							wish.Println(sesh, "Patches submitted!")
-							writer := NewTabWriter(sesh)
-							fmt.Fprintln(
-								writer,
-								"ID\tTitle",
-							)
-							for _, patch := range patches {
-								fmt.Fprintf(
-									writer,
-									"%d\t%s %s\n",
-									patch.ID,
-									patch.Title,
-									reviewTxt,
-								)
-							}
-							writer.Flush()
-
-							wish.Println(
-								sesh,
-								fmt.Sprintf("https://%s/prs/%d", be.Cfg.Url, prq.ID),
-							)
-							return nil
+							return prSummary(be, pr, sesh, prID)
 						},
 					},
 				},

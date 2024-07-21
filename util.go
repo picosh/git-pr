@@ -31,6 +31,9 @@ func randSeq(n int) string {
 }
 
 func truncateSha(sha string) string {
+	if len(sha) < 7 {
+		return sha
+	}
 	return sha[:7]
 }
 
