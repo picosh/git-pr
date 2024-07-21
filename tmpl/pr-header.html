@@ -7,6 +7,7 @@
 
   <div class="text-sm">
     {{template "pr-status" .Pr.Status}}
+    <span>&middot;</span>
     <span>opened on <date>{{.Pr.Date}}</date> by</span>
     <code class="pill{{if .Pr.UserData.IsAdmin}}-admin{{end}}" title="{{.Pr.UserData.Pubkey}}">{{.Pr.UserData.Name}}</code>
   </div>

@@ -1,8 +1,8 @@
 {{define "pr-list-item"}}
 <div>
   <div style="margin-bottom: 0.3rem;">
-    <a href="{{.Url}}">{{.Text}}</a>
     {{template "pr-status" .Status}}
+    <a href="{{.Url}}">{{.Text}}</a>
   </div>
   <div>
     <code>#{{.ID}}</code>
