@@ -619,13 +619,13 @@ Here's how it works:
 								return err
 							}
 
-							user, err := pr.GetUserByID(patchReq.UserID)
+							patchUser, err := pr.GetUserByID(patchReq.UserID)
 							if err != nil {
 								return err
 							}
 
 							pk := sesh.PublicKey()
-							isContrib := pubkey == user.Pubkey
+							isContrib := pubkey == patchUser.Pubkey
 							isAdmin := be.IsAdmin(pk)
 							if !isAdmin && !isContrib {
 								return fmt.Errorf("you are not authorized to change PR status")
@@ -633,6 +633,11 @@ Here's how it works:
 
 							if patchReq.Status == "closed" {
 								return fmt.Errorf("PR has already been closed")
+							}
+
+							user, err := pr.UpsertUser(pubkey, userName)
+							if err != nil {
+								return err
 							}
 
 							err = pr.UpdatePatchRequestStatus(prID, user.ID, "closed")
