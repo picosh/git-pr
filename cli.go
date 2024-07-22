@@ -137,6 +137,44 @@ func prSummary(be *Backend, pr GitPatchRequest, sesh ssh.Session, prID int64) er
 	return nil
 }
 
+func prChangeStatus(be *Backend, pr GitPatchRequest, sesh ssh.Session, pubkey string, prID int64, status string) error {
+	patchReq, err := pr.GetPatchRequestByID(prID)
+	if err != nil {
+		return err
+	}
+
+	user, err := pr.GetUserByID(patchReq.UserID)
+	if err != nil {
+		return err
+	}
+
+	pk := sesh.PublicKey()
+	isContrib := pubkey == user.Pubkey
+	isAdmin := be.IsAdmin(pk)
+	if !isAdmin && !isContrib {
+		return fmt.Errorf("you are not authorized to change PR status")
+	}
+
+	err = validatePrStatusChange(patchReq.Status, status)
+	if err != nil {
+		return err
+	}
+
+	err = pr.UpdatePatchRequestStatus(prID, user.ID, status)
+	if err != nil {
+		return err
+	}
+	wish.Printf(sesh, "%s PR %s (#%d)\n", status, patchReq.Name, patchReq.ID)
+	return prSummary(be, pr, sesh, prID)
+}
+
+func validatePrStatusChange(cur, next string) error {
+	if cur == next {
+		return fmt.Errorf("PR is already in %s state", cur)
+	}
+	return nil
+}
+
 func NewCli(sesh ssh.Session, be *Backend, pr GitPatchRequest) *cli.App {
 	desc := `Patch requests (PR) are the simplest way to submit, review, and accept changes to your git repository.
 Here's how it works:
@@ -349,6 +387,10 @@ Here's how it works:
 								Usage: "only show reviewed PRs",
 							},
 							&cli.BoolFlag{
+								Name:  "draft",
+								Usage: "only show draft PRs",
+							},
+							&cli.BoolFlag{
 								Name:  "mine",
 								Usage: "only show your own PRs",
 							},
@@ -371,11 +413,16 @@ Here's how it works:
 							onlyAccepted := cCtx.Bool("accepted")
 							onlyClosed := cCtx.Bool("closed")
 							onlyReviewed := cCtx.Bool("reviewed")
+							onlyDraft := cCtx.Bool("draft")
 							onlyMine := cCtx.Bool("mine")
 
 							writer := NewTabWriter(sesh)
 							fmt.Fprintln(writer, "ID\tRepoID\tName\tStatus\tPatchsets\tUser\tDate")
 							for _, req := range prs {
+								if onlyDraft && req.Status != "draft" {
+									continue
+								}
+
 								if onlyAccepted && req.Status != "accepted" {
 									continue
 								}
@@ -429,6 +476,12 @@ Here's how it works:
 						Usage:     "Submit a new PR",
 						Args:      true,
 						ArgsUsage: "[repoID]",
+						Flags: []cli.Flag{
+							&cli.BoolFlag{
+								Name:  "draft",
+								Usage: "submit PR in draft state",
+							},
+						},
 						Action: func(cCtx *cli.Context) error {
 							user, err := pr.UpsertUser(pubkey, userName)
 							if err != nil {
@@ -440,8 +493,14 @@ Here's how it works:
 								return fmt.Errorf("must provide a repo ID")
 							}
 
+							isDraft := cCtx.Bool("draft")
+							status := "open"
+							if isDraft {
+								status = "draft"
+							}
+
 							repoID := args.First()
-							prq, err := pr.SubmitPatchRequest(repoID, user.ID, sesh)
+							prq, err := pr.SubmitPatchRequest(repoID, user.ID, status, sesh)
 							if err != nil {
 								return err
 							}
@@ -576,26 +635,7 @@ Here's how it works:
 								return fmt.Errorf("you are not authorized to accept a PR")
 							}
 
-							patchReq, err := pr.GetPatchRequestByID(prID)
-							if err != nil {
-								return err
-							}
-
-							if patchReq.Status == "accepted" {
-								return fmt.Errorf("PR has already been accepted")
-							}
-
-							user, err := pr.UpsertUser(pubkey, userName)
-							if err != nil {
-								return err
-							}
-
-							err = pr.UpdatePatchRequestStatus(prID, user.ID, "accepted")
-							if err != nil {
-								return err
-							}
-							wish.Printf(sesh, "Accepted PR %s (#%d)\n", patchReq.Name, patchReq.ID)
-							return prSummary(be, pr, sesh, prID)
+							return prChangeStatus(be, pr, sesh, pubkey, prID, "accepted")
 						},
 					},
 					{
@@ -614,33 +654,26 @@ Here's how it works:
 								return err
 							}
 
-							patchReq, err := pr.GetPatchRequestByID(prID)
+							return prChangeStatus(be, pr, sesh, pubkey, prID, "closed")
+						},
+					},
+					{
+						Name:      "draft",
+						Usage:     "Switch PR to draft status",
+						Args:      true,
+						ArgsUsage: "[prID]",
+						Action: func(cCtx *cli.Context) error {
+							args := cCtx.Args()
+							if !args.Present() {
+								return fmt.Errorf("must provide a patch request ID")
+							}
+
+							prID, err := strToInt(args.First())
 							if err != nil {
 								return err
 							}
 
-							user, err := pr.GetUserByID(patchReq.UserID)
-							if err != nil {
-								return err
-							}
-
-							pk := sesh.PublicKey()
-							isContrib := pubkey == user.Pubkey
-							isAdmin := be.IsAdmin(pk)
-							if !isAdmin && !isContrib {
-								return fmt.Errorf("you are not authorized to change PR status")
-							}
-
-							if patchReq.Status == "closed" {
-								return fmt.Errorf("PR has already been closed")
-							}
-
-							err = pr.UpdatePatchRequestStatus(prID, user.ID, "closed")
-							if err != nil {
-								return err
-							}
-							wish.Printf(sesh, "Closed PR %s (#%d)\n", patchReq.Name, patchReq.ID)
-							return prSummary(be, pr, sesh, prID)
+							return prChangeStatus(be, pr, sesh, pubkey, prID, "draft")
 						},
 					},
 					{
@@ -659,32 +692,7 @@ Here's how it works:
 								return err
 							}
 
-							patchReq, err := pr.GetPatchRequestByID(prID)
-							if err != nil {
-								return err
-							}
-
-							user, err := pr.GetUserByID(patchReq.UserID)
-							if err != nil {
-								return err
-							}
-
-							pk := sesh.PublicKey()
-							isContrib := pubkey == user.Pubkey
-							isAdmin := be.IsAdmin(pk)
-							if !isAdmin && !isContrib {
-								return fmt.Errorf("you are not authorized to change PR status")
-							}
-
-							if patchReq.Status == "open" {
-								return fmt.Errorf("PR is already open")
-							}
-
-							err = pr.UpdatePatchRequestStatus(prID, user.ID, "open")
-							if err == nil {
-								wish.Printf(sesh, "Reopened PR %s (#%d)\n", patchReq.Name, patchReq.ID)
-							}
-							return prSummary(be, pr, sesh, prID)
+							return prChangeStatus(be, pr, sesh, pubkey, prID, "open")
 						},
 					},
 					{

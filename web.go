@@ -252,7 +252,7 @@ func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 			Date:   curpr.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
 			Status: curpr.Status,
 		}
-		if curpr.Status == "open" {
+		if curpr.Status == "open" || curpr.Status == "draft" {
 			openList = append(openList, ls)
 		} else if curpr.Status == "accepted" {
 			acceptedList = append(acceptedList, ls)

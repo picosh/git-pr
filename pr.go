@@ -30,7 +30,7 @@ type GitPatchRequest interface {
 	GetRepos() ([]*Repo, error)
 	GetReposWithLatestPr() ([]RepoWithLatestPr, error)
 	GetRepoByID(repoID string) (*Repo, error)
-	SubmitPatchRequest(repoID string, userID int64, patchset io.Reader) (*PatchRequest, error)
+	SubmitPatchRequest(repoID string, userID int64, status string, patchset io.Reader) (*PatchRequest, error)
 	SubmitPatchset(prID, userID int64, op PatchsetOp, patchset io.Reader) ([]*Patch, error)
 	GetPatchRequestByID(prID int64) (*PatchRequest, error)
 	GetPatchRequests() ([]*PatchRequest, error)
@@ -435,7 +435,7 @@ func (cmd PrCmd) createPatch(tx *sqlx.Tx, patch *Patch) (int64, error) {
 	return patchID, err
 }
 
-func (cmd PrCmd) SubmitPatchRequest(repoID string, userID int64, patchset io.Reader) (*PatchRequest, error) {
+func (cmd PrCmd) SubmitPatchRequest(repoID string, userID int64, status string, patchset io.Reader) (*PatchRequest, error) {
 	tx, err := cmd.Backend.DB.Beginx()
 	if err != nil {
 		return nil, err
@@ -473,7 +473,7 @@ func (cmd PrCmd) SubmitPatchRequest(repoID string, userID int64, patchset io.Rea
 		repoID,
 		prName,
 		prText,
-		"open",
+		status,
 		time.Now(),
 	)
 	err = row.Scan(&prID)
