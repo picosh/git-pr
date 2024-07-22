@@ -54,8 +54,10 @@ type PrCmd struct {
 	Backend *Backend
 }
 
-var _ GitPatchRequest = PrCmd{}
-var _ GitPatchRequest = (*PrCmd)(nil)
+var (
+	_ GitPatchRequest = PrCmd{}
+	_ GitPatchRequest = (*PrCmd)(nil)
+)
 
 func (pr PrCmd) IsBanned(pubkey, ipAddress string) error {
 	acl := []*Acl{}
@@ -319,7 +321,7 @@ func (cmd PrCmd) UpdatePatchRequestStatus(prID int64, userID int64, status strin
 
 	err = cmd.CreateEventLog(tx, EventLog{
 		UserID:         userID,
-		PatchRequestID: sql.NullInt64{Int64: prID},
+		PatchRequestID: sql.NullInt64{Int64: prID, Valid: true},
 		Event:          "pr_status_changed",
 		Data:           fmt.Sprintf(`{"status":"%s"}`, status),
 	})
@@ -355,7 +357,7 @@ func (cmd PrCmd) UpdatePatchRequestName(prID int64, userID int64, name string) e
 
 	err = cmd.CreateEventLog(tx, EventLog{
 		UserID:         userID,
-		PatchRequestID: sql.NullInt64{Int64: prID},
+		PatchRequestID: sql.NullInt64{Int64: prID, Valid: true},
 		Event:          "pr_name_changed",
 		Data:           fmt.Sprintf(`{"name":"%s"}`, name),
 	})
@@ -509,8 +511,9 @@ func (cmd PrCmd) SubmitPatchRequest(repoID string, userID int64, patchset io.Rea
 
 	err = cmd.CreateEventLog(tx, EventLog{
 		UserID:         userID,
-		PatchRequestID: sql.NullInt64{Int64: prID},
-		PatchsetID:     sql.NullInt64{Int64: patchsetID},
+		RepoID:         repoID,
+		PatchRequestID: sql.NullInt64{Int64: prID, Valid: true},
+		PatchsetID:     sql.NullInt64{Int64: patchsetID, Valid: true},
 		Event:          "pr_created",
 	})
 	if err != nil {
@@ -581,8 +584,8 @@ func (cmd PrCmd) SubmitPatchset(prID int64, userID int64, op PatchsetOp, patchse
 
 		err = cmd.CreateEventLog(tx, EventLog{
 			UserID:         userID,
-			PatchRequestID: sql.NullInt64{Int64: prID},
-			PatchsetID:     sql.NullInt64{Int64: patchsetID},
+			PatchRequestID: sql.NullInt64{Int64: prID, Valid: true},
+			PatchsetID:     sql.NullInt64{Int64: patchsetID, Valid: true},
 			Event:          event,
 		})
 		if err != nil {
