@@ -810,7 +810,7 @@ Here's how it works:
 								return nil
 							}
 
-							if nextStatus != "" {
+							if prq.Status != nextStatus {
 								err = pr.UpdatePatchRequestStatus(prID, user.ID, nextStatus)
 								if err != nil {
 									return err
