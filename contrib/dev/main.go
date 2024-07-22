@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/picosh/git-pr"
@@ -38,7 +39,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	cfgFi.WriteString(fmt.Sprintf(cfgTmpl, tmp, adminKey.public()))
+	_, _ = cfgFi.WriteString(fmt.Sprintf(cfgTmpl, tmp, adminKey.public()))
 	cfgFi.Close()
 
 	opts := &slog.HandlerOptions{
@@ -96,7 +97,7 @@ func main() {
 
 	fmt.Println("time to do some testing...")
 	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt, os.Kill)
+	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
 	<-ch
 }
 
