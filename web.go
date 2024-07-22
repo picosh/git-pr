@@ -476,7 +476,7 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		return
 	}
-	slices.SortFunc[[]*EventLog](logs, func(a *EventLog, b *EventLog) int {
+	slices.SortFunc(logs, func(a *EventLog, b *EventLog) int {
 		return a.CreatedAt.Compare(b.CreatedAt)
 	})
 
@@ -498,7 +498,7 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 				IsAdmin: web.Backend.IsAdmin(pk),
 				Pubkey:  user.Pubkey,
 			},
-			Date: pr.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
+			Date: eventlog.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
 		})
 	}
 
