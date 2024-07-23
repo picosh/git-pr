@@ -13,11 +13,11 @@ func TestParsePatchsetWithCover(t *testing.T) {
 		_ = file.Close()
 	}()
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
-	actual, err := parsePatchset(file)
+	actual, err := ParsePatchset(file)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 	expected := []*Patch{
 		{Title: "Add torch deps"},
@@ -41,7 +41,7 @@ func TestPatchToDiff(t *testing.T) {
 		_ = file.Close()
 	}()
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 
 	fileExp, err := os.Open("fixtures/single.diff")
@@ -49,21 +49,21 @@ func TestPatchToDiff(t *testing.T) {
 		_ = file.Close()
 	}()
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 
 	actual, err := patchToDiff(file)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 
 	by, err := io.ReadAll(fileExp)
 	if err != nil {
-		t.Fatalf("cannot read expected file")
+		t.Fatal("cannot read expected file")
 	}
 
 	if actual != string(by) {
 		fmt.Println(actual)
-		t.Fatalf("diff does not match expected")
+		t.Fatal("diff does not match expected")
 	}
 }
