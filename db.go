@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/bluekeyes/go-gitdiff/gitdiff"
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
 )
@@ -67,6 +68,11 @@ type Patch struct {
 	BaseCommitSha sql.NullString `db:"base_commit_sha"`
 	RawText       string         `db:"raw_text"`
 	CreatedAt     time.Time      `db:"created_at"`
+	Files         []*gitdiff.File
+}
+
+func (p *Patch) CalcDiff() string {
+	return p.RawText
 }
 
 // EventLog is a event log for RSS or other notification systems.

@@ -1,0 +1,11 @@
+1:  33c682a = 1:  33c682a chore: add torch and create random tensor
+2:  22dde12 ! 2:  0185f34 docs: readme
+    @@ README.md
+     +This repo demonstrates building an RNN using `pytorch`.
+     +
+     +Here is some more readme information.
+    ++
+    ++Here is how to run this project locally:
+    ++
+    ++- install python and pip
+    ++- `pip install -r requirements.txt`

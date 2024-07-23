@@ -109,7 +109,7 @@ func patchToDiff(patch io.Reader) (string, error) {
 	return str[idx:], nil
 }
 
-func parsePatchset(patchset io.Reader) ([]*Patch, error) {
+func ParsePatchset(patchset io.Reader) ([]*Patch, error) {
 	patches := []*Patch{}
 	buf := new(strings.Builder)
 	_, err := io.Copy(buf, patchset)
@@ -154,6 +154,7 @@ func parsePatchset(patchset io.Reader) ([]*Patch, error) {
 			ContentSha:    contentSha,
 			RawText:       patchStr,
 			BaseCommitSha: sql.NullString{String: baseCommit},
+			Files:         diffFiles,
 		})
 	}
 
@@ -172,12 +173,11 @@ func calcContentSha(diffFiles []*gitdiff.File, header *gitdiff.PatchHeader) stri
 		authorEmail = header.Author.Email
 	}
 	content := fmt.Sprintf(
-		"%s\n%s\n%s\n%s\n%s\n",
+		"%s\n%s\n%s\n%s\n",
 		header.Title,
 		header.Body,
 		authorName,
 		authorEmail,
-		header.AuthorDate,
 	)
 	for _, diff := range diffFiles {
 		// we need to ignore diffs with base commit because that depends

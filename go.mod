@@ -14,6 +14,7 @@ require (
 	github.com/knadh/koanf/providers/env v0.1.0
 	github.com/knadh/koanf/providers/file v1.0.0
 	github.com/knadh/koanf/v2 v2.1.1
+	github.com/sergi/go-diff v1.1.0
 	github.com/urfave/cli/v2 v2.27.2
 	golang.org/x/crypto v0.21.0
 	modernc.org/sqlite v1.27.0
