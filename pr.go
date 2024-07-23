@@ -447,7 +447,7 @@ func (cmd PrCmd) SubmitPatchRequest(repoID string, userID int64, patchset io.Rea
 		_ = tx.Rollback()
 	}()
 
-	patches, err := parsePatchset(patchset)
+	patches, err := ParsePatchset(patchset)
 	if err != nil {
 		return nil, err
 	}
@@ -541,7 +541,7 @@ func (cmd PrCmd) SubmitPatchset(prID int64, userID int64, op PatchsetOp, patchse
 		_ = tx.Rollback()
 	}()
 
-	patches, err := parsePatchset(patchset)
+	patches, err := ParsePatchset(patchset)
 	if err != nil {
 		return fin, err
 	}
