@@ -1,0 +1,23 @@
+From 7dbb94ca1bc8cadf1ce17dacb89172217d88de07 Mon Sep 17 00:00:00 2001
+From: Eric Bower <me@erock.io>
+Date: Tue, 23 Jul 2024 10:15:23 -0400
+Subject: [PATCH] docs: readme
+
+---
+ README.md | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/README.md b/README.md
+index 8f3a780..3043953 100644
+--- a/README.md
++++ b/README.md
+@@ -1,3 +1,5 @@
+ # Let's build an RNN
+ 
+-This repo demonstrates building an RNN using `pytorch`
++This repo demonstrates building an RNN using `pytorch`.
++
++Here is some more readme information.
+-- 
+2.45.2
+
