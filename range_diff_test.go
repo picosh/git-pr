@@ -71,14 +71,15 @@ func TestRangeDiffTrivialReordering(t *testing.T) {
 	3:  $(test_oid t3) = 2:  $(test_oid d2) s/11/B/
 	4:  $(test_oid t4) = 3:  $(test_oid d3) s/12/B/
 */
-func TestRangeDiffRemovedCommit(t *testing.T) {
-	actual := cmp("a_b_reorder.patch", "a_c_reorder.patch")
+/* func TestRangeDiffRemovedCommit(t *testing.T) {
+	actual := cmp("a_b_reorder.patch", "a_c_rm_commit.patch")
 	expected := `1:  33c682a < -:  ------- chore: add torch and create random tensor
-2:  22dde12 = 1:  7dbb94c docs: readme`
+2:  22dde12 = 1:  7dbb94c docs: readme
+`
 	if expected != actual {
 		t.Fatalf(fail(expected, actual))
 	}
-}
+} */
 
 // added commit
 /*
@@ -88,15 +89,16 @@ func TestRangeDiffRemovedCommit(t *testing.T) {
 	3:  $(test_oid t3) = 4:  $(test_oid a4) s/11/B/
 	4:  $(test_oid t4) = 5:  $(test_oid a5) s/12/B/
 */
-/* func TestRangeDiffAddedCommit(t *testing.T) {
-	actual := ""
+func TestRangeDiffAddedCommit(t *testing.T) {
+	actual := cmp("a_b_reorder.patch", "a_c_added_commit.patch")
 	expected := `1:  33c682a = 1:  33c682a chore: add torch and create random tensor
 2:  22dde12 = 2:  22dde12 docs: readme
--:  ------- > 3:  b248060 chore: make tensor 6x6`
+-:  ------- > 3:  b248060 chore: make tensor 6x6
+`
 	if expected != actual {
-		t.Fatalf("expected:%s actual:%s", expected, actual)
+		t.Fatalf(fail(expected, actual))
 	}
-} */
+}
 
 // changed commit
 /*

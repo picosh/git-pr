@@ -13,17 +13,35 @@ var RANGE_DIFF_CREATION_FACTOR_DEFAULT = 60
 type PatchRange struct {
 	*Patch
 	Matching int
+	Diff     string
+	DiffSize int
+	Shown    bool
 }
 
 func NewPatchRange(patch *Patch) *PatchRange {
+	diff := patch.CalcDiff()
 	return &PatchRange{
-		Patch: patch,
+		Patch:    patch,
+		Matching: -1,
+		Diff:     diff,
+		DiffSize: len(diff),
+		Shown:    false,
 	}
 }
 
 func output(a []*PatchRange, b []*PatchRange) string {
 	out := ""
-	for _, patchB := range b {
+	for i, patchA := range a {
+		if patchA.Matching == -1 {
+			out += outputPairHeader(patchA, nil, i+1, -1)
+		}
+	}
+
+	for j, patchB := range b {
+		if patchB.Matching == -1 {
+			out += outputPairHeader(nil, patchB, -1, j+1)
+			continue
+		}
 		patchA := a[patchB.Matching]
 		if patchB.ContentSha == patchA.ContentSha {
 			out += outputPairHeader(patchA, patchB, patchB.Matching+1, patchA.Matching+1)
@@ -33,6 +51,12 @@ func output(a []*PatchRange, b []*PatchRange) string {
 }
 
 func outputPairHeader(a *PatchRange, b *PatchRange, aIndex, bIndex int) string {
+	if a == nil {
+		return fmt.Sprintf("-:  ------- > %d:  %s %s\n", bIndex, truncateSha(b.CommitSha), b.Title)
+	}
+	if b == nil {
+		return fmt.Sprintf("%d:  %s < -:  ------- %s\n", aIndex, truncateSha(a.CommitSha), a.Title)
+	}
 	return fmt.Sprintf("%d:  %s = %d:  %s %s\n", aIndex, truncateSha(a.CommitSha), bIndex, truncateSha(b.CommitSha), a.Title)
 }
 
@@ -71,21 +95,21 @@ func createMatrix(rows, cols int) [][]int {
 
 func diffsize(a *PatchRange, b *PatchRange) int {
 	dmp := diffmatchpatch.New()
-	diffs := dmp.DiffMain(a.RawText, b.RawText, false)
+	diffs := dmp.DiffMain(a.Diff, b.Diff, false)
 	return len(dmp.DiffPrettyText(diffs))
 }
 
 func getCorrespondences(a []*PatchRange, b []*PatchRange, creationFactor int) {
-	// n := len(a) + len(b)
-	fmt.Println(len(a), len(b))
-	cost := createMatrix(len(a), len(b))
+	n := len(a) + len(b)
+	fmt.Println("rows", len(a), "cols", len(b))
+	cost := createMatrix(n, n)
 
 	for i, patchA := range a {
 		var c int
 		for j, patchB := range b {
 			if patchA.Matching == j {
 				c = 0
-			} else if patchA.Matching == 0 && patchB.Matching == 0 {
+			} else if patchA.Matching == -1 && patchB.Matching == -1 {
 				c = diffsize(patchA, patchB)
 			} else {
 				c = COST_MAX
@@ -94,24 +118,31 @@ func getCorrespondences(a []*PatchRange, b []*PatchRange, creationFactor int) {
 		}
 	}
 
-	assignment := computeAssignment(cost, len(a), len(b))
+	for j, patchB := range b {
+		creationCost := (patchB.DiffSize * creationFactor) / 100
+		if patchB.Matching >= 0 {
+			creationCost = math.MaxInt32
+		}
+		for i := len(a); i < n; i++ {
+			cost[i][j] = creationCost
+		}
+	}
+
+	for i := len(a); i < n; i++ {
+		for j := len(b); j < n; j++ {
+			cost[i][j] = 0
+		}
+	}
+
+	assignment := computeAssignment(cost, n, n)
 	for i, j := range assignment {
-		if j < len(b) {
+		if i < len(a) && j < len(b) {
 			a[i].Matching = j
 			b[j].Matching = i
 		}
 	}
 
-	fmt.Println(cost, assignment)
-	fmt.Println("A==")
-	for _, patch := range a {
-		fmt.Println("matches", b[patch.Matching].Title)
-	}
-
-	fmt.Println("B==")
-	for _, patch := range b {
-		fmt.Println("matches", a[patch.Matching].Title)
-	}
+	fmt.Println("cost", cost, "assignment", assignment)
 }
 
 // computeAssignment assigns patches using the Hungarian algorithm.

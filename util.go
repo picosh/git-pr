@@ -154,6 +154,7 @@ func ParsePatchset(patchset io.Reader) ([]*Patch, error) {
 			ContentSha:    contentSha,
 			RawText:       patchStr,
 			BaseCommitSha: sql.NullString{String: baseCommit},
+			Files:         diffFiles,
 		})
 	}
 
