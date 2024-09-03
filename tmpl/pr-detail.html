@@ -18,7 +18,7 @@
 <hr />
 
 <main class="group">
-  <div class="box group text-sm">
+  <div class="box-sm group text-sm">
     <h3 class="text-lg">Logs</h3>
 
     {{range .Logs}}
@@ -49,7 +49,7 @@
     {{end}}
   </div>
 
-  <div class="box group text-sm">
+  <div class="box-sm group text-sm">
     <h3 class="text-lg">Patchsets</h3>
 
     {{range .Patchsets}}
@@ -57,7 +57,7 @@
         <summary class="text-sm">Diff ↕</summary>
         <div class="group">
           {{range .DiffPatches}}
-            <div class="box-sm{{if .Review}}-review{{end}} group" id="{{.Url}}">
+            <div class="group" id="{{.Url}}">
               {{template "patch" .}}
             </div>
           {{else}}
@@ -79,7 +79,7 @@
 
   <div class="group">
     {{range $idx, $val := .Patches}}
-      <div class="box{{if .Review}}-review{{end}} group" id="{{.Url}}">
+      <div class="group" id="{{.Url}}">
         {{template "patch" .}}
       </div>
     {{else}}

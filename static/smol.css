@@ -86,6 +86,16 @@ small {
   font-size: 0.8rem;
 }
 
+details {
+  border: 2px solid var(--grey-light);
+  padding: calc(var(--line-height) - 2px) 1ch;
+  margin-bottom: var(--line-height);
+}
+
+details[open] summary {
+  margin-bottom: var(--line-height);
+}
+
 summary {
   display: list-item;
   cursor: pointer;
@@ -171,11 +181,16 @@ ol {
   padding: 0 0 0 var(--line-height);
   list-style-position: inside;
   list-style-type: square;
-  margin: 0;
+  margin: var(--line-height) 0;
 }
 
 ul[style*="list-style-type: none;"] {
   padding: 0;
+}
+
+ol ul, ol ol, ul ol, ul ul {
+  padding: 0 0 0 3ch;
+  margin: 0;
 }
 
 li {
