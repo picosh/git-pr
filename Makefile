@@ -12,6 +12,10 @@ lint:
 	golangci-lint run -E goimports -E godot --timeout 10m
 .PHONY: lint
 
+test:
+	go test ./...
+.PHONY: test
+
 build:
 	go build -o ./build/ssh ./cmd/ssh
 	go build -o ./build/web ./cmd/web
