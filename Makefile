@@ -29,5 +29,4 @@ bp: bp-setup
 
 smol:
 	curl https://pico.sh/smol.css -o ./static/smol.css
-	cat patches/smol.diff | git apply
 .PHONY: smol
