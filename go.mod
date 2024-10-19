@@ -4,7 +4,7 @@ go 1.22
 
 require (
 	github.com/alecthomas/chroma/v2 v2.13.0
-	github.com/bluekeyes/go-gitdiff v0.7.4-0.20240715034416-0a4e55f9a190
+	github.com/bluekeyes/go-gitdiff v0.8.0
 	github.com/charmbracelet/soft-serve v0.7.4
 	github.com/charmbracelet/ssh v0.0.0-20240301204039-e79ff702f5b3
 	github.com/charmbracelet/wish v1.3.2
@@ -14,6 +14,7 @@ require (
 	github.com/knadh/koanf/providers/env v0.1.0
 	github.com/knadh/koanf/providers/file v1.0.0
 	github.com/knadh/koanf/v2 v2.1.1
+	github.com/oddg/hungarian-algorithm v0.0.0-20170809162819-9567cbc363de
 	github.com/sergi/go-diff v1.1.0
 	github.com/urfave/cli/v2 v2.27.2
 	golang.org/x/crypto v0.21.0

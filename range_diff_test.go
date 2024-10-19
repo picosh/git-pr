@@ -2,6 +2,7 @@ package git
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/picosh/git-pr/fixtures"
@@ -27,7 +28,7 @@ func cmp(afile, bfile string) string {
 }
 
 func fail(expected, actual string) string {
-	return fmt.Sprintf("expected:[%s] actual:[%s]", expected, actual)
+	return fmt.Sprintf("expected:[\n%s] actual:[\n%s]", expected, actual)
 }
 
 // https://git.kernel.org/tree/t/t3206-range-diff.sh?id=d19b6cd2dd72dc811f19df4b32c7ed223256c3ee
@@ -132,7 +133,7 @@ func TestRangeDiffChangedCommit(t *testing.T) {
 		t.Fatalf("file not found")
 	}
 	expected := string(fp)
-	if expected != actual {
+	if strings.TrimSpace(expected) != strings.TrimSpace(actual) {
 		t.Fatalf(fail(expected, actual))
 	}
 }

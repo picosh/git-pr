@@ -3,7 +3,9 @@ package git
 import (
 	"fmt"
 	"math"
+	"strings"
 
+	ha "github.com/oddg/hungarian-algorithm"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
@@ -45,6 +47,74 @@ func output(a []*PatchRange, b []*PatchRange) string {
 		patchA := a[patchB.Matching]
 		if patchB.ContentSha == patchA.ContentSha {
 			out += outputPairHeader(patchA, patchB, patchB.Matching+1, patchA.Matching+1)
+		} else {
+
+			out += fmt.Sprintf(
+				"%d:  %s ! %d:  %s %s\n%s",
+				patchA.Matching+1, truncateSha(patchA.CommitSha),
+				patchB.Matching+1, truncateSha(patchB.CommitSha), patchB.Title,
+				outputDiff(patchA, patchB),
+			)
+		}
+	}
+	return out
+}
+
+func outputDiff(patchA, patchB *PatchRange) string {
+	dmp := diffmatchpatch.New()
+	diffA := []string{}
+	for _, fileA := range patchA.Files {
+		diffA = append(diffA, "@@ "+fileA.NewName+"\n")
+		for _, frag := range fileA.TextFragments {
+			for _, line := range frag.Lines {
+				diffA = append(diffA, line.String())
+			}
+		}
+	}
+	diffB := []string{}
+	for _, fileB := range patchB.Files {
+		diffB = append(diffB, "@@ "+fileB.NewName+"\n")
+		for _, frag := range fileB.TextFragments {
+			for _, line := range frag.Lines {
+				diffB = append(diffB, line.String())
+			}
+		}
+	}
+	diffs := dmp.DiffMain(
+		strings.Join(diffA, ""),
+		strings.Join(diffB, ""),
+		false,
+	)
+
+	out := ""
+	for _, diff := range diffs {
+		text := diff.Text
+
+		switch diff.Type {
+		case diffmatchpatch.DiffInsert:
+			sp := strings.Split(text, "\n")
+			for _, s := range sp {
+				if s == "" {
+					continue
+				}
+				out += "    +" + s + "\n"
+			}
+		case diffmatchpatch.DiffDelete:
+			sp := strings.Split(text, "\n")
+			for _, s := range sp {
+				if s == "" {
+					continue
+				}
+				out += "    -" + s + "\n"
+			}
+		case diffmatchpatch.DiffEqual:
+			sp := strings.Split(text, "\n")
+			for _, s := range sp {
+				if s == "" {
+					continue
+				}
+				out += "    " + s + "\n"
+			}
 		}
 	}
 	return out
@@ -96,12 +166,11 @@ func createMatrix(rows, cols int) [][]int {
 func diffsize(a *PatchRange, b *PatchRange) int {
 	dmp := diffmatchpatch.New()
 	diffs := dmp.DiffMain(a.Diff, b.Diff, false)
-	return len(dmp.DiffPrettyText(diffs))
+	return len(diffs)
 }
 
 func getCorrespondences(a []*PatchRange, b []*PatchRange, creationFactor int) {
 	n := len(a) + len(b)
-	fmt.Println("rows", len(a), "cols", len(b))
 	cost := createMatrix(n, n)
 
 	for i, patchA := range a {
@@ -134,15 +203,20 @@ func getCorrespondences(a []*PatchRange, b []*PatchRange, creationFactor int) {
 		}
 	}
 
-	assignment := computeAssignment(cost, n, n)
-	for i, j := range assignment {
-		if i < len(a) && j < len(b) {
+	assignment, _ := ha.Solve(cost)
+	assignmentB := computeAssignment(cost, n, n)
+	fmt.Println(assignment, assignmentB)
+	for i := range a {
+		j := assignment[i]
+		if j >= 0 && j < len(b) {
 			a[i].Matching = j
 			b[j].Matching = i
 		}
 	}
 
-	fmt.Println("cost", cost, "assignment", assignment)
+	for _, c := range cost {
+		fmt.Println(c)
+	}
 }
 
 // computeAssignment assigns patches using the Hungarian algorithm.
