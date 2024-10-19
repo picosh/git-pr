@@ -53,18 +53,29 @@
     <h3 class="text-lg">Patchsets</h3>
 
     {{range .Patchsets}}
+      {{if .RangeDiff}}
       <details>
-        <summary class="text-sm">Diff ↕</summary>
-        <div class="group">
-          {{range .DiffPatches}}
-            <div class="group" id="{{.Url}}">
-              {{template "patch" .}}
-            </div>
-          {{else}}
-            No patches found, that doesn't seem right.
-          {{end}}
+        <summary class="text-sm">Range Diff ↕</summary>
+        <div>
+        {{- range .RangeDiff -}}
+          <div><code>{{.Header}}</code></div>
+          {{- if .Diff -}}
+          <pre>
+            {{- range .Diff -}}
+              {{- if eq .Type -1 -}}
+                <span style="color: tomato;">{{.Text}}</span>
+              {{- else if eq .Type 1 -}}
+                <span style="color: limegreen;">{{.Text}}</span>
+              {{- else -}}
+                <span>{{.Text}}</span>
+              {{- end -}}
+            {{- end -}}
+          </pre>
+          {{- end -}}
+        {{- end -}}
         </div>
       </details>
+      {{end}}
 
       <div>
         <code class="{{if .Review}}pill-review{{end}}">{{.FormattedID}}</code>

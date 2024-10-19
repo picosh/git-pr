@@ -47,7 +47,7 @@ type GitPatchRequest interface {
 	GetEventLogsByRepoID(repoID string) ([]*EventLog, error)
 	GetEventLogsByPrID(prID int64) ([]*EventLog, error)
 	GetEventLogsByUserID(userID int64) ([]*EventLog, error)
-	DiffPatchsets(aset *Patchset, bset *Patchset) ([]*Patch, error)
+	DiffPatchsets(aset *Patchset, bset *Patchset) ([]*RangeDiffOutput, error)
 }
 
 type PrCmd struct {
@@ -677,34 +677,45 @@ func (cmd PrCmd) GetEventLogsByUserID(userID int64) ([]*EventLog, error) {
 	return eventLogs, err
 }
 
-func (cmd PrCmd) DiffPatchsets(prev *Patchset, next *Patchset) ([]*Patch, error) {
+func (cmd PrCmd) DiffPatchsets(prev *Patchset, next *Patchset) ([]*RangeDiffOutput, error) {
+	output := []*RangeDiffOutput{}
 	patches, err := cmd.GetPatchesByPatchsetID(next.ID)
 	if err != nil {
-		return nil, err
+		return output, err
+	}
+
+	for idx, patch := range patches {
+		patchStr := patch.RawText
+		if idx > 0 {
+			patchStr = startOfPatch + patch.RawText
+		}
+		diffFiles, _, err := ParsePatch(patchStr)
+		if err != nil {
+			continue
+		}
+		patch.Files = diffFiles
 	}
 
 	if prev == nil {
-		return patches, nil
+		return output, nil
 	}
 
 	prevPatches, err := cmd.GetPatchesByPatchsetID(prev.ID)
 	if err != nil {
-		return nil, fmt.Errorf("cannot get previous patchset patches: %w", err)
+		return output, fmt.Errorf("cannot get previous patchset patches: %w", err)
 	}
 
-	diffPatches := []*Patch{}
-	for _, patch := range patches {
-		foundPatch := false
-		for _, prev := range prevPatches {
-			if prev.ContentSha == patch.ContentSha {
-				foundPatch = true
-			}
+	for idx, patch := range prevPatches {
+		patchStr := patch.RawText
+		if idx > 0 {
+			patchStr = startOfPatch + patch.RawText
 		}
-
-		if !foundPatch {
-			diffPatches = append(diffPatches, patch)
+		diffFiles, _, err := ParsePatch(patchStr)
+		if err != nil {
+			continue
 		}
+		patch.Files = diffFiles
 	}
 
-	return diffPatches, nil
+	return RangeDiff(prevPatches, patches), nil
 }

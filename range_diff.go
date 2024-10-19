@@ -3,7 +3,7 @@ package git
 import (
 	"fmt"
 	"math"
-	"strings"
+	"sort"
 
 	ha "github.com/oddg/hungarian-algorithm"
 	"github.com/sergi/go-diff/diffmatchpatch"
@@ -31,40 +31,112 @@ func NewPatchRange(patch *Patch) *PatchRange {
 	}
 }
 
-func output(a []*PatchRange, b []*PatchRange) string {
-	out := ""
+type RangeDiffOutput struct {
+	Header string
+	Diff   []diffmatchpatch.Diff
+}
+
+func output(a []*PatchRange, b []*PatchRange) []*RangeDiffOutput {
+	outputs := []*RangeDiffOutput{}
 	for i, patchA := range a {
 		if patchA.Matching == -1 {
-			out += outputPairHeader(patchA, nil, i+1, -1)
+			outputs = append(
+				outputs,
+				&RangeDiffOutput{
+					Header: outputPairHeader(patchA, nil, i+1, -1),
+				},
+			)
 		}
 	}
 
 	for j, patchB := range b {
 		if patchB.Matching == -1 {
-			out += outputPairHeader(nil, patchB, -1, j+1)
+			outputs = append(
+				outputs,
+				&RangeDiffOutput{
+					Header: outputPairHeader(nil, patchB, -1, j+1),
+				},
+			)
 			continue
 		}
 		patchA := a[patchB.Matching]
 		if patchB.ContentSha == patchA.ContentSha {
-			out += outputPairHeader(patchA, patchB, patchB.Matching+1, patchA.Matching+1)
+			outputs = append(
+				outputs,
+				&RangeDiffOutput{
+					Header: outputPairHeader(patchA, patchB, patchB.Matching+1, patchA.Matching+1),
+				},
+			)
 		} else {
-
-			out += fmt.Sprintf(
-				"%d:  %s ! %d:  %s %s\n%s",
+			header := fmt.Sprintf(
+				"%d:  %s ! %d:  %s %s",
 				patchA.Matching+1, truncateSha(patchA.CommitSha),
 				patchB.Matching+1, truncateSha(patchB.CommitSha), patchB.Title,
-				outputDiff(patchA, patchB),
+			)
+			outputs = append(
+				outputs,
+				&RangeDiffOutput{
+					Header: header,
+					Diff:   outputDiff(patchA, patchB),
+				},
 			)
 		}
 	}
-	return out
+	return outputs
 }
 
-func outputDiff(patchA, patchB *PatchRange) string {
+func DoDiff(src, dst string) []diffmatchpatch.Diff {
 	dmp := diffmatchpatch.New()
-	diffA := []string{}
+	wSrc, wDst, warray := dmp.DiffLinesToChars(src, dst)
+	diffs := dmp.DiffMain(wSrc, wDst, false)
+	diffs = dmp.DiffCharsToLines(diffs, warray)
+	return diffs
+}
+
+func outputDiff(patchA, patchB *PatchRange) []diffmatchpatch.Diff {
+	sort.Slice(patchA.Files, func(i, j int) bool {
+		return patchA.Files[i].NewName < patchA.Files[j].NewName
+	})
+	sort.Slice(patchB.Files, func(i, j int) bool {
+		return patchB.Files[i].NewName < patchB.Files[j].NewName
+	})
+
+	diffs := []diffmatchpatch.Diff{}
 	for _, fileA := range patchA.Files {
-		diffA = append(diffA, "@@ "+fileA.NewName+"\n")
+		found := false
+		for _, fileB := range patchB.Files {
+			if fileA.NewName == fileB.NewName {
+				diffs = append(diffs, DoDiff(fileA.String(), fileB.String())...)
+				found = true
+			}
+		}
+
+		if !found {
+			diffs = append(diffs, diffmatchpatch.Diff{
+				Type: diffmatchpatch.DiffEqual,
+				Text: fileA.String(),
+			})
+		}
+	}
+
+	for _, fileB := range patchB.Files {
+		found := false
+		for _, fileA := range patchA.Files {
+			if fileB.NewName == fileA.NewName {
+				found = true
+			}
+		}
+		if !found {
+			diffs = append(diffs, diffmatchpatch.Diff{
+				Type: diffmatchpatch.DiffEqual,
+				Text: fileB.String(),
+			})
+		}
+	}
+
+	/* diffA := []string{}
+	for _, fileA := range patchA.Files {
+		diffA = append(diffA, "\n@@ "+fileA.NewName+"\n")
 		for _, frag := range fileA.TextFragments {
 			for _, line := range frag.Lines {
 				diffA = append(diffA, line.String())
@@ -73,51 +145,14 @@ func outputDiff(patchA, patchB *PatchRange) string {
 	}
 	diffB := []string{}
 	for _, fileB := range patchB.Files {
-		diffB = append(diffB, "@@ "+fileB.NewName+"\n")
+		diffB = append(diffB, "\n@@ "+fileB.NewName+"\n")
 		for _, frag := range fileB.TextFragments {
 			for _, line := range frag.Lines {
 				diffB = append(diffB, line.String())
 			}
 		}
-	}
-	diffs := dmp.DiffMain(
-		strings.Join(diffA, ""),
-		strings.Join(diffB, ""),
-		false,
-	)
-
-	out := ""
-	for _, diff := range diffs {
-		text := diff.Text
-
-		switch diff.Type {
-		case diffmatchpatch.DiffInsert:
-			sp := strings.Split(text, "\n")
-			for _, s := range sp {
-				if s == "" {
-					continue
-				}
-				out += "    +" + s + "\n"
-			}
-		case diffmatchpatch.DiffDelete:
-			sp := strings.Split(text, "\n")
-			for _, s := range sp {
-				if s == "" {
-					continue
-				}
-				out += "    -" + s + "\n"
-			}
-		case diffmatchpatch.DiffEqual:
-			sp := strings.Split(text, "\n")
-			for _, s := range sp {
-				if s == "" {
-					continue
-				}
-				out += "    " + s + "\n"
-			}
-		}
-	}
-	return out
+	} */
+	return diffs
 }
 
 func outputPairHeader(a *PatchRange, b *PatchRange, aIndex, bIndex int) string {
@@ -130,7 +165,7 @@ func outputPairHeader(a *PatchRange, b *PatchRange, aIndex, bIndex int) string {
 	return fmt.Sprintf("%d:  %s = %d:  %s %s\n", aIndex, truncateSha(a.CommitSha), bIndex, truncateSha(b.CommitSha), a.Title)
 }
 
-func RangeDiff(a []*Patch, b []*Patch) string {
+func RangeDiff(a []*Patch, b []*Patch) []*RangeDiffOutput {
 	aPatches := []*PatchRange{}
 	for _, patch := range a {
 		aPatches = append(aPatches, NewPatchRange(patch))
@@ -142,6 +177,24 @@ func RangeDiff(a []*Patch, b []*Patch) string {
 	findExactMatches(aPatches, bPatches)
 	getCorrespondences(aPatches, bPatches, RANGE_DIFF_CREATION_FACTOR_DEFAULT)
 	return output(aPatches, bPatches)
+}
+
+func RangeDiffToStr(diffs []*RangeDiffOutput) string {
+	output := ""
+	for _, diff := range diffs {
+		output += diff.Header
+		for _, d := range diff.Diff {
+			switch d.Type {
+			case diffmatchpatch.DiffEqual:
+				output += d.Text
+			case diffmatchpatch.DiffInsert:
+				output += d.Text
+			case diffmatchpatch.DiffDelete:
+				output += d.Text
+			}
+		}
+	}
+	return output
 }
 
 func findExactMatches(a []*PatchRange, b []*PatchRange) {

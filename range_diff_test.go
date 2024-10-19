@@ -24,7 +24,7 @@ func cmp(afile, bfile string) string {
 	bPatches, err := ParsePatchset(b)
 	bail(err)
 	actual := RangeDiff(aPatches, bPatches)
-	return actual
+	return RangeDiffToStr(actual)
 }
 
 func fail(expected, actual string) string {

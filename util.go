@@ -109,6 +109,12 @@ func patchToDiff(patch io.Reader) (string, error) {
 	return str[idx:], nil
 }
 
+func ParsePatch(patchRaw string) ([]*gitdiff.File, string, error) {
+	reader := strings.NewReader(patchRaw)
+	diffFiles, preamble, err := gitdiff.Parse(reader)
+	return diffFiles, preamble, err
+}
+
 func ParsePatchset(patchset io.Reader) ([]*Patch, error) {
 	patches := []*Patch{}
 	buf := new(strings.Builder)
@@ -123,8 +129,7 @@ func ParsePatchset(patchset io.Reader) ([]*Patch, error) {
 		if idx > 0 {
 			patchStr = startOfPatch + patchRaw
 		}
-		reader := strings.NewReader(patchStr)
-		diffFiles, preamble, err := gitdiff.Parse(reader)
+		diffFiles, preamble, err := ParsePatch(patchStr)
 		if err != nil {
 			return nil, err
 		}

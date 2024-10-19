@@ -485,13 +485,13 @@ Here's how it works:
 								prev = patchsets[len(patchsets)-2]
 							}
 
-							patches, err := pr.DiffPatchsets(prev, latest)
+							rangeDiff, err := pr.DiffPatchsets(prev, latest)
 							if err != nil {
 								be.Logger.Error("could not diff patchset", "err", err)
 								return err
 							}
 
-							printPatches(sesh, patches)
+							wish.Println(sesh, rangeDiff)
 							return nil
 						},
 					},
