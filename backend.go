@@ -8,12 +8,13 @@ import (
 
 	"github.com/charmbracelet/soft-serve/pkg/utils"
 	"github.com/charmbracelet/ssh"
+	"github.com/jmoiron/sqlx"
 	gossh "golang.org/x/crypto/ssh"
 )
 
 type Backend struct {
 	Logger *slog.Logger
-	DB     *DB
+	DB     *sqlx.DB
 	Cfg    *GitCfg
 }
 

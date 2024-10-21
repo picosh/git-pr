@@ -703,7 +703,7 @@ func StartWebServer(cfg *GitCfg) {
 	addr := fmt.Sprintf("%s:%s", cfg.Host, cfg.WebPort)
 
 	dbpath := filepath.Join(cfg.DataDir, "pr.db")
-	dbh, err := Open(dbpath, cfg.Logger)
+	dbh, err := SqliteOpen(dbpath, cfg.Logger)
 	if err != nil {
 		panic(fmt.Sprintf("cannot find database file, check folder and perms: %s: %s", dbpath, err))
 	}
