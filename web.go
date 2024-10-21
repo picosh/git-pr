@@ -11,10 +11,12 @@ import (
 	"log/slog"
 	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/alecthomas/chroma/v2"
@@ -99,8 +101,13 @@ type PrTableData struct {
 	MetaData
 }
 
-func getPrTableData(web *WebCtx, prs []*PatchRequest) ([]*PrListData, error) {
+func getPrTableData(web *WebCtx, prs []*PatchRequest, query url.Values) ([]*PrListData, error) {
 	prdata := []*PrListData{}
+	status := strings.ToLower(query.Get("status"))
+	username := strings.ToLower(query.Get("user"))
+	title := strings.ToLower(query.Get("title"))
+	hasFilter := status != "" || username != "" || title != ""
+
 	for _, curpr := range prs {
 		user, err := web.Pr.GetUserByID(curpr.UserID)
 		if err != nil {
@@ -112,6 +119,27 @@ func getPrTableData(web *WebCtx, prs []*PatchRequest) ([]*PrListData, error) {
 			web.Logger.Error("cannot get pubkey from user public key", "err", err)
 			continue
 		}
+
+		if hasFilter {
+			if status != "" {
+				if status != curpr.Status {
+					continue
+				}
+			}
+
+			if username != "" {
+				if username != user.Name {
+					continue
+				}
+			}
+
+			if title != "" {
+				if !strings.Contains(strings.ToLower(curpr.Name), title) {
+					continue
+				}
+			}
+		}
+
 		isAdmin := web.Backend.IsAdmin(pk)
 		prls := &PrListData{
 			RepoID: curpr.RepoID,
@@ -152,7 +180,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	prdata, err := getPrTableData(web, prs)
+	prdata, err := getPrTableData(web, prs, r.URL.Query())
 	if err != nil {
 		web.Logger.Error("could not get pr table data", "err", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -226,7 +254,7 @@ func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	prdata, err := getPrTableData(web, prs)
+	prdata, err := getPrTableData(web, prs, r.URL.Query())
 	if err != nil {
 		web.Logger.Error("cannot get pr table data", "err", err)
 		w.WriteHeader(http.StatusInternalServerError)
