@@ -218,17 +218,7 @@ git push origin main
 <hr />
 
 <main>
-  <div class="group">
-    {{range .Repos}}
-    <div class="box">
-      <h3 class="text-lg m-0 p-0"><a href="{{.Url}}">{{.Text}}</a></h3>
-      <div class="text-sm">{{.Desc}}</div>
-      {{if .LatestPr}}
-        <div class="text-xs mt ml">{{template "pr-list-item" .LatestPr}}</div>
-      {{end}}
-    </div>
-    {{end}}
-  </div>
+  {{template "pr-table" .Prs}}
 </main>
 
 <footer>

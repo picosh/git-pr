@@ -1,0 +1,32 @@
+{{define "pr-table"}}
+<table class="w-full">
+  <thead>
+    <tr>
+      <th class="text-left">Repo</th>
+      <th class="text-left">Status</th>
+      <th class="text-left">Title</th>
+      <th class="text-left">User</th>
+      <th class="text-left">Created At</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {{range .}}
+      <tr>
+        <td>
+          <a href="{{.RepoLink.Url}}">{{.RepoLink.Text}}</a>
+        </td>
+        <td>{{template "pr-status" .Status}}</td>
+        <td>
+          <code>#{{.ID}}</code>
+          <a href="{{.PrLink.Url}}">{{.PrLink.Text}}</a>
+        </td>
+        <td>
+          <code class="{{if .UserData.IsAdmin}}pill-admin{{end}}" title="{{.UserData.Pubkey}}">{{.UserData.Name}}</code>
+        </td>
+        <td><date>{{.Date}}</date></td>
+      </tr>
+    {{end}}
+  </tbody>
+</table>
+{{end}}

@@ -35,36 +35,7 @@ ssh {{.MetaData.URL}} pr ls {{.ID}}</pre>
 <hr />
 
 <main class="group">
-  <h3 class="text-lg">Open PRs</h3>
-  {{range .OpenPrs}}
-    <div class="box">{{template "pr-list-item" .}}</div>
-  {{else}}
-    <div>No open patch requests.</div>
-  {{end}}
-
-  {{if .ReviewedPrs}}
-    <hr class="my w-full" />
-    <h3 class="text-lg">Reviews PRs</h3>
-    {{range .ReviewedPrs}}
-      <div class="box">{{template "pr-list-item" .}}</div>
-    {{end}}
-  {{end}}
-
-  {{if .AcceptedPrs}}
-    <hr class="my w-full" />
-    <h3 class="text-lg">Accepted PRs</h3>
-    {{range .AcceptedPrs}}
-      <div class="box">{{template "pr-list-item" .}}</div>
-    {{end}}
-  {{end}}
-
-  {{if .ClosedPrs}}
-    <hr class="my w-full" />
-    <h3 class="text-lg">Closed PRs</h3>
-    {{range .ClosedPrs}}
-      <div class="box">{{template "pr-list-item" .}}</div>
-    {{end}}
-  {{end}}
+  {{template "pr-table" .Prs}}
 </main>
 
 <hr />

@@ -81,6 +81,7 @@ func getTemplate(file string) *template.Template {
 			filepath.Join("tmpl", "patch.html"),
 			filepath.Join("tmpl", "pr-header.html"),
 			filepath.Join("tmpl", "pr-list-item.html"),
+			filepath.Join("tmpl", "pr-table.html"),
 			filepath.Join("tmpl", "pr-status.html"),
 			filepath.Join("tmpl", "base.html"),
 		),
@@ -93,73 +94,75 @@ type LinkData struct {
 	Text string
 }
 
-type RepoData struct {
-	LinkData
-	Desc     string
-	LatestPr *PrListData
-}
-
-type RepoListData struct {
-	Repos []RepoData
+type PrTableData struct {
+	Prs []*PrListData
 	MetaData
 }
 
-func repoListHandler(w http.ResponseWriter, r *http.Request) {
+func getPrTableData(web *WebCtx, prs []*PatchRequest) ([]*PrListData, error) {
+	prdata := []*PrListData{}
+	for _, curpr := range prs {
+		user, err := web.Pr.GetUserByID(curpr.UserID)
+		if err != nil {
+			web.Logger.Error("cannot get user from pr", "err", err)
+			continue
+		}
+		pk, err := web.Backend.PubkeyToPublicKey(user.Pubkey)
+		if err != nil {
+			web.Logger.Error("cannot get pubkey from user public key", "err", err)
+			continue
+		}
+		isAdmin := web.Backend.IsAdmin(pk)
+		prls := &PrListData{
+			RepoID: curpr.RepoID,
+			ID:     curpr.ID,
+			UserData: UserData{
+				Name:    user.Name,
+				IsAdmin: isAdmin,
+				Pubkey:  user.Pubkey,
+			},
+			RepoLink: LinkData{
+				Url:  template.URL(fmt.Sprintf("/repos/%s", curpr.RepoID)),
+				Text: curpr.RepoID,
+			},
+			PrLink: LinkData{
+				Url:  template.URL(fmt.Sprintf("/prs/%d", curpr.ID)),
+				Text: curpr.Name,
+			},
+			Date:   curpr.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
+			Status: curpr.Status,
+		}
+		prdata = append(prdata, prls)
+	}
+
+	return prdata, nil
+}
+
+func indexHandler(w http.ResponseWriter, r *http.Request) {
 	web, err := getWebCtx(r)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	repos, err := web.Pr.GetReposWithLatestPr()
+	prs, err := web.Pr.GetPatchRequests()
 	if err != nil {
-		web.Pr.Backend.Logger.Error("cannot get repos", "err", err)
+		web.Logger.Error("could not get prs", "err", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	repoData := []RepoData{}
-	for _, repo := range repos {
-		var ls *PrListData
-		if repo.PatchRequest != nil {
-			curpr := repo.PatchRequest
-			pk, err := web.Backend.PubkeyToPublicKey(repo.User.Pubkey)
-			if err != nil {
-				w.WriteHeader(http.StatusUnprocessableEntity)
-				return
-			}
-			isAdmin := web.Backend.IsAdmin(pk)
-			ls = &PrListData{
-				ID: curpr.ID,
-				UserData: UserData{
-					Name:    repo.User.Name,
-					IsAdmin: isAdmin,
-					Pubkey:  repo.User.Pubkey,
-				},
-				LinkData: LinkData{
-					Url:  template.URL(fmt.Sprintf("/prs/%d", curpr.ID)),
-					Text: curpr.Name,
-				},
-				Date:   curpr.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
-				Status: curpr.Status,
-			}
-		}
-
-		d := RepoData{
-			Desc: repo.Desc,
-			LinkData: LinkData{
-				Url:  template.URL("/repos/" + repo.ID),
-				Text: repo.ID,
-			},
-			LatestPr: ls,
-		}
-		repoData = append(repoData, d)
+	prdata, err := getPrTableData(web, prs)
+	if err != nil {
+		web.Logger.Error("could not get pr table data", "err", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("content-type", "text/html")
-	tmpl := getTemplate("repo-list.html")
-	err = tmpl.Execute(w, RepoListData{
-		Repos: repoData,
+	tmpl := getTemplate("index.html")
+	err = tmpl.Execute(w, PrTableData{
+		Prs: prdata,
 		MetaData: MetaData{
 			URL: web.Backend.Cfg.Url,
 		},
@@ -180,22 +183,22 @@ type MetaData struct {
 }
 
 type PrListData struct {
-	LinkData
 	UserData
-	ID     int64
-	Date   string
-	Status string
+	RepoID   string
+	RepoLink LinkData
+	PrLink   LinkData
+	Title    string
+	ID       int64
+	Date     string
+	Status   string
 }
 
 type RepoDetailData struct {
-	ID          string
-	CloneAddr   string
-	Branch      string
-	Desc        string
-	OpenPrs     []PrListData
-	AcceptedPrs []PrListData
-	ClosedPrs   []PrListData
-	ReviewedPrs []PrListData
+	ID        string
+	CloneAddr string
+	Branch    string
+	Desc      string
+	Prs       []*PrListData
 	MetaData
 }
 
@@ -223,57 +226,21 @@ func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	openList := []PrListData{}
-	reviewedList := []PrListData{}
-	acceptedList := []PrListData{}
-	closedList := []PrListData{}
-	for _, curpr := range prs {
-		user, err := web.Pr.GetUserByID(curpr.UserID)
-		if err != nil {
-			continue
-		}
-		pk, err := web.Backend.PubkeyToPublicKey(user.Pubkey)
-		if err != nil {
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			return
-		}
-		isAdmin := web.Backend.IsAdmin(pk)
-		ls := PrListData{
-			ID: curpr.ID,
-			UserData: UserData{
-				Name:    user.Name,
-				IsAdmin: isAdmin,
-				Pubkey:  user.Pubkey,
-			},
-			LinkData: LinkData{
-				Url:  template.URL(fmt.Sprintf("/prs/%d", curpr.ID)),
-				Text: curpr.Name,
-			},
-			Date:   curpr.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
-			Status: curpr.Status,
-		}
-		if curpr.Status == "open" {
-			openList = append(openList, ls)
-		} else if curpr.Status == "accepted" {
-			acceptedList = append(acceptedList, ls)
-		} else if curpr.Status == "reviewed" {
-			reviewedList = append(reviewedList, ls)
-		} else {
-			closedList = append(closedList, ls)
-		}
+	prdata, err := getPrTableData(web, prs)
+	if err != nil {
+		web.Logger.Error("cannot get pr table data", "err", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("content-type", "text/html")
 	tmpl := getTemplate("repo-detail.html")
 	err = tmpl.Execute(w, RepoDetailData{
-		ID:          repo.ID,
-		CloneAddr:   repo.CloneAddr,
-		Desc:        repo.Desc,
-		Branch:      repo.DefaultBranch,
-		OpenPrs:     openList,
-		AcceptedPrs: acceptedList,
-		ClosedPrs:   closedList,
-		ReviewedPrs: reviewedList,
+		ID:        repo.ID,
+		CloneAddr: repo.CloneAddr,
+		Desc:      repo.Desc,
+		Branch:    repo.DefaultBranch,
+		Prs:       prdata,
 		MetaData: MetaData{
 			URL: web.Backend.Cfg.Url,
 		},
@@ -737,7 +704,7 @@ func StartWebServer(cfg *GitCfg) {
 	http.HandleFunc("GET /prs/{id}/rss", ctxMdw(ctx, rssHandler))
 	http.HandleFunc("GET /repos/{id}", ctxMdw(ctx, repoDetailHandler))
 	http.HandleFunc("GET /repos/{repoid}/rss", ctxMdw(ctx, rssHandler))
-	http.HandleFunc("GET /", ctxMdw(ctx, repoListHandler))
+	http.HandleFunc("GET /", ctxMdw(ctx, indexHandler))
 	http.HandleFunc("GET /syntax.css", ctxMdw(ctx, chromaStyleHandler))
 	http.HandleFunc("GET /rss", ctxMdw(ctx, rssHandler))
 	embedFS, err := getEmbedFS(embedStaticFS, "static")
