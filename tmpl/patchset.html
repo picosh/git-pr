@@ -1,0 +1,16 @@
+{{define "patchset"}}
+<div class="group">
+  <h2 class="text-xl">
+    Patchset <code>ps-{{.Patchset.ID}}</code>
+  </h2>
+  {{range $idx, $val := .Patches}}
+    <div class="group" id="{{.Url}}">
+      {{template "patch" .}}
+    </div>
+  {{else}}
+  <div class="box">
+    No patches found for patch request.
+  </div>
+  {{end}}
+</div>
+{{end}}

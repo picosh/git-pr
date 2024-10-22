@@ -15,94 +15,91 @@
 {{define "body"}}
 {{template "pr-header" .}}
 
-<hr />
-
 <main class="group">
-  <div class="box-sm group text-sm">
-    <h3 class="text-lg">Logs</h3>
-
-    {{range .Logs}}
-    <div>
-      <code class='pill{{if .UserData.IsAdmin}}-admin{{end}}' title="{{.UserData.Pubkey}}">{{.UserData.Name}}</code>
-      <span class="font-bold">
-        {{if eq .Event "pr_created"}}
-          created pr with <code>{{.FormattedPatchsetID}}</code>
-        {{else if eq .Event "pr_patchset_added"}}
-          added <code>{{.FormattedPatchsetID}}</code>
-        {{else if eq .Event "pr_patchset_deleted"}}
-          deleted <code>{{.FormattedPatchsetID}}</code>
-        {{else if eq .Event "pr_reviewed"}}
-          reviewed pr with <code class="pill-review">{{.FormattedPatchsetID}}</code>
-        {{else if eq .Event "pr_patchset_replaced"}}
-          replaced <code>{{.FormattedPatchsetID}}</code>
-        {{else if eq .Event "pr_status_changed"}}
-          changed status
-        {{else if eq .Event "pr_name_changed"}}
-          changed pr name
-        {{else}}
-          {{.Event}}
-        {{end}}
-      </span>
-      <span>on <date>{{.Date}}</date></span>
-      {{if .Data}}<code>{{.Data}}</code>{{end}}
-    </div>
-    {{end}}
-  </div>
-
-  <div class="box-sm group text-sm">
-    <h3 class="text-lg">Patchsets</h3>
-
-    {{range .Patchsets}}
-      {{if .RangeDiff}}
-      <details>
-        <summary class="text-sm">Range Diff ↕</summary>
-        <div class="group">
-        {{- range .RangeDiff -}}
-          <div>
-            <code class='{{if eq .Type "rm"}}pill-admin{{else if eq .Type "add"}}pill-success{{else if eq .Type "diff"}}pill-review{{end}}'>
-              {{.Header}}
-            </code>
-          </div>
-          {{- if .Diff -}}
-          <pre>
-            {{- range .Diff -}}
-              {{- if eq .Type -1 -}}
-                <span style="color: tomato;">{{.Text}}</span>
-              {{- else if eq .Type 1 -}}
-                <span style="color: limegreen;">{{.Text}}</span>
-              {{- else -}}
-                <span>{{.Text}}</span>
-              {{- end -}}
-            {{- end -}}
-          </pre>
-          {{- end -}}
-        {{- end -}}
-        </div>
-      </details>
-      {{end}}
-
+  <div class="flex gap-2">
+    <div class="group text-sm" style="width: 300px;">
+      <h3 class="text-lg">Logs</h3>
+      {{range .Logs}}
       <div>
-        <code class="{{if .Review}}pill-review{{end}}">{{.FormattedID}}</code>
-        <span> by </span>
-        <code class="pill{{if .UserData.IsAdmin}}-admin{{end}}" title="{{.UserData.Pubkey}}">{{.UserData.Name}}</code>
+        {{template "user-pill" .UserData}}
+        <span class="font-bold">
+          {{if eq .Event "pr_created"}}
+            {{if eq $.Patchset.ID .Patchset.ID}}
+            created pr with <code>{{.FormattedPatchsetID}}</code>
+            {{else}}
+            created pr with <a href="/ps/{{.Patchset.ID}}"><code>{{.FormattedPatchsetID}}</code></a>
+            {{end}}
+          {{else if eq .Event "pr_patchset_added"}}
+            {{if eq $.Patchset.ID .Patchset.ID}}
+            added <code>{{.FormattedPatchsetID}}</code>
+            {{else}}
+            added <a href="/ps/{{.Patchset.ID}}"><code>{{.FormattedPatchsetID}}</code></a>
+            {{end}}
+          {{else if eq .Event "pr_patchset_deleted"}}
+            deleted <code>{{.FormattedPatchsetID}}</code>
+          {{else if eq .Event "pr_reviewed"}}
+            reviewed pr with <code class="pill-review">{{.FormattedPatchsetID}}</code>
+          {{else if eq .Event "pr_patchset_replaced"}}
+            replaced <code>{{.FormattedPatchsetID}}</code>
+          {{else if eq .Event "pr_status_changed"}}
+            changed status
+          {{else if eq .Event "pr_name_changed"}}
+            changed pr name
+          {{else}}
+            {{.Event}}
+          {{end}}
+        </span>
         <span>on <date>{{.Date}}</date></span>
+        {{if .Data}}<code>{{.Data}}</code>{{end}}
       </div>
-    {{end}}
+      {{end}}
+    </div>
+
+    <div class="group text-sm flex-1">
+      <h3 class="text-lg">Patchsets</h3>
+
+      {{range .Patchsets}}
+        {{if .RangeDiff}}
+        <details>
+          <summary class="text-sm">Range Diff ↕</summary>
+          <div class="group">
+          {{- range .RangeDiff -}}
+            <div>
+              <code class='{{if eq .Type "rm"}}pill-admin{{else if eq .Type "add"}}pill-success{{else if eq .Type "diff"}}pill-review{{end}}'>
+                {{.Header}}
+              </code>
+            </div>
+            {{- if .Diff -}}
+            <pre>
+              {{- range .Diff -}}
+                {{- if eq .Type -1 -}}
+                  <span style="color: tomato;">{{.Text}}</span>
+                {{- else if eq .Type 1 -}}
+                  <span style="color: limegreen;">{{.Text}}</span>
+                {{- else -}}
+                  <span>{{.Text}}</span>
+                {{- end -}}
+              {{- end -}}
+            </pre>
+            {{- end -}}
+          {{- end -}}
+          </div>
+        </details>
+        {{end}}
+
+        <div>
+          <code class="{{if .Review}}pill-review{{end}}">{{.FormattedID}}</code>
+          <span> by </span>
+          {{template "user-pill" .UserData}}
+          <span>on <date>{{.Date}}</date></span>
+        </div>
+      {{end}}
+    </div>
   </div>
 
   <hr class="w-full" />
 
-  <div class="group">
-    {{range $idx, $val := .Patches}}
-      <div class="group" id="{{.Url}}">
-        {{template "patch" .}}
-      </div>
-    {{else}}
-    <div class="box">
-      No patches found for patch request.
-    </div>
-    {{end}}
-  </div>
+  {{template "patchset" .}}
 </main>
 
 <hr />

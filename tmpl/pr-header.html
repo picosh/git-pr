@@ -2,14 +2,14 @@
 <header>
   <h1 class="text-2xl mb">
     <a href="{{.Repo.Url}}">{{.Repo.Text}}</a>
-    <span> / {{.Pr.Title}} <code>#{{.Pr.ID}}</code></span>
+    <span> / {{.Pr.Title}} <a href="/prs/{{.Pr.ID}}"><code>#{{.Pr.ID}}</code></a></span>
   </h1>
 
   <div class="text-sm mb">
     {{template "pr-status" .Pr.Status}}
     <span>&middot;</span>
     <span>opened on <date>{{.Pr.Date}}</date> by</span>
-    <code class="pill{{if .Pr.UserData.IsAdmin}}-admin{{end}}" title="{{.Pr.UserData.Pubkey}}">{{.Pr.UserData.Name}}</code>
+    {{template "user-pill" .Pr.UserData}}
   </div>
 
   <details>

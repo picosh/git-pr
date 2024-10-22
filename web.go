@@ -80,7 +80,9 @@ func getTemplate(file string) *template.Template {
 		template.ParseFS(
 			tmplFS,
 			filepath.Join("tmpl", file),
+			filepath.Join("tmpl", "user-pill.html"),
 			filepath.Join("tmpl", "patch.html"),
+			filepath.Join("tmpl", "patchset.html"),
 			filepath.Join("tmpl", "pr-header.html"),
 			filepath.Join("tmpl", "pr-list-item.html"),
 			filepath.Join("tmpl", "pr-table.html"),
@@ -425,6 +427,7 @@ type PatchData struct {
 type EventLogData struct {
 	*EventLog
 	UserData
+	*Patchset
 	FormattedPatchsetID string
 	Date                string
 }
@@ -441,6 +444,7 @@ type PrDetailData struct {
 	Page      string
 	Repo      LinkData
 	Pr        PrData
+	Patchset  *Patchset
 	Patches   []PatchData
 	Branch    string
 	Logs      []EventLogData
@@ -448,196 +452,233 @@ type PrDetailData struct {
 	MetaData
 }
 
-func prDetailHandler(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	prID, err := strconv.Atoi(id)
-	if err != nil {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
-
-	web, err := getWebCtx(r)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	pr, err := web.Pr.GetPatchRequestByID(int64(prID))
-	if err != nil {
-		web.Pr.Backend.Logger.Error("cannot get prs", "err", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	repo, err := web.Pr.GetRepoByID(pr.RepoID)
-	if err != nil {
-		web.Logger.Error("cannot get repo", "err", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	patchsets, err := web.Pr.GetPatchsetsByPrID(int64(prID))
-	if err != nil {
-		web.Logger.Error("cannot get latest patchset", "err", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	// get patchsets and diff from previous patchset
-	patchsetsData := []PatchsetData{}
-	for idx, patchset := range patchsets {
-		user, err := web.Pr.GetUserByID(patchset.UserID)
+func createPrDetail(page string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		prID, err := strconv.Atoi(id)
 		if err != nil {
-			web.Logger.Error("could not get user for patch", "err", err)
-			continue
-		}
-
-		var prevPatchset *Patchset
-		if idx > 0 {
-			prevPatchset = patchsets[idx-1]
-		}
-
-		var rangeDiff []*RangeDiffOutput
-		if idx > 0 {
-			rangeDiff, err = web.Pr.DiffPatchsets(prevPatchset, patchset)
-			if err != nil {
-				web.Logger.Error("could not diff patchset", "err", err)
-				continue
-			}
-		}
-
-		pk, err := web.Backend.PubkeyToPublicKey(user.Pubkey)
-		if err != nil {
-			web.Logger.Error("cannot parse pubkey for pr user", "err", err)
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			return
 		}
 
-		patchsetsData = append(patchsetsData, PatchsetData{
-			Patchset:    patchset,
-			FormattedID: getFormattedPatchsetID(patchset.ID),
-			UserData: UserData{
-				UserID:    user.ID,
-				Name:      user.Name,
-				IsAdmin:   web.Backend.IsAdmin(pk),
-				Pubkey:    user.Pubkey,
-				CreatedAt: user.CreatedAt.Format(time.RFC3339),
-			},
-			Date:      patchset.CreatedAt.Format(time.RFC3339),
-			RangeDiff: rangeDiff,
-		})
-	}
-
-	patchesData := []PatchData{}
-	if len(patchsetsData) >= 1 {
-		latest := patchsetsData[len(patchsets)-1]
-		patches, err := web.Pr.GetPatchesByPatchsetID(latest.ID)
+		web, err := getWebCtx(r)
 		if err != nil {
-			web.Logger.Error("cannot get patches", "err", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		for _, patch := range patches {
-			timestamp := patch.AuthorDate.Format(web.Backend.Cfg.TimeFormat)
-			diffStr, err := parseText(web.Formatter, web.Theme, patch.RawText)
+		var pr *PatchRequest
+		var ps *Patchset
+		if page == "pr" {
+			pr, err = web.Pr.GetPatchRequestByID(int64(prID))
 			if err != nil {
-				web.Logger.Error("cannot parse patch", "err", err)
+				web.Pr.Backend.Logger.Error("cannot get prs", "err", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		} else if page == "ps" {
+			ps, err = web.Pr.GetPatchsetByID(int64(prID))
+			if err != nil {
+				web.Pr.Backend.Logger.Error("cannot get patchset", "err", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			pr, err = web.Pr.GetPatchRequestByID(int64(ps.PatchRequestID))
+			if err != nil {
+				web.Pr.Backend.Logger.Error("cannot get pr", "err", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}
+
+		repo, err := web.Pr.GetRepoByID(pr.RepoID)
+		if err != nil {
+			web.Logger.Error("cannot get repo", "err", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		patchsets, err := web.Pr.GetPatchsetsByPrID(pr.ID)
+		if err != nil {
+			web.Logger.Error("cannot get latest patchset", "err", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		// get patchsets and diff from previous patchset
+		patchsetsData := []PatchsetData{}
+		for idx, patchset := range patchsets {
+			user, err := web.Pr.GetUserByID(patchset.UserID)
+			if err != nil {
+				web.Logger.Error("could not get user for patch", "err", err)
+				continue
+			}
+
+			var prevPatchset *Patchset
+			if idx > 0 {
+				prevPatchset = patchsets[idx-1]
+			}
+
+			var rangeDiff []*RangeDiffOutput
+			if idx > 0 {
+				rangeDiff, err = web.Pr.DiffPatchsets(prevPatchset, patchset)
+				if err != nil {
+					web.Logger.Error("could not diff patchset", "err", err)
+					continue
+				}
+			}
+
+			pk, err := web.Backend.PubkeyToPublicKey(user.Pubkey)
+			if err != nil {
+				web.Logger.Error("cannot parse pubkey for pr user", "err", err)
 				w.WriteHeader(http.StatusUnprocessableEntity)
 				return
 			}
 
-			// highlight review
-			isReview := false
+			// set selected patchset to latest when no ps already set
+			if ps == nil && idx == len(patchsets)-1 {
+				ps = patchset
+			}
 
-			patchesData = append(patchesData, PatchData{
-				Patch:               patch,
-				Url:                 template.URL(fmt.Sprintf("patch-%d", patch.ID)),
-				DiffStr:             template.HTML(diffStr),
-				Review:              isReview,
-				FormattedAuthorDate: timestamp,
+			patchsetsData = append(patchsetsData, PatchsetData{
+				Patchset:    patchset,
+				FormattedID: getFormattedPatchsetID(patchset.ID),
+				UserData: UserData{
+					UserID:    user.ID,
+					Name:      user.Name,
+					IsAdmin:   web.Backend.IsAdmin(pk),
+					Pubkey:    user.Pubkey,
+					CreatedAt: user.CreatedAt.Format(time.RFC3339),
+				},
+				Date:      patchset.CreatedAt.Format(time.RFC3339),
+				RangeDiff: rangeDiff,
 			})
 		}
-	}
 
-	user, err := web.Pr.GetUserByID(pr.UserID)
-	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
+		patchesData := []PatchData{}
+		if len(patchsetsData) >= 1 {
+			psID := ps.ID
+			patches, err := web.Pr.GetPatchesByPatchsetID(psID)
+			if err != nil {
+				web.Logger.Error("cannot get patches", "err", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
 
-	w.Header().Set("content-type", "text/html")
-	tmpl := getTemplate("pr-detail.html")
-	pk, err := web.Backend.PubkeyToPublicKey(user.Pubkey)
-	if err != nil {
-		web.Logger.Error("cannot parse pubkey for pr user", "err", err)
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
-	isAdmin := web.Backend.IsAdmin(pk)
-	logs, err := web.Pr.GetEventLogsByPrID(int64(prID))
-	if err != nil {
-		web.Logger.Error("cannot get logs for pr", "err", err)
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		return
-	}
-	slices.SortFunc(logs, func(a *EventLog, b *EventLog) int {
-		return a.CreatedAt.Compare(b.CreatedAt)
-	})
+			for _, patch := range patches {
+				timestamp := patch.AuthorDate.Format(web.Backend.Cfg.TimeFormat)
+				diffStr, err := parseText(web.Formatter, web.Theme, patch.RawText)
+				if err != nil {
+					web.Logger.Error("cannot parse patch", "err", err)
+					w.WriteHeader(http.StatusUnprocessableEntity)
+					return
+				}
 
-	logData := []EventLogData{}
-	for _, eventlog := range logs {
-		user, _ := web.Pr.GetUserByID(eventlog.UserID)
+				// highlight review
+				isReview := false
+
+				patchesData = append(patchesData, PatchData{
+					Patch:               patch,
+					Url:                 template.URL(fmt.Sprintf("patch-%d", patch.ID)),
+					DiffStr:             template.HTML(diffStr),
+					Review:              isReview,
+					FormattedAuthorDate: timestamp,
+				})
+			}
+		}
+
+		user, err := web.Pr.GetUserByID(pr.UserID)
+		if err != nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		w.Header().Set("content-type", "text/html")
+		tmpl := getTemplate("pr-detail.html")
 		pk, err := web.Backend.PubkeyToPublicKey(user.Pubkey)
 		if err != nil {
 			web.Logger.Error("cannot parse pubkey for pr user", "err", err)
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			return
 		}
-
-		logData = append(logData, EventLogData{
-			EventLog:            eventlog,
-			FormattedPatchsetID: getFormattedPatchsetID(eventlog.PatchsetID.Int64),
-			UserData: UserData{
-				UserID:    user.ID,
-				Name:      user.Name,
-				IsAdmin:   web.Backend.IsAdmin(pk),
-				Pubkey:    user.Pubkey,
-				CreatedAt: user.CreatedAt.Format(time.RFC3339),
-			},
-			Date: eventlog.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
+		isAdmin := web.Backend.IsAdmin(pk)
+		logs, err := web.Pr.GetEventLogsByPrID(pr.ID)
+		if err != nil {
+			web.Logger.Error("cannot get logs for pr", "err", err)
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			return
+		}
+		slices.SortFunc(logs, func(a *EventLog, b *EventLog) int {
+			return a.CreatedAt.Compare(b.CreatedAt)
 		})
-	}
 
-	err = tmpl.Execute(w, PrDetailData{
-		Page: "pr",
-		Repo: LinkData{
-			Url:  template.URL("/repos/" + repo.ID),
-			Text: repo.ID,
-		},
-		Branch:    repo.DefaultBranch,
-		Patches:   patchesData,
-		Patchsets: patchsetsData,
-		Logs:      logData,
-		Pr: PrData{
-			ID: pr.ID,
-			UserData: UserData{
-				UserID:    user.ID,
-				Name:      user.Name,
-				IsAdmin:   isAdmin,
-				Pubkey:    user.Pubkey,
-				CreatedAt: user.CreatedAt.Format(time.RFC3339),
+		logData := []EventLogData{}
+		for _, eventlog := range logs {
+			user, _ := web.Pr.GetUserByID(eventlog.UserID)
+			pk, err := web.Backend.PubkeyToPublicKey(user.Pubkey)
+			if err != nil {
+				web.Logger.Error("cannot parse pubkey for pr user", "err", err)
+				w.WriteHeader(http.StatusUnprocessableEntity)
+				return
+			}
+			var logps *Patchset
+			if eventlog.PatchsetID.Int64 > 0 {
+				logps, err = web.Pr.GetPatchsetByID(eventlog.PatchsetID.Int64)
+				if err != nil {
+					web.Logger.Error("cannot get patchset", "err", err, "ps", eventlog.PatchsetID)
+					w.WriteHeader(http.StatusUnprocessableEntity)
+					return
+				}
+			}
+
+			logData = append(logData, EventLogData{
+				EventLog:            eventlog,
+				FormattedPatchsetID: getFormattedPatchsetID(eventlog.PatchsetID.Int64),
+				Patchset:            logps,
+				UserData: UserData{
+					UserID:    user.ID,
+					Name:      user.Name,
+					IsAdmin:   web.Backend.IsAdmin(pk),
+					Pubkey:    user.Pubkey,
+					CreatedAt: user.CreatedAt.Format(time.RFC3339),
+				},
+				Date: eventlog.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
+			})
+		}
+
+		fmt.Println("PSSPSPSPS", ps)
+		err = tmpl.Execute(w, PrDetailData{
+			Page: "pr",
+			Repo: LinkData{
+				Url:  template.URL("/repos/" + repo.ID),
+				Text: repo.ID,
 			},
-			Title:  pr.Name,
-			Date:   pr.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
-			Status: pr.Status,
-		},
-		MetaData: MetaData{
-			URL: web.Backend.Cfg.Url,
-		},
-	})
-	if err != nil {
-		web.Backend.Logger.Error("cannot execute template", "err", err)
+			Branch:    repo.DefaultBranch,
+			Patchset:  ps,
+			Patches:   patchesData,
+			Patchsets: patchsetsData,
+			Logs:      logData,
+			Pr: PrData{
+				ID: pr.ID,
+				UserData: UserData{
+					UserID:    user.ID,
+					Name:      user.Name,
+					IsAdmin:   isAdmin,
+					Pubkey:    user.Pubkey,
+					CreatedAt: user.CreatedAt.Format(time.RFC3339),
+				},
+				Title:  pr.Name,
+				Date:   pr.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
+				Status: pr.Status,
+			},
+			MetaData: MetaData{
+				URL: web.Backend.Cfg.Url,
+			},
+		})
+		if err != nil {
+			web.Backend.Logger.Error("cannot execute template", "err", err)
+		}
 	}
 }
 
@@ -870,8 +911,9 @@ func StartWebServer(cfg *GitCfg) {
 
 	// ensure legacy router is disabled
 	// GODEBUG=httpmuxgo121=0
-	http.HandleFunc("GET /prs/{id}", ctxMdw(ctx, prDetailHandler))
+	http.HandleFunc("GET /prs/{id}", ctxMdw(ctx, createPrDetail("pr")))
 	http.HandleFunc("GET /prs/{id}/rss", ctxMdw(ctx, rssHandler))
+	http.HandleFunc("GET /ps/{id}", ctxMdw(ctx, createPrDetail("ps")))
 	http.HandleFunc("GET /repos/{id}", ctxMdw(ctx, repoDetailHandler))
 	http.HandleFunc("GET /repos/{repoid}/rss", ctxMdw(ctx, rssHandler))
 	http.HandleFunc("GET /users/{name}", ctxMdw(ctx, userDetailHandler))

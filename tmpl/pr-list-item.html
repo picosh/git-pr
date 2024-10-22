@@ -7,7 +7,7 @@
   <div>
     <code>#{{.ID}}</code>
     <span>opened on <date>{{.Date}}</date> by </span>
-    <code class="{{if .UserData.IsAdmin}}pill-admin{{end}}" title="{{.UserData.Pubkey}}">{{.UserData.Name}}</code>
+    {{template "user-pill" .UserData}}
   </div>
 </div>
 {{end}}

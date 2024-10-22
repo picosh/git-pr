@@ -7,6 +7,10 @@ td, th {
   border-bottom: 1px solid var(--grey-light);
 }
 
+details {
+  margin-bottom: 0;
+}
+
 .pill-success {
   border: 1px solid var(--success);
   color: var(--success);
