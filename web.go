@@ -101,6 +101,12 @@ type PrTableData struct {
 	MetaData
 }
 
+type UserDetailData struct {
+	Prs      []*PrListData
+	UserData UserData
+	MetaData
+}
+
 func createPrDataSorter(sort, sortDir string) func(a, b *PrListData) int {
 	return func(a *PrListData, b *PrListData) int {
 		if sort == "status" {
@@ -177,7 +183,7 @@ func getPrTableData(web *WebCtx, prs []*PatchRequest, query url.Values) ([]*PrLi
 			}
 
 			if username != "" {
-				if username != user.Name {
+				if username != strings.ToLower(user.Name) {
 					continue
 				}
 			}
@@ -258,9 +264,11 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type UserData struct {
-	Name    string
-	IsAdmin bool
-	Pubkey  string
+	UserID    int64
+	Name      string
+	IsAdmin   bool
+	Pubkey    string
+	CreatedAt string
 }
 
 type MetaData struct {
@@ -277,6 +285,68 @@ type PrListData struct {
 	DateOrig time.Time
 	Date     string
 	Status   string
+}
+
+func userDetailHandler(w http.ResponseWriter, r *http.Request) {
+	userName := r.PathValue("name")
+
+	web, err := getWebCtx(r)
+	if err != nil {
+		web.Logger.Error("fetch web", "err", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	user, err := web.Pr.GetUserByName(userName)
+	if err != nil {
+		web.Logger.Error("cannot find user by name", "err", err, "name", userName)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	pk, err := web.Backend.PubkeyToPublicKey(user.Pubkey)
+	if err != nil {
+		web.Logger.Error("cannot parse pubkey for pr user", "err", err)
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+	isAdmin := web.Backend.IsAdmin(pk)
+
+	prs, err := web.Pr.GetPatchRequests()
+	if err != nil {
+		web.Logger.Error("cannot get prs", "err", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	query := r.URL.Query()
+	query.Set("user", userName)
+
+	prdata, err := getPrTableData(web, prs, query)
+	if err != nil {
+		web.Logger.Error("cannot get pr table data", "err", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("content-type", "text/html")
+	tmpl := getTemplate("user-detail.html")
+	err = tmpl.Execute(w, UserDetailData{
+		Prs: prdata,
+		UserData: UserData{
+			UserID:    user.ID,
+			Name:      user.Name,
+			Pubkey:    user.Pubkey,
+			CreatedAt: user.CreatedAt.Format(time.RFC3339),
+			IsAdmin:   isAdmin,
+		},
+		MetaData: MetaData{
+			URL: web.Backend.Cfg.Url,
+		},
+	})
+	if err != nil {
+		web.Backend.Logger.Error("cannot execute template", "err", err)
+	}
 }
 
 type RepoDetailData struct {
@@ -447,9 +517,11 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 			Patchset:    patchset,
 			FormattedID: getFormattedPatchsetID(patchset.ID),
 			UserData: UserData{
-				Name:    user.Name,
-				IsAdmin: web.Backend.IsAdmin(pk),
-				Pubkey:  user.Pubkey,
+				UserID:    user.ID,
+				Name:      user.Name,
+				IsAdmin:   web.Backend.IsAdmin(pk),
+				Pubkey:    user.Pubkey,
+				CreatedAt: user.CreatedAt.Format(time.RFC3339),
 			},
 			Date:      patchset.CreatedAt.Format(time.RFC3339),
 			RangeDiff: rangeDiff,
@@ -527,9 +599,11 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 			EventLog:            eventlog,
 			FormattedPatchsetID: getFormattedPatchsetID(eventlog.PatchsetID.Int64),
 			UserData: UserData{
-				Name:    user.Name,
-				IsAdmin: web.Backend.IsAdmin(pk),
-				Pubkey:  user.Pubkey,
+				UserID:    user.ID,
+				Name:      user.Name,
+				IsAdmin:   web.Backend.IsAdmin(pk),
+				Pubkey:    user.Pubkey,
+				CreatedAt: user.CreatedAt.Format(time.RFC3339),
 			},
 			Date: eventlog.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
 		})
@@ -548,9 +622,11 @@ func prDetailHandler(w http.ResponseWriter, r *http.Request) {
 		Pr: PrData{
 			ID: pr.ID,
 			UserData: UserData{
-				Name:    user.Name,
-				IsAdmin: isAdmin,
-				Pubkey:  user.Pubkey,
+				UserID:    user.ID,
+				Name:      user.Name,
+				IsAdmin:   isAdmin,
+				Pubkey:    user.Pubkey,
+				CreatedAt: user.CreatedAt.Format(time.RFC3339),
 			},
 			Title:  pr.Name,
 			Date:   pr.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
@@ -588,6 +664,7 @@ func rssHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	repoID := r.PathValue("repoid")
 	pubkey := r.URL.Query().Get("pubkey")
+	username := r.PathValue("user")
 
 	if id != "" {
 		var prID int64
@@ -599,6 +676,13 @@ func rssHandler(w http.ResponseWriter, r *http.Request) {
 		eventLogs, err = web.Pr.GetEventLogsByPrID(prID)
 	} else if pubkey != "" {
 		user, perr := web.Pr.GetUserByPubkey(pubkey)
+		if perr != nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		eventLogs, err = web.Pr.GetEventLogsByUserID(user.ID)
+	} else if username != "" {
+		user, perr := web.Pr.GetUserByName(username)
 		if perr != nil {
 			w.WriteHeader(http.StatusNotFound)
 			return
@@ -790,6 +874,8 @@ func StartWebServer(cfg *GitCfg) {
 	http.HandleFunc("GET /prs/{id}/rss", ctxMdw(ctx, rssHandler))
 	http.HandleFunc("GET /repos/{id}", ctxMdw(ctx, repoDetailHandler))
 	http.HandleFunc("GET /repos/{repoid}/rss", ctxMdw(ctx, rssHandler))
+	http.HandleFunc("GET /users/{name}", ctxMdw(ctx, userDetailHandler))
+	http.HandleFunc("GET /users/{name}/rss", ctxMdw(ctx, rssHandler))
 	http.HandleFunc("GET /", ctxMdw(ctx, indexHandler))
 	http.HandleFunc("GET /syntax.css", ctxMdw(ctx, chromaStyleHandler))
 	http.HandleFunc("GET /rss", ctxMdw(ctx, rssHandler))

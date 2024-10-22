@@ -1,0 +1,33 @@
+{{template "base" .}}
+
+{{define "title"}}{{.UserData.Name}} - user{{end}}
+
+{{define "meta"}}
+<link rel="alternate" type="application/atom+xml"
+      title="RSS feed for git collaboration server"
+      href="/users/{{.UserData.Name}}/rss" />
+{{end}}
+
+{{define "body"}}
+<header>
+  <h1 class="text-2xl mb"><a href="/">home</a> / {{.UserData.Name}}</h1>
+  <dl>
+    <dt>ID</dt>
+    <dd><code>#{{.UserData.UserID}}</code></dd>
+
+    <dt>Admin</dt>
+    <dd>{{if .UserData.IsAdmin}}Yes{{else}}No{{end}}</dd>
+
+    <dt>Pubkey</dt>
+    <dd><code>{{.UserData.Pubkey}}</code></dd>
+  </dl>
+</header>
+
+<main class="group">
+  {{template "pr-table" .Prs}}
+</main>
+
+<footer class="mt">
+  <a href="/users/{{.UserData.Name}}/rss">rss</a>
+</footer>
+{{end}}

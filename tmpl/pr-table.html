@@ -22,7 +22,9 @@
           <a href="{{.PrLink.Url}}">{{.PrLink.Text}}</a>
         </td>
         <td>
-          <code class="{{if .UserData.IsAdmin}}pill-admin{{end}}" title="{{.UserData.Pubkey}}">{{.UserData.Name}}</code>
+          <code class="{{if .UserData.IsAdmin}}pill-admin{{end}}" title="{{.UserData.Pubkey}}">
+            <a href="/users/{{.UserData.Name}}">{{.UserData.Name}}</a>
+          </code>
         </td>
         <td><date>{{.Date}}</date></td>
       </tr>

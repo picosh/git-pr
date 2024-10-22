@@ -24,6 +24,7 @@ const (
 type GitPatchRequest interface {
 	GetUsers() ([]*User, error)
 	GetUserByID(userID int64) (*User, error)
+	GetUserByName(name string) (*User, error)
 	GetUserByPubkey(pubkey string) (*User, error)
 	UpsertUser(pubkey, name string) (*User, error)
 	IsBanned(pubkey, ipAddress string) error
@@ -77,6 +78,12 @@ func (pr PrCmd) GetUsers() ([]*User, error) {
 	users := []*User{}
 	err := pr.Backend.DB.Select(&users, "SELECT * FROM app_users")
 	return users, err
+}
+
+func (pr PrCmd) GetUserByName(name string) (*User, error) {
+	var user User
+	err := pr.Backend.DB.Get(&user, "SELECT * FROM app_users WHERE name=?", name)
+	return &user, err
 }
 
 func (pr PrCmd) GetUserByID(id int64) (*User, error) {
