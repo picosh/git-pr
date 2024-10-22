@@ -35,3 +35,9 @@ details {
   border: 2px solid var(--review);
   padding: 0.5rem 0.75rem;
 }
+
+@media only screen and (max-width: 40em) {
+  .collapse {
+    flex-direction: column;
+  }
+}

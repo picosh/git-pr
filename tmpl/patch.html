@@ -1,19 +1,25 @@
 {{define "patch"}}
-<div>
-  <h3 class="text-lg m-0 p-0 mb">
-    {{if .Review}}<code class="pill-review">REVIEW</code>{{end}}
-    <a href="#{{.Url}}">{{.Title}}</a>
-  </h3>
+<div class="flex gap-2">
+  <div style="width: 300px;">
+    <div>
+      <h3 class="text-lg m-0 p-0 mb">
+        {{if .Review}}<code class="pill-review">REVIEW</code>{{end}}
+        <a href="#{{.Url}}">{{.Title}}</a>
+      </h3>
 
-  <div class="group-h text-sm">
-    <code class="pill{{if .Review}}-review{{end}}">{{.AuthorName}} &lt;{{.AuthorEmail}}&gt;</code>
-    <date>{{.FormattedAuthorDate}}</date>
+      <div class="group-h text-sm">
+        <code class="pill{{if .Review}}-review{{end}}">{{.AuthorName}} &lt;{{.AuthorEmail}}&gt;</code>
+        <date>{{.FormattedAuthorDate}}</date>
+      </div>
+    </div>
+
+    {{if .Body}}<pre class="m-0">{{.Body}}</pre>{{end}}
+
+    {{if .BodyAppendix}}<pre class="m-0">{{.BodyAppendix}}</pre>{{end}}
+  </div>
+
+  <div class="flex-1">
+    {{.DiffStr}}
   </div>
 </div>
-
-{{if .Body}}<pre class="m-0">{{.Body}}</pre>{{end}}
-
-{{if .BodyAppendix}}<pre class="m-0">{{.BodyAppendix}}</pre>{{end}}
-
-<div>{{.DiffStr}}</div>
 {{end}}

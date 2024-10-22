@@ -1,16 +1,48 @@
 {{define "patchset"}}
 <div class="group">
-  <h2 class="text-xl">
-    Patchset <code>ps-{{.Patchset.ID}}</code>
-  </h2>
-  {{range $idx, $val := .Patches}}
-    <div class="group" id="{{.Url}}">
-      {{template "patch" .}}
+  <div class="flex gap-2 collapse">
+    <div style="width: 300px;">
+      <h2 class="text-xl">
+        Patchset <code>ps-{{.Patchset.ID}}</code>
+      </h2>
+
+      {{range .Patches}}
+        <div class="group">
+          <div>
+            <h3 class="text-lg m-0 p-0 mb">
+              {{if .Review}}<code class="pill-review">REVIEW</code>{{end}}
+              <a href="#{{.Url}}">{{.Title}}</a>
+            </h3>
+
+            <div class="group-h text-sm">
+              <code class="pill{{if .Review}}-review{{end}}">{{.AuthorName}} &lt;{{.AuthorEmail}}&gt;</code>
+              <date>{{.FormattedAuthorDate}}</date>
+            </div>
+          </div>
+
+          {{if .Body}}<pre class="m-0">{{.Body}}</pre>{{end}}
+
+          {{if .BodyAppendix}}<pre class="m-0">{{.BodyAppendix}}</pre>{{end}}
+        </div>
+      {{else}}
+        <div class="box">
+          No patches found for patch request.
+        </div>
+      {{end}}
     </div>
-  {{else}}
-  <div class="box">
-    No patches found for patch request.
+
+    <div class="flex-1">
+      {{range .Patches}}
+        <div id="{{.Url}}">
+          <h3 class="text-lg"><a href="#{{.Url}}">{{.Title}}</a></h3>
+          <div>{{.DiffStr}}</div>
+        </div>
+      {{else}}
+        <div class="box">
+          No patches found for patch request.
+        </div>
+      {{end}}
+    </div>
   </div>
-  {{end}}
 </div>
 {{end}}

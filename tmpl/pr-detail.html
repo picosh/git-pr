@@ -16,7 +16,7 @@
 {{template "pr-header" .}}
 
 <main class="group">
-  <div class="flex gap-2">
+  <div class="flex gap-2 collapse">
     <div class="group text-sm" style="width: 300px;">
       <h3 class="text-lg">Logs</h3>
       {{range .Logs}}
@@ -88,7 +88,11 @@
         {{end}}
 
         <div>
+          {{if eq .Patchset.ID $.Patchset.ID}}
           <code class="{{if .Review}}pill-review{{end}}">{{.FormattedID}}</code>
+          {{else}}
+          <a href="/ps/{{.Patchset.ID}}"><code class="{{if .Review}}pill-review{{end}}">{{.FormattedID}}</code></a>
+          {{end}}
           <span> by </span>
           {{template "user-pill" .UserData}}
           <span>on <date>{{.Date}}</date></span>
