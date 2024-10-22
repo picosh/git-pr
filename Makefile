@@ -31,6 +31,10 @@ bp: bp-setup
 	$(DOCKER_BUILDX_BUILD) -t "ghcr.io/picosh/pico/git-web:$(DOCKER_TAG)" --target release-web .
 .PHONY: bp
 
+deploy: bp
+	ssh ppipe pub git-pr-deploy -e
+.PHONY: deploy
+
 smol:
 	curl https://pico.sh/smol.css -o ./static/smol.css
 .PHONY: smol

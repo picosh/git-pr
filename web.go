@@ -101,11 +101,60 @@ type PrTableData struct {
 	MetaData
 }
 
+func createPrDataSorter(sort, sortDir string) func(a, b *PrListData) int {
+	return func(a *PrListData, b *PrListData) int {
+		if sort == "status" {
+			statusA := strings.ToLower(a.Status)
+			statusB := strings.ToLower(b.Status)
+			if sortDir == "asc" {
+				return strings.Compare(statusA, statusB)
+			} else {
+				return strings.Compare(statusB, statusA)
+			}
+		}
+
+		if sort == "title" {
+			titleA := strings.ToLower(a.Title)
+			titleB := strings.ToLower(b.Title)
+			if sortDir == "asc" {
+				return strings.Compare(titleA, titleB)
+			} else {
+				return strings.Compare(titleB, titleA)
+			}
+		}
+
+		if sort == "repo" {
+			repoA := strings.ToLower(a.RepoID)
+			repoB := strings.ToLower(b.RepoID)
+			if sortDir == "asc" {
+				return strings.Compare(repoA, repoB)
+			} else {
+				return strings.Compare(repoB, repoA)
+			}
+		}
+
+		if sort == "created_at" {
+			if sortDir == "asc" {
+				return a.DateOrig.Compare(b.DateOrig)
+			} else {
+				return b.DateOrig.Compare(a.DateOrig)
+			}
+		}
+
+		if sortDir == "desc" {
+			return int(b.ID) - int(a.ID)
+		}
+		return int(a.ID) - int(b.ID)
+	}
+}
+
 func getPrTableData(web *WebCtx, prs []*PatchRequest, query url.Values) ([]*PrListData, error) {
 	prdata := []*PrListData{}
 	status := strings.ToLower(query.Get("status"))
 	username := strings.ToLower(query.Get("user"))
 	title := strings.ToLower(query.Get("title"))
+	sort := strings.ToLower(query.Get("sort"))
+	sortDir := strings.ToLower(query.Get("sort_dir"))
 	hasFilter := status != "" || username != "" || title != ""
 
 	for _, curpr := range prs {
@@ -157,10 +206,18 @@ func getPrTableData(web *WebCtx, prs []*PatchRequest, query url.Values) ([]*PrLi
 				Url:  template.URL(fmt.Sprintf("/prs/%d", curpr.ID)),
 				Text: curpr.Name,
 			},
-			Date:   curpr.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
-			Status: curpr.Status,
+			DateOrig: curpr.CreatedAt,
+			Date:     curpr.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
+			Status:   curpr.Status,
 		}
 		prdata = append(prdata, prls)
+	}
+
+	if sort != "" {
+		if sortDir == "" {
+			sortDir = "asc"
+		}
+		slices.SortFunc(prdata, createPrDataSorter(sort, sortDir))
 	}
 
 	return prdata, nil
@@ -217,6 +274,7 @@ type PrListData struct {
 	PrLink   LinkData
 	Title    string
 	ID       int64
+	DateOrig time.Time
 	Date     string
 	Status   string
 }

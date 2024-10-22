@@ -1,3 +1,12 @@
+table, tr {
+  border-spacing: 0;
+}
+
+td, th {
+  padding: var(--grid-height);
+  border-bottom: 1px solid var(--grey-light);
+}
+
 .pill-success {
   border: 1px solid var(--success);
   color: var(--success);
@@ -6,6 +15,11 @@
 .pill-review {
   border: 1px solid var(--review);
   color: var(--review);
+}
+
+.pill-admin {
+  border: 1px solid var(--admin);
+  color: var(--admin);
 }
 
 .box-sm-review {
@@ -17,9 +31,3 @@
   border: 2px solid var(--review);
   padding: 0.5rem 0.75rem;
 }
-
-.pill-admin {
-  border: 1px solid var(--admin);
-  color: var(--admin);
-}
-

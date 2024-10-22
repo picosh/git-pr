@@ -32,15 +32,11 @@ ssh {{.MetaData.URL}} pr ls {{.ID}}</pre>
 	</div>
 </header>
 
-<hr />
-
 <main class="group">
   {{template "pr-table" .Prs}}
 </main>
 
-<hr />
-
-<footer>
+<footer class="mt">
   <a href="/repos/{{.ID}}/rss">rss</a>
 </footer>
 {{end}}
