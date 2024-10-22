@@ -1,7 +1,7 @@
 {{define "patchset"}}
 <div class="group">
   <div class="flex gap-2 collapse">
-    <div style="width: 300px;">
+    <div class="group" style="width: 300px;">
       <h2 class="text-xl">
         Patchset <code>ps-{{.Patchset.ID}}</code>
       </h2>
@@ -9,7 +9,7 @@
       {{range .Patches}}
         <div class="group">
           <div>
-            <h3 class="text-lg m-0 p-0 mb">
+            <h3 class="text-lg transform-none m-0 p-0 mb">
               {{if .Review}}<code class="pill-review">REVIEW</code>{{end}}
               <a href="#{{.Url}}">{{.Title}}</a>
             </h3>
@@ -34,7 +34,7 @@
     <div class="flex-1">
       {{range .Patches}}
         <div id="{{.Url}}">
-          <h3 class="text-lg"><a href="#{{.Url}}">{{.Title}}</a></h3>
+          <h3 class="text-lg transform-none"><a href="#{{.Url}}">{{.Title}}</a></h3>
           <div>{{.DiffStr}}</div>
         </div>
       {{else}}

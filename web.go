@@ -81,7 +81,6 @@ func getTemplate(file string) *template.Template {
 			tmplFS,
 			filepath.Join("tmpl", file),
 			filepath.Join("tmpl", "user-pill.html"),
-			filepath.Join("tmpl", "patch.html"),
 			filepath.Join("tmpl", "patchset.html"),
 			filepath.Join("tmpl", "pr-header.html"),
 			filepath.Join("tmpl", "pr-list-item.html"),
