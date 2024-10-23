@@ -7,7 +7,6 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/charmbracelet/soft-serve/pkg/utils"
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
 	"github.com/urfave/cli/v2"
@@ -62,8 +61,19 @@ func prSummary(be *Backend, pr GitPatchRequest, sesh ssh.Session, prID int64) er
 		return err
 	}
 
+	repo, err := pr.GetRepoByID(request.RepoID)
+	if err != nil {
+		return err
+	}
+
+	repoUser, err := pr.GetUserByID(repo.UserID)
+	if err != nil {
+		return err
+	}
+
 	wish.Printf(sesh, "Info\n====\n")
-	wish.Printf(sesh, "URL: https://%s/prs/%d\n\n", be.Cfg.Url, prID)
+	wish.Printf(sesh, "URL: https://%s/prs/%d\n", be.Cfg.Url, prID)
+	wish.Printf(sesh, "Repo: %s\n\n", be.CreateRepoNs(repoUser.Name, repo.Name))
 
 	writer := NewTabWriter(sesh)
 	fmt.Fprintln(writer, "ID\tName\tStatus\tDate")
@@ -175,48 +185,6 @@ Here's how it works:
 			return nil
 		},
 		Commands: []*cli.Command{
-			/* {
-				Name:  "git-receive-pack",
-				Usage: "Receive what is pushed into the repository",
-				Action: func(cCtx *cli.Context) error {
-					repoName := cCtx.Args().First()
-					err := gitServiceCommands(sesh, be, "git-receive-patch", repoName)
-					return err
-				},
-			},
-			{
-				Name:  "git-upload-pack",
-				Usage: "Send objects packed back to git-fetch-pack",
-				Action: func(cCtx *cli.Context) error {
-					repoName := cCtx.Args().First()
-					err := gitServiceCommands(sesh, be, "git-upload-patch", repoName)
-					return err
-				},
-			}, */
-			{
-				Name:  "ls",
-				Usage: "List all git repos",
-				Action: func(cCtx *cli.Context) error {
-					repos, err := pr.GetRepos()
-					if err != nil {
-						return err
-					}
-					writer := NewTabWriter(sesh)
-					fmt.Fprintln(writer, "ID\tDefBranch\tClone\tDesc")
-					for _, repo := range repos {
-						fmt.Fprintf(
-							writer,
-							"%s\t%s\t%s\t%s\n",
-							utils.SanitizeRepo(repo.ID),
-							repo.DefaultBranch,
-							repo.CloneAddr,
-							repo.Desc,
-						)
-					}
-					writer.Flush()
-					return nil
-				},
-			},
 			{
 				Name:  "logs",
 				Usage: "List event logs with filters",
@@ -243,27 +211,45 @@ Here's how it works:
 					}
 					isPubkey := cCtx.Bool("pubkey")
 					prID := cCtx.Int64("pr")
-					repoID := cCtx.String("repo")
+					repoNs := cCtx.String("repo")
+					fmt.Println("ZZZZ", repoNs)
 					var eventLogs []*EventLog
 					if isPubkey {
 						eventLogs, err = pr.GetEventLogsByUserID(user.ID)
 					} else if prID != 0 {
 						eventLogs, err = pr.GetEventLogsByPrID(prID)
-					} else if repoID != "" {
-						eventLogs, err = pr.GetEventLogsByRepoID(repoID)
+					} else if repoNs != "" {
+						repoUsername, repoName := be.SplitRepoNs(repoNs)
+						var repoUser *User
+						repoUser, err = pr.GetUserByName(repoUsername)
+						if err != nil {
+							return nil
+						}
+						eventLogs, err = pr.GetEventLogsByRepoName(repoUser, repoName)
 					} else {
 						eventLogs, err = pr.GetEventLogs()
 					}
 					if err != nil {
 						return err
 					}
+
 					writer := NewTabWriter(sesh)
 					fmt.Fprintln(writer, "RepoID\tPrID\tPatchsetID\tEvent\tCreated\tData")
 					for _, eventLog := range eventLogs {
+						repo, err := pr.GetRepoByID(eventLog.RepoID.Int64)
+						if err != nil {
+							be.Logger.Error("repo not found", "repo", repo, "err", err)
+							continue
+						}
+						repoUser, err := pr.GetUserByID(repo.UserID)
+						if err != nil {
+							be.Logger.Error("repo user not found", "repo", repo, "err", err)
+							continue
+						}
 						fmt.Fprintf(
 							writer,
 							"%s\t%d\t%s\t%s\t%s\t%s\n",
-							eventLog.RepoID,
+							be.CreateRepoNs(repoUser.Name, repo.Name),
 							eventLog.PatchRequestID.Int64,
 							getFormattedPatchsetID(eventLog.PatchsetID.Int64),
 							eventLog.Event,
@@ -323,6 +309,45 @@ Here's how it works:
 				},
 			},
 			{
+				Name:  "repo",
+				Usage: "Manage repos",
+				Subcommands: []*cli.Command{
+					{
+						Name:      "create",
+						Usage:     "Create a new repo",
+						Args:      true,
+						ArgsUsage: "[repoName]",
+						Action: func(cCtx *cli.Context) error {
+							user, err := pr.UpsertUser(pubkey, userName)
+							if err != nil {
+								return err
+							}
+
+							args := cCtx.Args()
+							if !args.Present() {
+								return fmt.Errorf("need repo name argument")
+							}
+							repoName := args.First()
+							repo, _ := pr.GetRepoByName(user, repoName)
+							err = be.CanCreateRepo(repo, user)
+							if err != nil {
+								return err
+							}
+
+							if repo == nil {
+								repo, err = pr.CreateRepo(user, repoName)
+								if err != nil {
+									return err
+								}
+							}
+
+							wish.Printf(sesh, "repo created: %s/%s", user.Name, repo.Name)
+							return nil
+						},
+					},
+				},
+			},
+			{
 				Name:  "pr",
 				Usage: "Manage Patch Requests (PR)",
 				Subcommands: []*cli.Command{
@@ -330,7 +355,7 @@ Here's how it works:
 						Name:      "ls",
 						Usage:     "List all PRs",
 						Args:      true,
-						ArgsUsage: "[repoID]",
+						ArgsUsage: "[repoName]",
 						Flags: []cli.Flag{
 							&cli.BoolFlag{
 								Name:  "open",
@@ -355,16 +380,28 @@ Here's how it works:
 						},
 						Action: func(cCtx *cli.Context) error {
 							args := cCtx.Args()
-							repoID := args.First()
-							var err error
+							rawRepoNs := args.First()
+							userName, repoName := be.SplitRepoNs(rawRepoNs)
 							var prs []*PatchRequest
-							if repoID == "" {
+							var err error
+							if repoName == "" {
 								prs, err = pr.GetPatchRequests()
+								if err != nil {
+									return err
+								}
 							} else {
-								prs, err = pr.GetPatchRequestsByRepoID(repoID)
-							}
-							if err != nil {
-								return err
+								user, err := pr.GetUserByName(userName)
+								if err != nil {
+									return err
+								}
+								repo, err := pr.GetRepoByName(user, repoName)
+								if err != nil {
+									return err
+								}
+								prs, err = pr.GetPatchRequestsByRepoID(repo.ID)
+								if err != nil {
+									return err
+								}
 							}
 
 							onlyOpen := cCtx.Bool("open")
@@ -408,11 +445,23 @@ Here's how it works:
 									continue
 								}
 
+								repo, err := pr.GetRepoByID(req.RepoID)
+								if err != nil {
+									be.Logger.Error("could not get repo for pr", "err", err)
+									continue
+								}
+
+								repoUser, err := pr.GetUserByID(repo.UserID)
+								if err != nil {
+									be.Logger.Error("could not get repo user for pr", "err", err)
+									continue
+								}
+
 								fmt.Fprintf(
 									writer,
 									"%d\t%s\t%s\t[%s]\t%d\t%s\t%s\n",
 									req.ID,
-									req.RepoID,
+									be.CreateRepoNs(repoUser.Name, repo.Name),
 									req.Name,
 									req.Status,
 									len(patchsets),
@@ -428,7 +477,7 @@ Here's how it works:
 						Name:      "create",
 						Usage:     "Submit a new PR",
 						Args:      true,
-						ArgsUsage: "[repoID]",
+						ArgsUsage: "[repoName]",
 						Action: func(cCtx *cli.Context) error {
 							user, err := pr.UpsertUser(pubkey, userName)
 							if err != nil {
@@ -436,12 +485,32 @@ Here's how it works:
 							}
 
 							args := cCtx.Args()
-							if !args.Present() {
-								return fmt.Errorf("must provide a repo ID")
+							rawRepoNs := "bin"
+							if args.Present() {
+								rawRepoNs = args.First()
+							}
+							repoUsername, repoName := be.SplitRepoNs(rawRepoNs)
+							repoUser := user
+							if repoUsername != "" {
+								repoUser, err = pr.GetUserByName(repoUsername)
+								if err != nil {
+									return err
+								}
+							}
+							repo, _ := pr.GetRepoByName(repoUser, repoName)
+							err = be.CanCreateRepo(repo, user)
+							if err != nil {
+								return err
 							}
 
-							repoID := args.First()
-							prq, err := pr.SubmitPatchRequest(repoID, user.ID, sesh)
+							if repo == nil {
+								repo, err = pr.CreateRepo(user, repoName)
+								if err != nil {
+									return err
+								}
+							}
+
+							prq, err := pr.SubmitPatchRequest(repo.ID, user.ID, sesh)
 							if err != nil {
 								return err
 							}
@@ -491,7 +560,7 @@ Here's how it works:
 								return err
 							}
 
-							wish.Println(sesh, rangeDiff)
+							wish.Println(sesh, RangeDiffToStr(rangeDiff))
 							return nil
 						},
 					},
@@ -571,18 +640,9 @@ Here's how it works:
 								return err
 							}
 
-							isAdmin := be.IsAdmin(sesh.PublicKey())
-							if !isAdmin {
-								return fmt.Errorf("you are not authorized to accept a PR")
-							}
-
-							patchReq, err := pr.GetPatchRequestByID(prID)
+							prq, err := pr.GetPatchRequestByID(prID)
 							if err != nil {
 								return err
-							}
-
-							if patchReq.Status == "accepted" {
-								return fmt.Errorf("PR has already been accepted")
 							}
 
 							user, err := pr.UpsertUser(pubkey, userName)
@@ -590,11 +650,20 @@ Here's how it works:
 								return err
 							}
 
+							acl := be.GetPatchRequestAcl(prq, user)
+							if !acl.CanReview {
+								return fmt.Errorf("you are not authorized to accept a PR")
+							}
+
+							if prq.Status == "accepted" {
+								return fmt.Errorf("PR has already been accepted")
+							}
+
 							err = pr.UpdatePatchRequestStatus(prID, user.ID, "accepted")
 							if err != nil {
 								return err
 							}
-							wish.Printf(sesh, "Accepted PR %s (#%d)\n", patchReq.Name, patchReq.ID)
+							wish.Printf(sesh, "Accepted PR %s (#%d)\n", prq.Name, prq.ID)
 							return prSummary(be, pr, sesh, prID)
 						},
 					},
@@ -624,10 +693,8 @@ Here's how it works:
 								return err
 							}
 
-							pk := sesh.PublicKey()
-							isContrib := pubkey == patchUser.Pubkey
-							isAdmin := be.IsAdmin(pk)
-							if !isAdmin && !isContrib {
+							acl := be.GetPatchRequestAcl(patchReq, patchUser)
+							if !acl.CanModify {
 								return fmt.Errorf("you are not authorized to change PR status")
 							}
 
@@ -674,10 +741,8 @@ Here's how it works:
 								return err
 							}
 
-							pk := sesh.PublicKey()
-							isContrib := pubkey == patchUser.Pubkey
-							isAdmin := be.IsAdmin(pk)
-							if !isAdmin && !isContrib {
+							acl := be.GetPatchRequestAcl(patchReq, patchUser)
+							if !acl.CanModify {
 								return fmt.Errorf("you are not authorized to change PR status")
 							}
 
@@ -722,10 +787,9 @@ Here's how it works:
 								return err
 							}
 
-							isAdmin := be.IsAdmin(sesh.PublicKey())
-							isPrOwner := be.IsPrOwner(prq.UserID, user.ID)
-							if !isAdmin && !isPrOwner {
-								return fmt.Errorf("unauthorized, you are not the owner of this PR")
+							acl := be.GetPatchRequestAcl(prq, user)
+							if !acl.CanModify {
+								return fmt.Errorf("you are not authorized to change PR")
 							}
 
 							tail := cCtx.Args().Tail()
@@ -785,13 +849,17 @@ Here's how it works:
 								return err
 							}
 
-							isAdmin := be.IsAdmin(sesh.PublicKey())
 							isReview := cCtx.Bool("review")
 							isAccept := cCtx.Bool("accept")
 							isClose := cCtx.Bool("close")
-							isPrOwner := be.IsPrOwner(prq.UserID, user.ID)
-							if !isAdmin && !isPrOwner {
-								return fmt.Errorf("unauthorized, you are not the owner of this PR")
+
+							acl := be.GetPatchRequestAcl(prq, user)
+							if !acl.CanModify {
+								return fmt.Errorf("you are not authorized to add patchsets to pr")
+							}
+
+							if isReview && !acl.CanReview {
+								return fmt.Errorf("you are not authorized to submit a review to pr")
 							}
 
 							op := OpNormal

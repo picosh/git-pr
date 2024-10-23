@@ -1,32 +1,24 @@
 {{template "base" .}}
 
-{{define "title"}}{{.ID}} - repo{{end}}
+{{define "title"}}{{.Name}} - repo{{end}}
 
 {{define "meta"}}
 <link rel="alternate" type="application/atom+xml"
       title="RSS feed for git collaboration server"
-      href="/repos/{{.ID}}/rss" />
+      href="/r/{{.Username}}/{{.Name}}/rss" />
 {{end}}
 
 {{define "body"}}
 <header>
-  <h1 class="text-2xl mb"><a href="/">repos</a> / {{.ID}}</h1>
+  <h1 class="text-2xl mb"><a href="/">repos</a> / <a href="/r/{{.Username}}">{{.Username}}</a> / {{.Name}}</h1>
   <div class="group">
-    <div>
-      {{.Desc}}
-    </div>
-
-    <div>
-      <code>git clone {{.CloneAddr}}</code>
-    </div>
-
     <details>
       <summary>Help</summary>
       <div class="group">
         <pre class="m-0"># submit a new patch request
-git format-patch {{.Branch}} --stdout | ssh {{.MetaData.URL}} pr create {{.ID}}</pre>
+git format-patch {{.Branch}} --stdout | ssh {{.MetaData.URL}} pr create {{.Username}}/{{.Name}}</pre>
         <pre class="m-0"># list prs for repo
-ssh {{.MetaData.URL}} pr ls {{.ID}}</pre>
+ssh {{.MetaData.URL}} pr ls {{.Username}}/{{.Name}}</pre>
       </div>
     </details>
 	</div>
@@ -37,6 +29,6 @@ ssh {{.MetaData.URL}} pr ls {{.ID}}</pre>
 </main>
 
 <footer class="mt">
-  <a href="/repos/{{.ID}}/rss">rss</a>
+  <a href="/r/{{.Username}}/{{.Name}}/rss">rss</a>
 </footer>
 {{end}}

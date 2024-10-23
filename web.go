@@ -132,8 +132,8 @@ func createPrDataSorter(sort, sortDir string) func(a, b *PrListData) int {
 		}
 
 		if sort == "repo" {
-			repoA := strings.ToLower(a.RepoID)
-			repoB := strings.ToLower(b.RepoID)
+			repoA := strings.ToLower(a.RepoNs)
+			repoB := strings.ToLower(b.RepoNs)
 			if sortDir == "asc" {
 				return strings.Compare(repoA, repoB)
 			} else {
@@ -177,6 +177,18 @@ func getPrTableData(web *WebCtx, prs []*PatchRequest, query url.Values) ([]*PrLi
 			continue
 		}
 
+		repo, err := web.Pr.GetRepoByID(curpr.RepoID)
+		if err != nil {
+			web.Logger.Error("cannot get repo", "err", err)
+			continue
+		}
+
+		repoUser, err := web.Pr.GetUserByID(repo.UserID)
+		if err != nil {
+			web.Logger.Error("cannot get repo user", "err", err)
+			continue
+		}
+
 		if hasFilter {
 			if status != "" {
 				if status != curpr.Status {
@@ -198,8 +210,9 @@ func getPrTableData(web *WebCtx, prs []*PatchRequest, query url.Values) ([]*PrLi
 		}
 
 		isAdmin := web.Backend.IsAdmin(pk)
+		repoNs := web.Backend.CreateRepoNs(repoUser.Name, repo.Name)
 		prls := &PrListData{
-			RepoID: curpr.RepoID,
+			RepoNs: repoNs,
 			ID:     curpr.ID,
 			UserData: UserData{
 				Name:    user.Name,
@@ -207,8 +220,8 @@ func getPrTableData(web *WebCtx, prs []*PatchRequest, query url.Values) ([]*PrLi
 				Pubkey:  user.Pubkey,
 			},
 			RepoLink: LinkData{
-				Url:  template.URL(fmt.Sprintf("/repos/%s", curpr.RepoID)),
-				Text: curpr.RepoID,
+				Url:  template.URL(fmt.Sprintf("/r/%s/%s", repoUser.Name, repo.Name)),
+				Text: repoNs,
 			},
 			PrLink: LinkData{
 				Url:  template.URL(fmt.Sprintf("/prs/%d", curpr.ID)),
@@ -279,7 +292,7 @@ type MetaData struct {
 
 type PrListData struct {
 	UserData
-	RepoID   string
+	RepoNs   string
 	RepoLink LinkData
 	PrLink   LinkData
 	Title    string
@@ -290,7 +303,7 @@ type PrListData struct {
 }
 
 func userDetailHandler(w http.ResponseWriter, r *http.Request) {
-	userName := r.PathValue("name")
+	userName := r.PathValue("user")
 
 	web, err := getWebCtx(r)
 	if err != nil {
@@ -352,16 +365,17 @@ func userDetailHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type RepoDetailData struct {
-	ID        string
-	CloneAddr string
-	Branch    string
-	Desc      string
-	Prs       []*PrListData
+	Name     string
+	UserID   int64
+	Username string
+	Branch   string
+	Prs      []*PrListData
 	MetaData
 }
 
 func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
-	repoID := r.PathValue("id")
+	userName := r.PathValue("user")
+	repoName := r.PathValue("repo")
 
 	web, err := getWebCtx(r)
 	if err != nil {
@@ -370,14 +384,21 @@ func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	repo, err := web.Pr.GetRepoByID(repoID)
+	user, err := web.Pr.GetUserByName(userName)
 	if err != nil {
-		web.Logger.Error("fetch repo", "err", err)
-		w.WriteHeader(http.StatusInternalServerError)
+		web.Logger.Error("cannot find user", "user", user, "err", err)
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	prs, err := web.Pr.GetPatchRequestsByRepoID(repoID)
+	repo, err := web.Pr.GetRepoByName(user, repoName)
+	if err != nil {
+		web.Logger.Error("cannot find repo", "user", user, "err", err)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	prs, err := web.Pr.GetPatchRequestsByRepoID(repo.ID)
 	if err != nil {
 		web.Logger.Error("cannot get prs", "err", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -394,11 +415,10 @@ func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "text/html")
 	tmpl := getTemplate("repo-detail.html")
 	err = tmpl.Execute(w, RepoDetailData{
-		ID:        repo.ID,
-		CloneAddr: repo.CloneAddr,
-		Desc:      repo.Desc,
-		Branch:    repo.DefaultBranch,
-		Prs:       prdata,
+		Name:     repo.Name,
+		UserID:   user.ID,
+		Username: userName,
+		Prs:      prdata,
 		MetaData: MetaData{
 			URL: web.Backend.Cfg.Url,
 		},
@@ -498,13 +518,6 @@ func createPrDetail(page string) http.HandlerFunc {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-		}
-
-		repo, err := web.Pr.GetRepoByID(pr.RepoID)
-		if err != nil {
-			web.Logger.Error("cannot get repo", "err", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
 		}
 
 		patchsets, err := web.Pr.GetPatchsetsByPrID(pr.ID)
@@ -686,13 +699,22 @@ func createPrDetail(page string) http.HandlerFunc {
 			})
 		}
 
+		repo, err := web.Pr.GetRepoByID(pr.RepoID)
+		if err != nil {
+			web.Logger.Error("cannot get repo for pr", "err", err)
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			return
+		}
+
+		repoNs := web.Backend.CreateRepoNs(user.Name, repo.Name)
+		url := fmt.Sprintf("/r/%s/%s", user.Name, repo.Name)
 		err = tmpl.Execute(w, PrDetailData{
 			Page: "pr",
 			Repo: LinkData{
-				Url:  template.URL("/repos/" + repo.ID),
-				Text: repo.ID,
+				Url:  template.URL(url),
+				Text: repoNs,
 			},
-			Branch:    repo.DefaultBranch,
+			Branch:    "main",
 			Patchset:  ps,
 			Patches:   patchesData,
 			Patchsets: patchsetsData,
@@ -741,9 +763,9 @@ func rssHandler(w http.ResponseWriter, r *http.Request) {
 
 	var eventLogs []*EventLog
 	id := r.PathValue("id")
-	repoID := r.PathValue("repoid")
 	pubkey := r.URL.Query().Get("pubkey")
 	username := r.PathValue("user")
+	repoName := r.PathValue("repo")
 
 	if id != "" {
 		var prID int64
@@ -767,8 +789,13 @@ func rssHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		eventLogs, err = web.Pr.GetEventLogsByUserID(user.ID)
-	} else if repoID != "" {
-		eventLogs, err = web.Pr.GetEventLogsByRepoID(repoID)
+	} else if repoName != "" {
+		user, perr := web.Pr.GetUserByName(username)
+		if perr != nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		eventLogs, err = web.Pr.GetEventLogsByRepoName(user, repoName)
 	} else {
 		eventLogs, err = web.Pr.GetEventLogs()
 	}
@@ -781,10 +808,25 @@ func rssHandler(w http.ResponseWriter, r *http.Request) {
 
 	var feedItems []*feeds.Item
 	for _, eventLog := range eventLogs {
+		user, err := web.Pr.GetUserByID(eventLog.UserID)
+		if err != nil {
+			web.Logger.Error("user not found for event log", "id", eventLog.ID, "err", err)
+			continue
+		}
+
+		repo := &Repo{Name: "unknown"}
+		if eventLog.RepoID.Valid {
+			repo, err = web.Pr.GetRepoByID(eventLog.RepoID.Int64)
+			if err != nil {
+				web.Logger.Error("repo not found for event log", "id", eventLog.ID, "err", err)
+				continue
+			}
+		}
+
 		realUrl := fmt.Sprintf("%s/prs/%d", web.Backend.Cfg.Url, eventLog.PatchRequestID.Int64)
 		content := fmt.Sprintf(
 			"<div><div>RepoID: %s</div><div>PatchRequestID: %d</div><div>Event: %s</div><div>Created: %s</div><div>Data: %s</div></div>",
-			eventLog.RepoID,
+			web.Backend.CreateRepoNs(user.Name, repo.Name),
 			eventLog.PatchRequestID.Int64,
 			eventLog.Event,
 			eventLog.CreatedAt.Format(time.RFC3339Nano),
@@ -795,15 +837,10 @@ func rssHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		user, err := web.Pr.GetUserByID(pr.UserID)
-		if err != nil {
-			continue
-		}
-
 		title := fmt.Sprintf(
 			`%s in %s for PR "%s" (#%d)`,
 			eventLog.Event,
-			eventLog.RepoID,
+			web.Backend.CreateRepoNs(user.Name, repo.Name),
 			pr.Name,
 			eventLog.PatchRequestID.Int64,
 		)
@@ -952,13 +989,13 @@ func StartWebServer(cfg *GitCfg) {
 	http.HandleFunc("GET /prs/{id}", ctxMdw(ctx, createPrDetail("pr")))
 	http.HandleFunc("GET /prs/{id}/rss", ctxMdw(ctx, rssHandler))
 	http.HandleFunc("GET /ps/{id}", ctxMdw(ctx, createPrDetail("ps")))
-	http.HandleFunc("GET /repos/{id}", ctxMdw(ctx, repoDetailHandler))
-	http.HandleFunc("GET /repos/{repoid}/rss", ctxMdw(ctx, rssHandler))
-	http.HandleFunc("GET /users/{name}", ctxMdw(ctx, userDetailHandler))
-	http.HandleFunc("GET /users/{name}/rss", ctxMdw(ctx, rssHandler))
+	http.HandleFunc("GET /r/{user}/{repo}/rss", ctxMdw(ctx, rssHandler))
+	http.HandleFunc("GET /r/{user}/{repo}", ctxMdw(ctx, repoDetailHandler))
+	http.HandleFunc("GET /r/{user}", ctxMdw(ctx, userDetailHandler))
+	http.HandleFunc("GET /rss/{user}", ctxMdw(ctx, rssHandler))
+	http.HandleFunc("GET /rss", ctxMdw(ctx, rssHandler))
 	http.HandleFunc("GET /", ctxMdw(ctx, indexHandler))
 	http.HandleFunc("GET /syntax.css", ctxMdw(ctx, chromaStyleHandler))
-	http.HandleFunc("GET /rss", ctxMdw(ctx, rssHandler))
 	embedFS, err := getEmbedFS(embedStaticFS, "static")
 	if err != nil {
 		panic(err)

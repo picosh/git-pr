@@ -16,6 +16,10 @@ test:
 	go test ./...
 .PHONY: test
 
+snapshot:
+	UPDATE_SNAPS=true go test ./...
+.PHONY: snapshot
+
 build:
 	go build -o ./build/ssh ./cmd/ssh
 	go build -o ./build/web ./cmd/web

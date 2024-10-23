@@ -17,5 +17,6 @@ func main() {
 	logger := slog.New(
 		slog.NewTextHandler(os.Stdout, opts),
 	)
-	git.StartWebServer(git.NewGitCfg(*fpath, logger))
+	git.LoadConfigFile(*fpath, logger)
+	git.StartWebServer(git.NewGitCfg(logger))
 }

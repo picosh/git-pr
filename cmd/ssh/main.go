@@ -17,5 +17,6 @@ func main() {
 	logger := slog.New(
 		slog.NewTextHandler(os.Stdout, opts),
 	)
-	git.GitSshServer(git.NewGitCfg(*fpath, logger))
+	git.LoadConfigFile(*fpath, logger)
+	git.GitSshServer(git.NewGitCfg(logger), nil)
 }

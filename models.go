@@ -26,11 +26,20 @@ type Acl struct {
 	CreatedAt  time.Time      `db:"created_at"`
 }
 
+// Repo is a container for patch requests.
+type Repo struct {
+	ID        int64     `db:"id"`
+	Name      string    `db:"name"`
+	UserID    int64     `db:"user_id"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
+}
+
 // PatchRequest is a database model for patches submitted to a Repo.
 type PatchRequest struct {
 	ID        int64     `db:"id"`
 	UserID    int64     `db:"user_id"`
-	RepoID    string    `db:"repo_id"`
+	RepoID    int64     `db:"repo_id"`
 	Name      string    `db:"name"`
 	Text      string    `db:"text"`
 	Status    string    `db:"status"`
@@ -76,7 +85,7 @@ func (p *Patch) CalcDiff() string {
 type EventLog struct {
 	ID             int64         `db:"id"`
 	UserID         int64         `db:"user_id"`
-	RepoID         string        `db:"repo_id"`
+	RepoID         sql.NullInt64 `db:"repo_id"`
 	PatchRequestID sql.NullInt64 `db:"patch_request_id"`
 	PatchsetID     sql.NullInt64 `db:"patchset_id"`
 	Event          string        `db:"event"`

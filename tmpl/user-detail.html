@@ -5,7 +5,7 @@
 {{define "meta"}}
 <link rel="alternate" type="application/atom+xml"
       title="RSS feed for git collaboration server"
-      href="/users/{{.UserData.Name}}/rss" />
+      href="/rss/{{.UserData.Name}}" />
 {{end}}
 
 {{define "body"}}
@@ -28,6 +28,6 @@
 </main>
 
 <footer class="mt">
-  <a href="/users/{{.UserData.Name}}/rss">rss</a>
+  <a href="/rss/{{.UserData.Name}}">rss</a>
 </footer>
 {{end}}

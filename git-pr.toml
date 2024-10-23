@@ -1,16 +1,13 @@
 # url is used for help commands, exclude protocol
 url = "localhost"
-# where we store the sqlite db, this toml file, git repos, and ssh host keys
+# where we store the sqlite db, this toml file, and ssh host keys
 data_dir = "./data"
 # list of admin ssh pubkeys, authorized to submit review and other admin
 # permissions
 admins = []
 # set datetime format for our clients
 time_format = "2006-01-02"
-
-# add as many repos as you want
-[[repo]]
-id = "test"
-default_branch = "main"
-clone_addr = "https://github.com/picosh/test.git"
-desc = "Test repo"
+# who can create new repos?
+#   admin: only admins
+#   user: admins and users
+create_repo = "user"
