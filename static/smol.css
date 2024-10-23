@@ -460,6 +460,11 @@ figure {
   padding: 0;
 }
 
+.px {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
 .px-2 {
   padding-left: 1rem;
   padding-right: 1rem;
@@ -545,6 +550,10 @@ figure {
 
 .align-right {
   text-align: right;
+}
+
+.text-transform-none {
+  text-transform: none;
 }
 
 /* ==== MARKDOWN ==== */
