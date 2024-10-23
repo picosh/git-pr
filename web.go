@@ -23,6 +23,7 @@ import (
 	formatterHtml "github.com/alecthomas/chroma/v2/formatters/html"
 	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/alecthomas/chroma/v2/styles"
+	"github.com/bluekeyes/go-gitdiff/gitdiff"
 	"github.com/gorilla/feeds"
 )
 
@@ -415,10 +416,18 @@ type PrData struct {
 	Status string
 }
 
+type PatchFile struct {
+	*gitdiff.File
+	Adds     int64
+	Dels     int64
+	DiffText template.HTML
+}
+
 type PatchData struct {
 	*Patch
+	PatchFiles          []*PatchFile
+	PatchHeader         *gitdiff.PatchHeader
 	Url                 template.URL
-	DiffStr             template.HTML
 	Review              bool
 	FormattedAuthorDate string
 }
@@ -566,23 +575,54 @@ func createPrDetail(page string) http.HandlerFunc {
 			}
 
 			for _, patch := range patches {
-				timestamp := patch.AuthorDate.Format(web.Backend.Cfg.TimeFormat)
-				diffStr, err := parseText(web.Formatter, web.Theme, patch.RawText)
+				diffFiles, preamble, err := ParsePatch(patch.RawText)
+				if err != nil {
+					web.Logger.Error("cannot parse patch", "err", err)
+					w.WriteHeader(http.StatusUnprocessableEntity)
+					return
+				}
+				header, err := gitdiff.ParsePatchHeader(preamble)
 				if err != nil {
 					web.Logger.Error("cannot parse patch", "err", err)
 					w.WriteHeader(http.StatusUnprocessableEntity)
 					return
 				}
 
+				patchFiles := []*PatchFile{}
+				for _, file := range diffFiles {
+					var adds int64 = 0
+					var dels int64 = 0
+					for _, frag := range file.TextFragments {
+						adds += frag.LinesAdded
+						dels += frag.LinesDeleted
+					}
+
+					diffStr, err := parseText(web.Formatter, web.Theme, file.String())
+					if err != nil {
+						web.Logger.Error("cannot parse patch", "err", err)
+						w.WriteHeader(http.StatusUnprocessableEntity)
+						return
+					}
+
+					patchFiles = append(patchFiles, &PatchFile{
+						File:     file,
+						Adds:     adds,
+						Dels:     dels,
+						DiffText: template.HTML(diffStr),
+					})
+				}
+
 				// highlight review
 				isReview := false
 
+				timestamp := patch.AuthorDate.Format(web.Backend.Cfg.TimeFormat)
 				patchesData = append(patchesData, PatchData{
 					Patch:               patch,
 					Url:                 template.URL(fmt.Sprintf("patch-%d", patch.ID)),
-					DiffStr:             template.HTML(diffStr),
 					Review:              isReview,
 					FormattedAuthorDate: timestamp,
+					PatchFiles:          patchFiles,
+					PatchHeader:         header,
 				})
 			}
 		}
@@ -646,7 +686,6 @@ func createPrDetail(page string) http.HandlerFunc {
 			})
 		}
 
-		fmt.Println("PSSPSPSPS", ps)
 		err = tmpl.Execute(w, PrDetailData{
 			Page: "pr",
 			Repo: LinkData{
