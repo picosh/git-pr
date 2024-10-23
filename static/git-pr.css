@@ -1,3 +1,8 @@
+body {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
 table, tr {
   border-spacing: 0;
 }
@@ -36,8 +41,27 @@ details {
   padding: 0.5rem 0.75rem;
 }
 
+.max-w {
+  max-width: calc(100% - 300px);
+}
+
 @media only screen and (max-width: 40em) {
   .collapse {
     flex-direction: column;
+  }
+
+  .collapse > div {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  body {
+    padding-top: var(--line-height);
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  pre {
+    padding: var(--grid-height) 0;
   }
 }

@@ -9,23 +9,21 @@
       {{range $patch := .Patches}}
         <div class="box group">
           <div>
-            <h3 class="text-lg transform-none m-0 p-0 mb">
+            <h3 class="text-lg text-transform-none m-0 p-0 mb">
               {{if $patch.Review}}<code class="pill-review">REVIEW</code>{{end}}
               <a href="#{{$patch.Url}}">{{$patch.Title}}</a>
             </h3>
 
-            <div class="group-h text-sm justify-between">
-              <div class="flex-1">
-                <code class="pill{{if $patch.Review}}-review{{end}}">{{$patch.AuthorName}} &lt;{{$patch.AuthorEmail}}&gt;</code>
+            <div class="flex justify-between items-center text-sm">
+              <div>
+                <code class="{{if $patch.Review}}pill-review{{end}}">{{$patch.AuthorName}}</code>
               </div>
               <date>{{$patch.FormattedAuthorDate}}</date>
             </div>
           </div>
 
-          {{if $patch.Body}}<pre class="m-0">{{$patch.Body}}</pre>{{end}}
-
           {{range $patch.PatchFiles}}
-            <div class="flex justify-between">
+            <div class="flex justify-between items-center">
               <a class="flex-1" href="#patch-{{$patch.ID}}-{{.NewName}}">{{.NewName}}</a>
               <div class="flex gap">
                 <code class="pill-success">+{{.Adds}}</code>
@@ -41,21 +39,27 @@
       {{end}}
     </div>
 
-    <div class="flex-1">
+    <div class="max-w flex-1">
       {{range $patch := .Patches}}
-        <div id="{{$patch.Url}}">
-          <h3 class="text-lg transform-none"><a href="#{{$patch.Url}}">{{$patch.Title}}</a></h3>
+        <div class="group" id="{{$patch.Url}}">
+          <h3 class="text-lg text-transform-none"><a href="#{{$patch.Url}}">{{$patch.Title}}</a></h3>
+
+          {{if $patch.Body}}<pre class="w-full">{{$patch.Body}}</pre>{{end}}
+
           {{range $patch.PatchFiles}}
-            <div class="group-h" id="patch-{{$patch.ID}}-{{.NewName}}">
-              <a href="#patch-{{$patch.ID}}-{{.NewName}}">{{.NewName}}</a>
-              <div class="flex gap">
-                <code class="pill-success">+{{.Adds}}</code>
-                <code class="pill-admin">-{{.Dels}}</code>
+            <div>
+              <div class="group-h" id="patch-{{$patch.ID}}-{{.NewName}}">
+                <a href="#patch-{{$patch.ID}}-{{.NewName}}">{{.NewName}}</a>
+                <div class="flex gap">
+                  <code class="pill-success">+{{.Adds}}</code>
+                  <code class="pill-admin">-{{.Dels}}</code>
+                </div>
               </div>
+              <div>{{.DiffText}}</div>
             </div>
-            <div>{{.DiffText}}</div>
           {{end}}
         </div>
+        <hr class="my" />
       {{else}}
         <div class="box">
           No patches found for patch request.

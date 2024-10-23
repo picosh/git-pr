@@ -26,12 +26,15 @@ bp-setup:
 	$(DOCKER_CMD) buildx use pico
 .PHONY: bp-setup
 
-bp: bp-setup
-	$(DOCKER_BUILDX_BUILD) -t "ghcr.io/picosh/pico/git-ssh:$(DOCKER_TAG)" --target release-ssh .
+bp-web: bp-setup
 	$(DOCKER_BUILDX_BUILD) -t "ghcr.io/picosh/pico/git-web:$(DOCKER_TAG)" --target release-web .
+.PHONY: bp-web
+
+bp: bp-web
+	$(DOCKER_BUILDX_BUILD) -t "ghcr.io/picosh/pico/git-ssh:$(DOCKER_TAG)" --target release-ssh .
 .PHONY: bp
 
-deploy: bp
+deploy: bp-web
 	ssh ppipe pub git-pr-deploy -e
 .PHONY: deploy
 
