@@ -4,8 +4,8 @@
     <tr>
       <th class="text-left">Repo</th>
       <th class="text-left">Status</th>
-      <th class="text-left">Title</th>
       <th class="text-left">User</th>
+      <th class="text-left">Title</th>
       <th class="text-left">Created At</th>
     </tr>
   </thead>
@@ -17,12 +17,10 @@
           <a href="{{.RepoLink.Url}}">{{.RepoLink.Text}}</a>
         </td>
         <td>{{template "pr-status" .Status}}</td>
+        <td>{{template "user-pill" .UserData}}</td>
         <td>
           <code>#{{.ID}}</code>
           <a href="{{.PrLink.Url}}">{{.PrLink.Text}}</a>
-        </td>
-        <td>
-          {{template "user-pill" .UserData}}
         </td>
         <td><date>{{.Date}}</date></td>
       </tr>

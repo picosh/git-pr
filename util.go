@@ -27,7 +27,7 @@ func randSeq(n int) string {
 	for i := range b {
 		b[i] = letters[rand.Intn(len(letters))]
 	}
-	return string(b)
+	return strings.ToLower(string(b))
 }
 
 func truncateSha(sha string) string {
@@ -37,7 +37,7 @@ func truncateSha(sha string) string {
 	return sha[:7]
 }
 
-func getAuthorizedKeys(pubkeys []string) ([]ssh.PublicKey, error) {
+func GetAuthorizedKeys(pubkeys []string) ([]ssh.PublicKey, error) {
 	keys := []ssh.PublicKey{}
 	for _, pubkey := range pubkeys {
 		if strings.TrimSpace(pubkey) == "" {

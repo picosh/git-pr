@@ -31,7 +31,7 @@ func authHandler(pr *PrCmd) func(ctx ssh.Context, key ssh.PublicKey) bool {
 	}
 }
 
-func GitSshServer(cfg *GitCfg) {
+func GitSshServer(cfg *GitCfg, killCh chan error) {
 	dbpath := filepath.Join(cfg.DataDir, "pr.db")
 	dbh, err := SqliteOpen(dbpath, cfg.Logger)
 	if err != nil {
@@ -71,16 +71,19 @@ func GitSshServer(cfg *GitCfg) {
 	go func() {
 		if err = s.ListenAndServe(); err != nil {
 			cfg.Logger.Error("serve error", "err", err)
-			os.Exit(1)
+			// os.Exit(1)
 		}
 	}()
 
-	<-done
+	select {
+	case <-done:
+	case <-killCh:
+	}
 	cfg.Logger.Info("stopping SSH server")
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer func() { cancel() }()
 	if err := s.Shutdown(ctx); err != nil {
 		cfg.Logger.Error("shutdown", "err", err)
-		os.Exit(1)
+		// os.Exit(1)
 	}
 }

@@ -4,9 +4,8 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log/slog"
-	"path/filepath"
+	"strings"
 
-	"github.com/charmbracelet/soft-serve/pkg/utils"
 	"github.com/charmbracelet/ssh"
 	"github.com/jmoiron/sqlx"
 	gossh "golang.org/x/crypto/ssh"
@@ -18,16 +17,53 @@ type Backend struct {
 	Cfg    *GitCfg
 }
 
-func (be *Backend) ReposDir() string {
-	return filepath.Join(be.Cfg.DataDir, "repos")
+var ErrRepoNoNamespace = fmt.Errorf("repo must be namespaced by username")
+
+// Repo Namespace.
+func (be *Backend) CreateRepoNs(userName, repoName string) string {
+	return fmt.Sprintf("%s/%s", userName, repoName)
 }
 
-func (be *Backend) RepoName(id string) string {
-	return utils.SanitizeRepo(id)
+func (be *Backend) ValidateRepoNs(repoNs string) error {
+	_, repoID := be.SplitRepoNs(repoNs)
+	if strings.Contains(repoID, "/") {
+		return fmt.Errorf("repo can only contain a single forward-slash")
+	}
+	return nil
 }
 
-func (be *Backend) RepoID(name string) string {
-	return name + ".git"
+func (be *Backend) SplitRepoNs(repoID string) (string, string) {
+	results := strings.SplitN(repoID, "/", 1)
+	if len(results) == 1 {
+		return "", results[0]
+	}
+
+	return results[1], results[0]
+}
+
+func (be *Backend) CanCreateRepo(repo *Repo, requester *User) error {
+	pubkey, err := be.PubkeyToPublicKey(requester.Pubkey)
+	if err != nil {
+		return err
+	}
+	isAdmin := be.IsAdmin(pubkey)
+	if isAdmin {
+		return nil
+	}
+
+	// can create repo is a misnomer since we are saying it's ok to create
+	// a repo even though one already exists.  this is a hack since this function
+	// is used exclusively inside pr creation flow.
+	if repo != nil {
+		return nil
+	}
+
+	if be.Cfg.CreateRepo == "user" {
+		return nil
+	}
+
+	// new repo with cfg indicating only admins can create prs/repos
+	return fmt.Errorf("you are not authorized to create repo")
 }
 
 func (be *Backend) Pubkey(pk ssh.PublicKey) string {
@@ -63,4 +99,41 @@ func (be *Backend) IsAdmin(pk ssh.PublicKey) bool {
 
 func (be *Backend) IsPrOwner(pka, pkb int64) bool {
 	return pka == pkb
+}
+
+type PrAcl struct {
+	CanModify bool
+	CanReview bool
+	CanDelete bool
+}
+
+func (be *Backend) GetPatchRequestAcl(prq *PatchRequest, requester *User) *PrAcl {
+	acl := &PrAcl{}
+	pubkey, err := be.PubkeyToPublicKey(requester.Pubkey)
+	if err != nil {
+		return acl
+	}
+
+	isAdmin := be.IsAdmin(pubkey)
+	// admin can do it all
+	if isAdmin {
+		acl.CanModify = true
+		acl.CanReview = true
+		acl.CanDelete = true
+		return acl
+	}
+
+	// pr creator have special priv
+	if requester != nil && be.IsPrOwner(prq.UserID, requester.ID) {
+		acl.CanModify = true
+		acl.CanReview = false
+		acl.CanDelete = true
+		return acl
+	}
+
+	acl.CanModify = false
+	acl.CanReview = false
+	acl.CanDelete = false
+
+	return acl
 }

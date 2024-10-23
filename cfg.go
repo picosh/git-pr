@@ -14,30 +14,23 @@ import (
 	"github.com/knadh/koanf/v2"
 )
 
-type Repo struct {
-	ID            string `koanf:"id"`
-	Desc          string `koanf:"desc"`
-	CloneAddr     string `koanf:"clone_addr"`
-	DefaultBranch string `koanf:"default_branch"`
-}
-
 var k = koanf.New(".")
 
 type GitCfg struct {
 	DataDir    string          `koanf:"data_dir"`
-	Repos      []*Repo         `koanf:"repo"`
 	Url        string          `koanf:"url"`
 	Host       string          `koanf:"host"`
 	SshPort    string          `koanf:"ssh_port"`
 	WebPort    string          `koanf:"web_port"`
 	AdminsStr  []string        `koanf:"admins"`
 	Admins     []ssh.PublicKey `koanf:"admins_pk"`
+	CreateRepo string          `koanf:"create_repo"`
 	Theme      string          `koanf:"theme"`
 	TimeFormat string          `koanf:"time_format"`
 	Logger     *slog.Logger
 }
 
-func NewGitCfg(fpath string, logger *slog.Logger) *GitCfg {
+func LoadConfigFile(fpath string, logger *slog.Logger) {
 	fpp, err := filepath.Abs(fpath)
 	if err != nil {
 		panic(err)
@@ -47,8 +40,10 @@ func NewGitCfg(fpath string, logger *slog.Logger) *GitCfg {
 	if err := k.Load(file.Provider(fpp), toml.Parser()); err != nil {
 		panic(fmt.Sprintf("error loading config: %v", err))
 	}
+}
 
-	err = k.Load(env.Provider("GITPR_", ".", func(s string) string {
+func NewGitCfg(logger *slog.Logger) *GitCfg {
+	err := k.Load(env.Provider("GITPR_", ".", func(s string) string {
 		keyword := strings.ToLower(strings.TrimPrefix(s, "GITPR_"))
 		return keyword
 	}), nil)
@@ -63,7 +58,7 @@ func NewGitCfg(fpath string, logger *slog.Logger) *GitCfg {
 	}
 
 	if len(out.AdminsStr) > 0 {
-		keys, err := getAuthorizedKeys(out.AdminsStr)
+		keys, err := GetAuthorizedKeys(out.AdminsStr)
 		if err == nil {
 			out.Admins = keys
 		} else {
@@ -104,6 +99,10 @@ func NewGitCfg(fpath string, logger *slog.Logger) *GitCfg {
 		out.TimeFormat = time.RFC3339
 	}
 
+	if out.CreateRepo == "" {
+		out.CreateRepo = "admin"
+	}
+
 	logger.Info(
 		"config",
 		"url", out.Url,
@@ -113,23 +112,11 @@ func NewGitCfg(fpath string, logger *slog.Logger) *GitCfg {
 		"web_port", out.WebPort,
 		"theme", out.Theme,
 		"time_format", out.TimeFormat,
+		"create_repo", out.CreateRepo,
 	)
 
 	for _, pubkey := range out.AdminsStr {
 		logger.Info("admin", "pubkey", pubkey)
-	}
-
-	for _, repo := range out.Repos {
-		if repo.DefaultBranch == "" {
-			repo.DefaultBranch = "main"
-		}
-		logger.Info(
-			"repo",
-			"id", repo.ID,
-			"desc", repo.Desc,
-			"clone_addr", repo.CloneAddr,
-			"default_branch", repo.DefaultBranch,
-		)
 	}
 
 	out.Logger = logger
