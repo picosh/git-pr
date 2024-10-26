@@ -45,6 +45,10 @@ details {
   max-width: calc(100% - 300px);
 }
 
+.word-break-word {
+  word-break: break-word;
+}
+
 @media only screen and (max-width: 40em) {
   .collapse {
     flex-direction: column;

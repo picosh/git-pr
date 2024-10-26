@@ -11,7 +11,7 @@
           <div>
             <h3 class="text-lg text-transform-none m-0 p-0 mb">
               {{if $patch.Review}}<code class="pill-review">REVIEW</code>{{end}}
-              <a href="#{{$patch.Url}}">{{$patch.Title}}</a>
+              <a href="#{{$patch.Url}}" class="word-break-word">{{$patch.Title}}</a>
             </h3>
 
             <div class="flex justify-between items-center text-sm">
@@ -24,7 +24,7 @@
 
           {{range $patch.PatchFiles}}
             <div class="flex justify-between items-center">
-              <a class="flex-1" href="#patch-{{$patch.ID}}-{{.NewName}}">{{.NewName}}</a>
+              <a class="flex-1 word-break-word" href="#patch-{{$patch.ID}}-{{.NewName}}">{{.NewName}}</a>
               <div class="flex gap">
                 <code class="pill-success">+{{.Adds}}</code>
                 <code class="pill-admin">-{{.Dels}}</code>
@@ -49,7 +49,7 @@
           {{range $patch.PatchFiles}}
             <div>
               <div class="group-h" id="patch-{{$patch.ID}}-{{.NewName}}">
-                <a href="#patch-{{$patch.ID}}-{{.NewName}}">{{.NewName}}</a>
+                <a href="#patch-{{$patch.ID}}-{{.NewName}}" class="word-break-word">{{.NewName}}</a>
                 <div class="flex gap">
                   <code class="pill-success">+{{.Adds}}</code>
                   <code class="pill-admin">-{{.Dels}}</code>
