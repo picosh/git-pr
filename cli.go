@@ -281,6 +281,45 @@ Here's how it works:
 				},
 			},
 			{
+				Name:  "repo",
+				Usage: "Manage repos",
+				Subcommands: []*cli.Command{
+					{
+						Name:      "create",
+						Usage:     "Create a new repo",
+						Args:      true,
+						ArgsUsage: "[repoName]",
+						Action: func(cCtx *cli.Context) error {
+							user, err := pr.UpsertUser(pubkey, userName)
+							if err != nil {
+								return err
+							}
+
+							args := cCtx.Args()
+							if !args.Present() {
+								return fmt.Errorf("need repo name argument")
+							}
+							repoName := args.First()
+							repo, _ := pr.GetRepoByName(user, repoName)
+							err = be.CanCreateRepo(repo, user)
+							if err != nil {
+								return err
+							}
+
+							if repo == nil {
+								repo, err = pr.CreateRepo(user, repoName)
+								if err != nil {
+									return err
+								}
+							}
+
+							wish.Printf(sesh, "repo created: %s/%s", user.Name, repo.Name)
+							return nil
+						},
+					},
+				},
+			},
+			{
 				Name:  "pr",
 				Usage: "Manage Patch Requests (PR)",
 				Subcommands: []*cli.Command{
@@ -288,7 +327,7 @@ Here's how it works:
 						Name:      "ls",
 						Usage:     "List all PRs",
 						Args:      true,
-						ArgsUsage: "[repoID]",
+						ArgsUsage: "[repoName]",
 						Flags: []cli.Flag{
 							&cli.BoolFlag{
 								Name:  "open",
@@ -384,11 +423,17 @@ Here's how it works:
 									continue
 								}
 
+								repoUser, err := pr.GetUserByID(repo.UserID)
+								if err != nil {
+									be.Logger.Error("could not get repo user for pr", "err", err)
+									continue
+								}
+
 								fmt.Fprintf(
 									writer,
 									"%d\t%s\t%s\t[%s]\t%d\t%s\t%s\n",
 									req.ID,
-									be.CreateRepoNs(user.Name, repo.Name),
+									be.CreateRepoNs(repoUser.Name, repo.Name),
 									req.Name,
 									req.Status,
 									len(patchsets),
@@ -404,7 +449,7 @@ Here's how it works:
 						Name:      "create",
 						Usage:     "Submit a new PR",
 						Args:      true,
-						ArgsUsage: "[repoID]",
+						ArgsUsage: "[repoName]",
 						Action: func(cCtx *cli.Context) error {
 							user, err := pr.UpsertUser(pubkey, userName)
 							if err != nil {
@@ -429,18 +474,13 @@ Here's how it works:
 							if err != nil {
 								return err
 							}
-							fmt.Println("ZZZZZZZASDASDASDAD", repo)
 
 							if repo == nil {
 								repo, err = pr.CreateRepo(user, repoName)
-								fmt.Println("ERRRR", err)
 								if err != nil {
 									return err
 								}
 							}
-							fmt.Println("ASDASDASDAD", repo)
-
-							// TODO: create validation
 
 							prq, err := pr.SubmitPatchRequest(repo.ID, user.ID, sesh)
 							if err != nil {

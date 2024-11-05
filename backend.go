@@ -32,13 +32,13 @@ func (be *Backend) ValidateRepoNs(repoNs string) error {
 	return nil
 }
 
-func (be *Backend) SplitRepoNs(repoID string) (string, string) {
-	results := strings.SplitN(repoID, "/", 1)
+func (be *Backend) SplitRepoNs(repoNs string) (string, string) {
+	results := strings.SplitN(repoNs, "/", 2)
 	if len(results) == 1 {
 		return "", results[0]
 	}
 
-	return results[1], results[0]
+	return results[0], results[1]
 }
 
 func (be *Backend) CanCreateRepo(repo *Repo, requester *User) error {

@@ -76,6 +76,10 @@ func testMultiTenantE2E(t *testing.T) {
 	suite.userKey.MustCmd(nil, "pr edit 6 Closed patch with review")
 	suite.adminKey.MustCmd(suite.otherPatch, "pr add --close 6")
 
+	// Create patch with user namespace
+	suite.adminKey.MustCmd(nil, "repo create ai")
+	suite.userKey.MustCmd(suite.patch, "pr create admin/ai")
+
 	actual, err := suite.userKey.Cmd(nil, "pr ls")
 	bail(err)
 	if strings.TrimSpace(actual) != prLsExpected {
@@ -140,4 +144,5 @@ var prLsExpected = `ID RepoID           Name                       Status     Pa
 3  contributor/test Closed patch (contributor) [closed]   1         contributor 
 4  contributor/test Reviewed patch             [reviewed] 2         contributor 
 5  contributor/test Accepted patch with review [accepted] 2         contributor 
-6  contributor/test Closed patch with review   [closed]   2         contributor`
+6  contributor/test Closed patch with review   [closed]   2         contributor 
+7  admin/ai         feat: lets build an rnn    [open]     1         contributor`
