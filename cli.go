@@ -655,7 +655,6 @@ Here's how it works:
 							}
 
 							acl := be.GetPatchRequestAcl(repo, prq, user)
-							fmt.Println(repo.UserID, user.ID)
 							if !acl.CanReview {
 								return fmt.Errorf("you are not authorized to accept a PR")
 							}
