@@ -212,7 +212,6 @@ Here's how it works:
 					isPubkey := cCtx.Bool("pubkey")
 					prID := cCtx.Int64("pr")
 					repoNs := cCtx.String("repo")
-					fmt.Println("ZZZZ", repoNs)
 					var eventLogs []*EventLog
 					if isPubkey {
 						eventLogs, err = pr.GetEventLogsByUserID(user.ID)
@@ -650,7 +649,13 @@ Here's how it works:
 								return err
 							}
 
-							acl := be.GetPatchRequestAcl(prq, user)
+							repo, err := pr.GetRepoByID(prq.RepoID)
+							if err != nil {
+								return err
+							}
+
+							acl := be.GetPatchRequestAcl(repo, prq, user)
+							fmt.Println(repo.UserID, user.ID)
 							if !acl.CanReview {
 								return fmt.Errorf("you are not authorized to accept a PR")
 							}
@@ -683,22 +688,27 @@ Here's how it works:
 								return err
 							}
 
-							patchReq, err := pr.GetPatchRequestByID(prID)
+							prq, err := pr.GetPatchRequestByID(prID)
 							if err != nil {
 								return err
 							}
 
-							patchUser, err := pr.GetUserByID(patchReq.UserID)
+							patchUser, err := pr.GetUserByID(prq.UserID)
 							if err != nil {
 								return err
 							}
 
-							acl := be.GetPatchRequestAcl(patchReq, patchUser)
+							repo, err := pr.GetRepoByID(prq.RepoID)
+							if err != nil {
+								return err
+							}
+
+							acl := be.GetPatchRequestAcl(repo, prq, patchUser)
 							if !acl.CanModify {
 								return fmt.Errorf("you are not authorized to change PR status")
 							}
 
-							if patchReq.Status == "closed" {
+							if prq.Status == "closed" {
 								return fmt.Errorf("PR has already been closed")
 							}
 
@@ -711,7 +721,7 @@ Here's how it works:
 							if err != nil {
 								return err
 							}
-							wish.Printf(sesh, "Closed PR %s (#%d)\n", patchReq.Name, patchReq.ID)
+							wish.Printf(sesh, "Closed PR %s (#%d)\n", prq.Name, prq.ID)
 							return prSummary(be, pr, sesh, prID)
 						},
 					},
@@ -731,22 +741,27 @@ Here's how it works:
 								return err
 							}
 
-							patchReq, err := pr.GetPatchRequestByID(prID)
+							prq, err := pr.GetPatchRequestByID(prID)
 							if err != nil {
 								return err
 							}
 
-							patchUser, err := pr.GetUserByID(patchReq.UserID)
+							patchUser, err := pr.GetUserByID(prq.UserID)
 							if err != nil {
 								return err
 							}
 
-							acl := be.GetPatchRequestAcl(patchReq, patchUser)
+							repo, err := pr.GetRepoByID(prq.RepoID)
+							if err != nil {
+								return err
+							}
+
+							acl := be.GetPatchRequestAcl(repo, prq, patchUser)
 							if !acl.CanModify {
 								return fmt.Errorf("you are not authorized to change PR status")
 							}
 
-							if patchReq.Status == "open" {
+							if prq.Status == "open" {
 								return fmt.Errorf("PR is already open")
 							}
 
@@ -757,7 +772,7 @@ Here's how it works:
 
 							err = pr.UpdatePatchRequestStatus(prID, user.ID, "open")
 							if err == nil {
-								wish.Printf(sesh, "Reopened PR %s (#%d)\n", patchReq.Name, patchReq.ID)
+								wish.Printf(sesh, "Reopened PR %s (#%d)\n", prq.Name, prq.ID)
 							}
 							return prSummary(be, pr, sesh, prID)
 						},
@@ -787,7 +802,12 @@ Here's how it works:
 								return err
 							}
 
-							acl := be.GetPatchRequestAcl(prq, user)
+							repo, err := pr.GetRepoByID(prq.RepoID)
+							if err != nil {
+								return err
+							}
+
+							acl := be.GetPatchRequestAcl(repo, prq, user)
 							if !acl.CanModify {
 								return fmt.Errorf("you are not authorized to change PR")
 							}
@@ -853,7 +873,12 @@ Here's how it works:
 							isAccept := cCtx.Bool("accept")
 							isClose := cCtx.Bool("close")
 
-							acl := be.GetPatchRequestAcl(prq, user)
+							repo, err := pr.GetRepoByID(prq.RepoID)
+							if err != nil {
+								return err
+							}
+
+							acl := be.GetPatchRequestAcl(repo, prq, user)
 							if !acl.CanModify {
 								return fmt.Errorf("you are not authorized to add patchsets to pr")
 							}

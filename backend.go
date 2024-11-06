@@ -110,8 +110,12 @@ type PrAcl struct {
 	CanDelete bool
 }
 
-func (be *Backend) GetPatchRequestAcl(prq *PatchRequest, requester *User) *PrAcl {
+func (be *Backend) GetPatchRequestAcl(repo *Repo, prq *PatchRequest, requester *User) *PrAcl {
 	acl := &PrAcl{}
+	if requester == nil {
+		return acl
+	}
+
 	pubkey, err := be.PubkeyToPublicKey(requester.Pubkey)
 	if err != nil {
 		return acl
@@ -126,14 +130,23 @@ func (be *Backend) GetPatchRequestAcl(prq *PatchRequest, requester *User) *PrAcl
 		return acl
 	}
 
+	// repo owner can do it all
+	if repo.UserID == requester.ID {
+		acl.CanModify = true
+		acl.CanReview = true
+		acl.CanDelete = true
+		return acl
+	}
+
 	// pr creator have special priv
-	if requester != nil && be.IsPrOwner(prq.UserID, requester.ID) {
+	if be.IsPrOwner(prq.UserID, requester.ID) {
 		acl.CanModify = true
 		acl.CanReview = false
 		acl.CanDelete = true
 		return acl
 	}
 
+	// otherwise no perms
 	acl.CanModify = false
 	acl.CanReview = false
 	acl.CanDelete = false

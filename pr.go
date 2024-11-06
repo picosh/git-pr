@@ -147,7 +147,6 @@ func (pr PrCmd) GetRepos() (repos []*Repo, err error) {
 
 func (pr PrCmd) GetRepoByName(user *User, repoName string) (*Repo, error) {
 	var repo Repo
-	fmt.Println(user.ID, repoName)
 	err := pr.Backend.DB.Get(&repo, "SELECT * FROM repos WHERE user_id=? AND name=?", user.ID, repoName)
 	if err != nil {
 		return nil, fmt.Errorf("repo not found: %s/%s", user.Name, repoName)
