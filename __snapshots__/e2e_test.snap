@@ -1,7 +1,8 @@
 
 [TestE2E - 1]
-ID RepoID Name                    Status Patchsets User  Date
-1  test   feat: lets build an rnn [open] 1         admin 
+ID RepoID Name                    Status Patchsets User        Date
+2  test   feat: lets build an rnn [open] 1         contributor 
+1  test   feat: lets build an rnn [open] 1         admin       
 
 ---
 

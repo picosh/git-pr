@@ -27,11 +27,16 @@ func testSingleTenantE2E(t *testing.T) {
 	go GitSshServer(suite.cfg, done)
 	// Hack to wait for startup
 	time.Sleep(time.Millisecond * 100)
+
+	t.Log("User cannot create repo")
 	_, err := suite.userKey.Cmd(suite.patch, "pr create test")
 	if err == nil {
 		t.Fatal("user should not be able to create a PR")
 	}
 	suite.adminKey.MustCmd(suite.patch, "pr create test")
+
+	t.Log("User should be able to create a patch")
+	suite.userKey.MustCmd(suite.patch, "pr create test")
 
 	t.Log("Snapshot test ls command")
 	actual, err := suite.userKey.Cmd(nil, "pr ls")

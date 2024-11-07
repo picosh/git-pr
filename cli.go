@@ -489,14 +489,23 @@ Here's how it works:
 								rawRepoNs = args.First()
 							}
 							repoUsername, repoName := be.SplitRepoNs(rawRepoNs)
-							repoUser := user
-							if repoUsername != "" {
-								repoUser, err = pr.GetUserByName(repoUsername)
+							var repo *Repo
+							if repoUsername == "" {
+								if be.Cfg.CreateRepo == "admin" {
+									// single tenant default user to admin
+									repo, _ = pr.GetRepoByName(nil, repoName)
+								} else {
+									// multi tenant default user to contributor
+									repo, _ = pr.GetRepoByName(user, repoName)
+								}
+							} else {
+								repoUser, err := pr.GetUserByName(repoUsername)
 								if err != nil {
 									return err
 								}
+								repo, _ = pr.GetRepoByName(repoUser, repoName)
 							}
-							repo, _ := pr.GetRepoByName(repoUser, repoName)
+
 							err = be.CanCreateRepo(repo, user)
 							if err != nil {
 								return err
