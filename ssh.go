@@ -32,8 +32,8 @@ func authHandler(pr *PrCmd) func(ctx ssh.Context, key ssh.PublicKey) bool {
 }
 
 func GitSshServer(cfg *GitCfg, killCh chan error) {
-	dbpath := filepath.Join(cfg.DataDir, "pr.db")
-	dbh, err := SqliteOpen(dbpath, cfg.Logger)
+	dbpath := filepath.Join(cfg.DataDir, "pr.db?_fk=on")
+	dbh, err := SqliteOpen("file:"+dbpath, cfg.Logger)
 	if err != nil {
 		panic(fmt.Sprintf("cannot find database file, check folder and perms: %s: %s", dbpath, err))
 	}

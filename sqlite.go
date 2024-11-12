@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/jmoiron/sqlx"
+	_ "modernc.org/sqlite"
 )
 
 var sqliteSchema = `

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/bluekeyes/go-gitdiff/gitdiff"
-	_ "modernc.org/sqlite"
 )
 
 // User is a db model for users.
