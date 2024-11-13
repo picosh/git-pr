@@ -49,6 +49,21 @@ details {
   word-break: break-word;
 }
 
+.patchset-list {
+  position: sticky;
+  top: 0;
+  left: 0;
+  height: max-content;
+}
+
+.patch-file {
+  position: sticky;
+  top: 0;
+  left: 0;
+  padding: var(--grid-height) 0;
+  background-color: var(--bg-color);
+}
+
 @media only screen and (max-width: 40em) {
   .collapse {
     flex-direction: column;

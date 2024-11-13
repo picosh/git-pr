@@ -1,8 +1,8 @@
 {{define "patchset"}}
 <div class="group">
   <div class="flex gap-2 collapse">
-    <div class="group" style="width: 300px;">
-      <h2 class="text-xl">
+    <div class="group patchset-list" style="width: 300px;">
+      <h2 class="text-xl mt">
         Patchset <code>ps-{{.Patchset.ID}}</code>
       </h2>
 
@@ -37,6 +37,8 @@
           No patches found for patch request.
         </div>
       {{end}}
+
+      <div><a href="#top">Back to top</a></div>
     </div>
 
     <div class="max-w flex-1">
@@ -48,7 +50,7 @@
 
           {{range $patch.PatchFiles}}
             <div>
-              <div class="group-h" id="patch-{{$patch.ID}}-{{.NewName}}">
+              <div class="group-h patch-file" id="patch-{{$patch.ID}}-{{.NewName}}">
                 <a href="#patch-{{$patch.ID}}-{{.NewName}}" class="word-break-word">{{.NewName}}</a>
                 <div class="flex gap">
                   <code class="pill-success">+{{.Adds}}</code>
