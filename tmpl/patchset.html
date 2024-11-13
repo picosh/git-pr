@@ -49,8 +49,8 @@
           {{if $patch.Body}}<pre class="w-full">{{$patch.Body}}</pre>{{end}}
 
           {{range $patch.PatchFiles}}
-            <details class="details-min" open="true">
-              <summary class="group-h patch-file" id="patch-{{$patch.ID}}-{{.NewName}}">
+            <details class="details-min" open="true" id="patch-{{$patch.ID}}-{{.NewName}}">
+              <summary class="group-h patch-file">
                 <span class="mono">{{.NewName}}</span>
                 <a href="#patch-{{$patch.ID}}-{{.NewName}}" class="word-break-word">link</a>
                 <div class="flex gap">
