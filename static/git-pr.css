@@ -3,6 +3,10 @@ body {
   padding-right: 1rem;
 }
 
+pre {
+  font-size: 1rem;
+}
+
 table, tr {
   border-spacing: 0;
 }

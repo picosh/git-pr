@@ -9,7 +9,7 @@
       {{range $patch := .Patches}}
         <div class="box group">
           <div>
-            <h3 class="text-lg text-transform-none m-0 p-0 mb">
+            <h3 class="text-lg text-transform-none m-0 p-0 mb mono">
               {{if $patch.Review}}<code class="pill-review">REVIEW</code>{{end}}
               <a href="#{{$patch.Url}}" class="word-break-word">{{$patch.Title}}</a>
             </h3>
@@ -44,7 +44,7 @@
     <div class="max-w flex-1">
       {{range $patch := .Patches}}
         <div class="group" id="{{$patch.Url}}">
-          <h3 class="text-lg text-transform-none"><a href="#{{$patch.Url}}">{{$patch.Title}}</a></h3>
+          <h3 class="text-lg text-transform-none mono"><a href="#{{$patch.Url}}">{{$patch.Title}}</a></h3>
 
           {{if $patch.Body}}<pre class="w-full">{{$patch.Body}}</pre>{{end}}
 
