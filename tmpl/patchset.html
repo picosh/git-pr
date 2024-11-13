@@ -1,7 +1,7 @@
 {{define "patchset"}}
 <div class="group">
   <div class="flex gap-2 collapse">
-    <div class="group patchset-list" style="width: 300px;">
+    <div class="group patchset-list" style="width: 350px;">
       <h2 class="text-xl mt">
         Patchset <code>ps-{{.Patchset.ID}}</code>
       </h2>
@@ -24,7 +24,7 @@
 
           {{range $patch.PatchFiles}}
             <div class="flex justify-between items-center">
-              <a class="flex-1 word-break-word" href="#patch-{{$patch.ID}}-{{.NewName}}">{{.NewName}}</a>
+              <a class="flex-1 word-break-word mono" href="#patch-{{$patch.ID}}-{{.NewName}}">{{.NewName}}</a>
               <div class="flex gap">
                 <code class="pill-success">+{{.Adds}}</code>
                 <code class="pill-admin">-{{.Dels}}</code>
@@ -49,16 +49,17 @@
           {{if $patch.Body}}<pre class="w-full">{{$patch.Body}}</pre>{{end}}
 
           {{range $patch.PatchFiles}}
-            <div>
-              <div class="group-h patch-file" id="patch-{{$patch.ID}}-{{.NewName}}">
-                <a href="#patch-{{$patch.ID}}-{{.NewName}}" class="word-break-word">{{.NewName}}</a>
+            <details class="details-min" open="true">
+              <summary class="group-h patch-file" id="patch-{{$patch.ID}}-{{.NewName}}">
+                <span class="mono">{{.NewName}}</span>
+                <a href="#patch-{{$patch.ID}}-{{.NewName}}" class="word-break-word">link</a>
                 <div class="flex gap">
                   <code class="pill-success">+{{.Adds}}</code>
                   <code class="pill-admin">-{{.Dels}}</code>
                 </div>
-              </div>
+              </summary>
               <div>{{.DiffText}}</div>
-            </div>
+            </details>
           {{end}}
         </div>
         <hr class="my" />
