@@ -84,6 +84,10 @@ details {
     max-width: 100% !important;
   }
 
+  .patchset-list {
+    position: initial;
+  }
+
   body {
     padding-top: var(--line-height);
     padding-left: 0.5rem;
