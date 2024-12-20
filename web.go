@@ -706,8 +706,15 @@ func createPrDetail(page string) http.HandlerFunc {
 			return
 		}
 
-		repoNs := web.Backend.CreateRepoNs(user.Name, repo.Name)
-		url := fmt.Sprintf("/r/%s/%s", user.Name, repo.Name)
+		repoOwner, err := web.Pr.GetUserByID(repo.UserID)
+		if err != nil {
+			web.Logger.Error("cannot get repo for pr", "err", err)
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			return
+		}
+
+		repoNs := web.Backend.CreateRepoNs(repoOwner.Name, repo.Name)
+		url := fmt.Sprintf("/r/%s/%s", repoOwner.Name, repo.Name)
 		err = tmpl.Execute(w, PrDetailData{
 			Page: "pr",
 			Repo: LinkData{

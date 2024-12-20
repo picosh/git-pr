@@ -176,8 +176,7 @@ blockquote code {
   border: 1px solid var(--blockquote);
 }
 
-ul,
-ol {
+ul {
   padding: 0 0 0 var(--line-height);
   list-style-position: inside;
   list-style-type: square;
@@ -185,6 +184,16 @@ ol {
 }
 
 ul[style*="list-style-type: none;"] {
+  padding: 0;
+}
+
+ol {
+  padding: 0 0 0 var(--line-height);
+  list-style-type: decimal;
+  margin: var(--line-height) 0;
+}
+
+ol[style*="list-style-type: none;"] {
   padding: 0;
 }
 
@@ -200,10 +209,6 @@ li {
 
 li::marker {
   line-height: 0;
-}
-
-li > pre {
-  padding: 0;
 }
 
 footer {
@@ -225,6 +230,10 @@ dd:not(:last-child) {
 
 figure {
   margin: 0;
+}
+
+sup {
+  line-height: 0;
 }
 
 #toc {
@@ -369,6 +378,10 @@ figure {
 
 .flex-col {
   flex-direction: column;
+}
+
+.flex-wrap {
+  flex-wrap: wrap;
 }
 
 .items-center {

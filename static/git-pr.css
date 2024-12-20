@@ -74,6 +74,10 @@ details {
   padding: 0;
 }
 
+.chroma .gi {
+  font-weight: normal !important;
+}
+
 @media only screen and (max-width: 40em) {
   .collapse {
     flex-direction: column;
