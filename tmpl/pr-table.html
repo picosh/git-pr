@@ -24,6 +24,10 @@
         </td>
         <td><date>{{.Date}}</date></td>
       </tr>
+    {{else}}
+      <tr>
+        <td colspan="5">No patch requests found.</td>
+      </tr>
     {{end}}
   </tbody>
 </table>

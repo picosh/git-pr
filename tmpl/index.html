@@ -211,11 +211,23 @@ git rebase -i origin/main
 git push origin main
 
 # Done!
-```</pre>
+</pre>
   </details>
 </header>
 
 <main>
+  <div>
+    filter
+    <a href="/">all</a>
+    &middot;
+    <a href="/?status=open">open</a>
+    &middot;
+    <a href="/?status=reviewed">reviewed</a>
+    &middot;
+    <a href="/?status=accepted">accepted</a>
+    &middot;
+    <a href="/?status=closed">closed</a>
+  </div>
   {{template "pr-table" .Prs}}
 </main>
 
