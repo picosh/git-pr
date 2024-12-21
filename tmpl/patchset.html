@@ -7,7 +7,7 @@
       </h2>
 
       {{range $patch := .Patches}}
-        <div class="box group">
+      <div class="box{{if $patch.Review}}-review{{end}} group">
           <div>
             <h3 class="text-lg text-transform-none m-0 p-0 mb mono">
               {{if $patch.Review}}<code class="pill-review">REVIEW</code>{{end}}

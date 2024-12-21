@@ -587,6 +587,30 @@ func createPrDetail(page string) http.HandlerFunc {
 				return
 			}
 
+			// TODO: a little hacky
+			reviewIDs := []int64{}
+			for _, data := range patchsetsData {
+				if psID != data.ID {
+					continue
+				}
+				if !data.Patchset.Review {
+					continue
+				}
+
+				for _, rdiff := range data.RangeDiff {
+					if rdiff.Type == "add" {
+						for _, patch := range patches {
+							commSha := truncateSha(patch.CommitSha)
+							if strings.Contains(rdiff.Header, commSha) {
+								reviewIDs = append(reviewIDs, patch.ID)
+								break
+							}
+						}
+					}
+				}
+				break
+			}
+
 			for _, patch := range patches {
 				diffFiles, preamble, err := ParsePatch(patch.RawText)
 				if err != nil {
@@ -599,6 +623,15 @@ func createPrDetail(page string) http.HandlerFunc {
 					web.Logger.Error("cannot parse patch", "err", err)
 					w.WriteHeader(http.StatusUnprocessableEntity)
 					return
+				}
+
+				// highlight review
+				isReview := false
+				for _, pID := range reviewIDs {
+					if pID == patch.ID {
+						isReview = true
+						break
+					}
 				}
 
 				patchFiles := []*PatchFile{}
@@ -624,9 +657,6 @@ func createPrDetail(page string) http.HandlerFunc {
 						DiffText: template.HTML(diffStr),
 					})
 				}
-
-				// highlight review
-				isReview := false
 
 				timestamp := patch.AuthorDate.Format(web.Backend.Cfg.TimeFormat)
 				patchesData = append(patchesData, PatchData{
@@ -979,6 +1009,7 @@ func StartWebServer(cfg *GitCfg) {
 	formatter := formatterHtml.New(
 		formatterHtml.WithLineNumbers(true),
 		formatterHtml.WithClasses(true),
+		formatterHtml.WithLinkableLineNumbers(true, "gitpr"),
 	)
 	web := &WebCtx{
 		Pr:        prCmd,
