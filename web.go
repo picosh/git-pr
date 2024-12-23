@@ -159,6 +159,9 @@ func createPrDataSorter(sort, sortDir string) func(a, b *PrListData) int {
 func getPrTableData(web *WebCtx, prs []*PatchRequest, query url.Values) ([]*PrListData, error) {
 	prdata := []*PrListData{}
 	status := strings.ToLower(query.Get("status"))
+	if status == "" {
+		status = "open"
+	}
 	username := strings.ToLower(query.Get("user"))
 	title := strings.ToLower(query.Get("title"))
 	sort := strings.ToLower(query.Get("sort"))
