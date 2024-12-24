@@ -25,6 +25,16 @@ ssh {{.MetaData.URL}} pr ls {{.Username}}/{{.Name}}</pre>
 </header>
 
 <main class="group">
+  <div>
+    filter
+    <a href="/r/{{.Username}}/{{.Name}}">open</a>
+    &middot;
+    <a href="/r/{{.Username}}/{{.Name}}?status=reviewed">reviewed</a>
+    &middot;
+    <a href="/r/{{.Username}}/{{.Name}}?status=accepted">accepted</a>
+    &middot;
+    <a href="/r/{{.Username}}/{{.Name}}?status=closed">closed</a>
+  </div>
   {{template "pr-table" .Prs}}
 </main>
 

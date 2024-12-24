@@ -583,7 +583,7 @@ func createPrDetail(page string) http.HandlerFunc {
 				RangeDiff: rangeDiff,
 			}
 			patchsetsData = append(patchsetsData, data)
-			if ps.ID == patchset.ID {
+			if ps != nil && ps.ID == patchset.ID {
 				selectedPatchsetData = &data
 			}
 		}
