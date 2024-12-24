@@ -78,6 +78,14 @@ details {
   font-weight: normal !important;
 }
 
+.interdiff summary {
+  margin: 0 !important;
+}
+
+.interdiff pre {
+  overflow-x: scroll;
+}
+
 @media only screen and (max-width: 40em) {
   .collapse {
     flex-direction: column;

@@ -70,17 +70,20 @@
               </code>
             </div>
             {{- if .Diff -}}
-            <pre>
-              {{- range .Diff -}}
-                {{- if eq .Type -1 -}}
-                  <span style="color: tomato;">{{.Text}}</span>
-                {{- else if eq .Type 1 -}}
-                  <span style="color: limegreen;">{{.Text}}</span>
-                {{- else -}}
-                  <span>{{.Text}}</span>
+            <details class="interdiff">
+              <summary class="text-sm">Summary</summary>
+            <div><pre>
+                {{- range .Diff -}}
+                  {{- if eq .Type -1 -}}
+                    <span style="color: tomato;">{{.Text}}</span>
+                  {{- else if eq .Type 1 -}}
+                    <span style="color: limegreen;">{{.Text}}</span>
+                  {{- else -}}
+                    <span>{{.Text}}</span>
+                  {{- end -}}
                 {{- end -}}
-              {{- end -}}
-            </pre>
+            </pre></div>
+            </details>
             {{- end -}}
           {{- end -}}
           </div>

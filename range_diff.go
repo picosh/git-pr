@@ -3,6 +3,7 @@ package git
 import (
 	"fmt"
 	"math"
+	"sort"
 
 	ha "github.com/oddg/hungarian-algorithm"
 	"github.com/sergi/go-diff/diffmatchpatch"
@@ -32,6 +33,7 @@ func NewPatchRange(patch *Patch) *PatchRange {
 
 type RangeDiffOutput struct {
 	Header string
+	Order  int
 	Diff   []diffmatchpatch.Diff
 	Type   string
 }
@@ -45,6 +47,7 @@ func output(a []*PatchRange, b []*PatchRange) []*RangeDiffOutput {
 				&RangeDiffOutput{
 					Header: outputPairHeader(patchA, nil, i+1, -1),
 					Type:   "rm",
+					Order:  i + 1,
 				},
 			)
 		}
@@ -57,6 +60,7 @@ func output(a []*PatchRange, b []*PatchRange) []*RangeDiffOutput {
 				&RangeDiffOutput{
 					Header: outputPairHeader(nil, patchB, -1, j+1),
 					Type:   "add",
+					Order:  j + 1,
 				},
 			)
 			continue
@@ -68,6 +72,7 @@ func output(a []*PatchRange, b []*PatchRange) []*RangeDiffOutput {
 				&RangeDiffOutput{
 					Header: outputPairHeader(patchA, patchB, patchB.Matching+1, patchA.Matching+1),
 					Type:   "equal",
+					Order:  patchA.Matching + 1,
 				},
 			)
 		} else {
@@ -80,6 +85,7 @@ func output(a []*PatchRange, b []*PatchRange) []*RangeDiffOutput {
 			outputs = append(
 				outputs,
 				&RangeDiffOutput{
+					Order:  patchA.Matching + 1,
 					Header: header,
 					Diff:   diff,
 					Type:   "diff",
@@ -87,6 +93,9 @@ func output(a []*PatchRange, b []*PatchRange) []*RangeDiffOutput {
 			)
 		}
 	}
+	sort.Slice(outputs, func(i, j int) bool {
+		return outputs[i].Order < outputs[j].Order
+	})
 	return outputs
 }
 
