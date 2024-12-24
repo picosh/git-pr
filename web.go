@@ -83,6 +83,7 @@ func getTemplate(file string) *template.Template {
 			filepath.Join("tmpl", file),
 			filepath.Join("tmpl", "user-pill.html"),
 			filepath.Join("tmpl", "patchset.html"),
+			filepath.Join("tmpl", "range-diff.html"),
 			filepath.Join("tmpl", "pr-header.html"),
 			filepath.Join("tmpl", "pr-list-item.html"),
 			filepath.Join("tmpl", "pr-table.html"),
@@ -472,14 +473,16 @@ type PatchsetData struct {
 }
 
 type PrDetailData struct {
-	Page      string
-	Repo      LinkData
-	Pr        PrData
-	Patchset  *Patchset
-	Patches   []PatchData
-	Branch    string
-	Logs      []EventLogData
-	Patchsets []PatchsetData
+	Page         string
+	Repo         LinkData
+	Pr           PrData
+	Patchset     *Patchset
+	PatchsetData *PatchsetData
+	Patches      []PatchData
+	Branch       string
+	Logs         []EventLogData
+	Patchsets    []PatchsetData
+	IsRangeDiff  bool
 	MetaData
 }
 
@@ -507,7 +510,7 @@ func createPrDetail(page string) http.HandlerFunc {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-		} else if page == "ps" {
+		} else if page == "ps" || page == "rd" {
 			ps, err = web.Pr.GetPatchsetByID(int64(prID))
 			if err != nil {
 				web.Pr.Backend.Logger.Error("cannot get patchset", "err", err)
@@ -532,6 +535,7 @@ func createPrDetail(page string) http.HandlerFunc {
 
 		// get patchsets and diff from previous patchset
 		patchsetsData := []PatchsetData{}
+		var selectedPatchsetData *PatchsetData
 		for idx, patchset := range patchsets {
 			user, err := web.Pr.GetUserByID(patchset.UserID)
 			if err != nil {
@@ -565,7 +569,7 @@ func createPrDetail(page string) http.HandlerFunc {
 				ps = patchset
 			}
 
-			patchsetsData = append(patchsetsData, PatchsetData{
+			data := PatchsetData{
 				Patchset:    patchset,
 				FormattedID: getFormattedPatchsetID(patchset.ID),
 				UserData: UserData{
@@ -577,7 +581,11 @@ func createPrDetail(page string) http.HandlerFunc {
 				},
 				Date:      patchset.CreatedAt.Format(time.RFC3339),
 				RangeDiff: rangeDiff,
-			})
+			}
+			patchsetsData = append(patchsetsData, data)
+			if ps.ID == patchset.ID {
+				selectedPatchsetData = &data
+			}
 		}
 
 		patchesData := []PatchData{}
@@ -754,11 +762,13 @@ func createPrDetail(page string) http.HandlerFunc {
 				Url:  template.URL(url),
 				Text: repoNs,
 			},
-			Branch:    "main",
-			Patchset:  ps,
-			Patches:   patchesData,
-			Patchsets: patchsetsData,
-			Logs:      logData,
+			Branch:       "main",
+			Patchset:     ps,
+			PatchsetData: selectedPatchsetData,
+			IsRangeDiff:  page == "rd",
+			Patches:      patchesData,
+			Patchsets:    patchsetsData,
+			Logs:         logData,
 			Pr: PrData{
 				ID: pr.ID,
 				UserData: UserData{
@@ -1030,6 +1040,7 @@ func StartWebServer(cfg *GitCfg) {
 	http.HandleFunc("GET /prs/{id}", ctxMdw(ctx, createPrDetail("pr")))
 	http.HandleFunc("GET /prs/{id}/rss", ctxMdw(ctx, rssHandler))
 	http.HandleFunc("GET /ps/{id}", ctxMdw(ctx, createPrDetail("ps")))
+	http.HandleFunc("GET /rd/{id}", ctxMdw(ctx, createPrDetail("rd")))
 	http.HandleFunc("GET /r/{user}/{repo}/rss", ctxMdw(ctx, rssHandler))
 	http.HandleFunc("GET /r/{user}/{repo}", ctxMdw(ctx, repoDetailHandler))
 	http.HandleFunc("GET /r/{user}", ctxMdw(ctx, userDetailHandler))

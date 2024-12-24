@@ -61,7 +61,7 @@
       {{range .Patchsets}}
         {{if .RangeDiff}}
         <details>
-          <summary class="text-sm">Range Diff ↕</summary>
+          <summary class="text-sm">Range Diff ↕ <code><a href="/rd/{{.ID}}">rd-{{.ID}}</a></code></summary>
           <div class="group">
           {{- range .RangeDiff -}}
             <div>
@@ -69,22 +69,6 @@
                 {{.Header}}
               </code>
             </div>
-            {{- if .Diff -}}
-            <details class="interdiff">
-              <summary class="text-sm">Summary</summary>
-            <div><pre>
-                {{- range .Diff -}}
-                  {{- if eq .Type -1 -}}
-                    <span style="color: tomato;">{{.Text}}</span>
-                  {{- else if eq .Type 1 -}}
-                    <span style="color: limegreen;">{{.Text}}</span>
-                  {{- else -}}
-                    <span>{{.Text}}</span>
-                  {{- end -}}
-                {{- end -}}
-            </pre></div>
-            </details>
-            {{- end -}}
           {{- end -}}
           </div>
         </details>
@@ -106,6 +90,10 @@
 
   <hr class="w-full" />
 
-  {{template "patchset" .}}
+  {{if .IsRangeDiff}}
+    {{template "range-diff" .}}
+  {{else}}
+    {{template "patchset" .}}
+  {{end}}
 </main>
 {{end}}

@@ -1,0 +1,50 @@
+{{define "range-diff"}}
+<div class="group">
+  <div class="flex gap-2 collapse">
+    <div class="group patchset-list" style="width: 350px;">
+      <h2 class="text-xl mt">
+        Range-diff <code>rd-{{.Patchset.ID}}</code>
+      </h2>
+
+      {{range $diff := .PatchsetData.RangeDiff}}
+        <div>
+          <a href="#{{$diff.Header}}">{{$diff.Header}}</a>
+        </div>
+      {{else}}
+      <div class="box">
+        No range diff found for patchset. 
+      </div>
+      {{end}}
+
+      <div><a href="#top">Back to top</a></div>
+    </div>
+
+    <div class="max-w flex-1">
+      <div class="group">
+        {{range .PatchsetData.RangeDiff}}
+          <div class="group" id="{{.Header}}">
+            <div>
+              <code class='{{if eq .Type "rm"}}pill-admin{{else if eq .Type "add"}}pill-success{{else if eq .Type "diff"}}pill-review{{end}}'>
+                {{.Header}}
+              </code>
+            </div>
+            {{- if .Diff -}}
+              <pre>{{- range .Diff -}}
+                {{- if eq .Type -1 -}}
+                  <span style="color: tomato;">{{.Text}}</span>
+                {{- else if eq .Type 1 -}}
+                  <span style="color: limegreen;">{{.Text}}</span>
+                {{- else -}}
+                  <span>{{.Text}}</span>
+                {{- end -}}
+              {{- end -}}</pre>
+            {{- end -}}
+          </div>
+        {{- end -}}
+      </div>
+
+      <hr class="my" />
+    </div>
+  </div>
+</div>
+{{end}}
