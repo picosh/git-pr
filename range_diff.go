@@ -32,7 +32,7 @@ func NewPatchRange(patch *Patch) *PatchRange {
 }
 
 type RangeDiffOutput struct {
-	Header string
+	Header *RangeDiffHeader
 	Order  int
 	Diff   []diffmatchpatch.Diff
 	Type   string
@@ -42,10 +42,11 @@ func output(a []*PatchRange, b []*PatchRange) []*RangeDiffOutput {
 	outputs := []*RangeDiffOutput{}
 	for i, patchA := range a {
 		if patchA.Matching == -1 {
+			hdr := NewRangeDiffHeader(patchA, nil, i+1, -1)
 			outputs = append(
 				outputs,
 				&RangeDiffOutput{
-					Header: outputPairHeader(patchA, nil, i+1, -1),
+					Header: hdr,
 					Type:   "rm",
 					Order:  i + 1,
 				},
@@ -55,10 +56,11 @@ func output(a []*PatchRange, b []*PatchRange) []*RangeDiffOutput {
 
 	for j, patchB := range b {
 		if patchB.Matching == -1 {
+			hdr := NewRangeDiffHeader(nil, patchB, -1, j+1)
 			outputs = append(
 				outputs,
 				&RangeDiffOutput{
-					Header: outputPairHeader(nil, patchB, -1, j+1),
+					Header: hdr,
 					Type:   "add",
 					Order:  j + 1,
 				},
@@ -67,26 +69,23 @@ func output(a []*PatchRange, b []*PatchRange) []*RangeDiffOutput {
 		}
 		patchA := a[patchB.Matching]
 		if patchB.ContentSha == patchA.ContentSha {
+			hdr := NewRangeDiffHeader(patchA, patchB, patchB.Matching+1, patchA.Matching+1)
 			outputs = append(
 				outputs,
 				&RangeDiffOutput{
-					Header: outputPairHeader(patchA, patchB, patchB.Matching+1, patchA.Matching+1),
+					Header: hdr,
 					Type:   "equal",
 					Order:  patchA.Matching + 1,
 				},
 			)
 		} else {
-			header := fmt.Sprintf(
-				"%d:  %s ! %d:  %s %s",
-				patchA.Matching+1, truncateSha(patchA.CommitSha),
-				patchB.Matching+1, truncateSha(patchB.CommitSha), patchB.Title,
-			)
+			hdr := NewRangeDiffHeader(patchA, patchB, patchB.Matching+1, patchA.Matching+1)
 			diff := outputDiff(patchA, patchB)
 			outputs = append(
 				outputs,
 				&RangeDiffOutput{
 					Order:  patchA.Matching + 1,
-					Header: header,
+					Header: hdr,
 					Diff:   diff,
 					Type:   "diff",
 				},
@@ -132,14 +131,67 @@ func outputDiff(patchA, patchB *PatchRange) []diffmatchpatch.Diff {
 	return diffs
 }
 
-func outputPairHeader(a *PatchRange, b *PatchRange, aIndex, bIndex int) string {
+// RangeDiffHeader is a header combining old and new change pairs.
+type RangeDiffHeader struct {
+	OldIdx       int
+	OldSha       string
+	NewIdx       int
+	NewSha       string
+	Title        string
+	ContentEqual bool
+}
+
+func NewRangeDiffHeader(a *PatchRange, b *PatchRange, aIndex, bIndex int) *RangeDiffHeader {
+	hdr := &RangeDiffHeader{}
 	if a == nil {
-		return fmt.Sprintf("-:  ------- > %d:  %s %s\n", bIndex, truncateSha(b.CommitSha), b.Title)
+		hdr.NewIdx = bIndex
+		hdr.NewSha = b.CommitSha
+		hdr.Title = b.Title
+		return hdr
 	}
 	if b == nil {
-		return fmt.Sprintf("%d:  %s < -:  ------- %s\n", aIndex, truncateSha(a.CommitSha), a.Title)
+		hdr.OldIdx = aIndex
+		hdr.OldSha = a.CommitSha
+		hdr.Title = a.Title
+		return hdr
 	}
-	return fmt.Sprintf("%d:  %s = %d:  %s %s\n", aIndex, truncateSha(a.CommitSha), bIndex, truncateSha(b.CommitSha), a.Title)
+
+	hdr.OldIdx = aIndex
+	hdr.NewIdx = bIndex
+	hdr.OldSha = a.CommitSha
+	hdr.NewSha = b.CommitSha
+
+	if a.ContentSha == b.ContentSha {
+		hdr.Title = a.Title
+		hdr.ContentEqual = true
+	} else {
+		hdr.Title = b.Title
+	}
+
+	return hdr
+}
+
+func (hdr *RangeDiffHeader) String() string {
+	if hdr.OldIdx == 0 {
+		return fmt.Sprintf("-:  ------- > %d:  %s %s\n", hdr.NewIdx, truncateSha(hdr.NewSha), hdr.Title)
+	}
+	if hdr.NewIdx == 0 {
+		return fmt.Sprintf("%d:  %s < -:  ------- %s\n", hdr.OldIdx, truncateSha(hdr.OldSha), hdr.Title)
+	}
+	if hdr.ContentEqual {
+		return fmt.Sprintf(
+			"%d:  %s = %d:  %s %s\n",
+			hdr.OldIdx, truncateSha(hdr.OldSha),
+			hdr.NewIdx, truncateSha(hdr.NewSha),
+			hdr.Title,
+		)
+	}
+	return fmt.Sprintf(
+		"%d:  %s ! %d:  %s %s",
+		hdr.OldIdx, truncateSha(hdr.OldSha),
+		hdr.NewIdx, truncateSha(hdr.NewSha),
+		hdr.Title,
+	)
 }
 
 func RangeDiff(a []*Patch, b []*Patch) []*RangeDiffOutput {
@@ -159,7 +211,7 @@ func RangeDiff(a []*Patch, b []*Patch) []*RangeDiffOutput {
 func RangeDiffToStr(diffs []*RangeDiffOutput) string {
 	output := ""
 	for _, diff := range diffs {
-		output += diff.Header
+		output += diff.Header.String()
 		for _, d := range diff.Diff {
 			switch d.Type {
 			case diffmatchpatch.DiffEqual:

@@ -612,7 +612,7 @@ func createPrDetail(page string) http.HandlerFunc {
 					if rdiff.Type == "add" {
 						for _, patch := range patches {
 							commSha := truncateSha(patch.CommitSha)
-							if strings.Contains(rdiff.Header, commSha) {
+							if strings.Contains(rdiff.Header.String(), commSha) {
 								reviewIDs = append(reviewIDs, patch.ID)
 								break
 							}
