@@ -8,7 +8,11 @@
 
       {{range $diff := .PatchsetData.RangeDiff}}
         <div>
-          <a href="#{{$diff.Header}}">{{$diff.Header}}</a>
+          <a href="#{{$diff.Header}}">
+            <code class='{{if eq $diff.Type "rm"}}pill-admin{{else if eq $diff.Type "add"}}pill-success{{else if eq $diff.Type "diff"}}pill-review{{end}}'>
+              {{$diff.Header}}
+            </code>
+          </a>
         </div>
       {{else}}
       <div class="box">
