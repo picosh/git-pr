@@ -7,12 +7,32 @@
       </h2>
 
       {{range $diff := .PatchsetData.RangeDiff}}
-        <div>
-          <a href="#{{$diff.Header}}">
-            <code class='{{if eq $diff.Type "rm"}}pill-admin{{else if eq $diff.Type "add"}}pill-success{{else if eq $diff.Type "diff"}}pill-review{{end}}'>
-              {{$diff.Header}}
-            </code>
-          </a>
+        <div class="box">
+          <dl>
+            <dt>title</dt>
+            <dd><a href="#{{$diff.Header.OldIdx}}-{{$diff.Header.NewIdx}}">{{$diff.Header.Title}}</a></dd>
+ 
+            <dt>description</dt>
+            <dd>
+              <code class='{{if eq $diff.Type "rm"}}pill-admin{{else if eq $diff.Type "add"}}pill-success{{else if eq $diff.Type "diff"}}pill-review{{end}}'>
+              {{if eq $diff.Header.NewSha ""}}
+                Patch removed
+              {{else if eq $diff.Header.OldSha ""}}
+                Patch added
+              {{else if $diff.Header.ContentEqual}}
+                Patch equal
+              {{else}}
+                Patch changed
+              {{end}}
+              </code>
+            </dd>
+
+            <dt>old #{{$diff.Header.OldIdx}}</dt>
+            <dd><code>{{sha $diff.Header.OldSha}}</code></dd>
+
+            <dt>new #{{$diff.Header.NewIdx}}</dt>
+            <dd><code>{{sha $diff.Header.NewSha}}</code></dd>
+          </dl>
         </div>
       {{else}}
       <div class="box">
@@ -26,7 +46,7 @@
     <div class="max-w flex-1">
       <div class="group">
         {{range .PatchsetData.RangeDiff}}
-          <div class="group" id="{{.Header}}">
+          <div class="group" id="{{.Header.OldIdx}}-{{.Header.NewIdx}}">
             <div>
               <code class='{{if eq .Type "rm"}}pill-admin{{else if eq .Type "add"}}pill-success{{else if eq .Type "diff"}}pill-review{{end}}'>
                 {{.Header}}

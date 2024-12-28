@@ -76,21 +76,31 @@ func ctxMdw(ctx context.Context, handler http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+func shaFn(sha string) string {
+	if sha == "" {
+		return "(none)"
+	}
+	return truncateSha(sha)
+}
+
 func getTemplate(file string) *template.Template {
-	tmpl := template.Must(
-		template.ParseFS(
-			tmplFS,
-			filepath.Join("tmpl", file),
-			filepath.Join("tmpl", "user-pill.html"),
-			filepath.Join("tmpl", "patchset.html"),
-			filepath.Join("tmpl", "range-diff.html"),
-			filepath.Join("tmpl", "pr-header.html"),
-			filepath.Join("tmpl", "pr-list-item.html"),
-			filepath.Join("tmpl", "pr-table.html"),
-			filepath.Join("tmpl", "pr-status.html"),
-			filepath.Join("tmpl", "base.html"),
-		),
+	tmpl, err := template.New("").Funcs(template.FuncMap{
+		"sha": shaFn,
+	}).ParseFS(
+		tmplFS,
+		filepath.Join("tmpl", file),
+		filepath.Join("tmpl", "user-pill.html"),
+		filepath.Join("tmpl", "patchset.html"),
+		filepath.Join("tmpl", "range-diff.html"),
+		filepath.Join("tmpl", "pr-header.html"),
+		filepath.Join("tmpl", "pr-list-item.html"),
+		filepath.Join("tmpl", "pr-table.html"),
+		filepath.Join("tmpl", "pr-status.html"),
+		filepath.Join("tmpl", "base.html"),
 	)
+	if err != nil {
+		panic(err)
+	}
 	return tmpl
 }
 
@@ -271,7 +281,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("content-type", "text/html")
 	tmpl := getTemplate("index.html")
-	err = tmpl.Execute(w, PrTableData{
+	err = tmpl.ExecuteTemplate(w, "base.html", PrTableData{
 		Prs: prdata,
 		MetaData: MetaData{
 			URL: web.Backend.Cfg.Url,
@@ -350,7 +360,7 @@ func userDetailHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("content-type", "text/html")
 	tmpl := getTemplate("user-detail.html")
-	err = tmpl.Execute(w, UserDetailData{
+	err = tmpl.ExecuteTemplate(w, "base.html", UserDetailData{
 		Prs: prdata,
 		UserData: UserData{
 			UserID:    user.ID,
@@ -418,7 +428,7 @@ func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("content-type", "text/html")
 	tmpl := getTemplate("repo-detail.html")
-	err = tmpl.Execute(w, RepoDetailData{
+	err = tmpl.ExecuteTemplate(w, "base.html", RepoDetailData{
 		Name:     repo.Name,
 		UserID:   user.ID,
 		Username: userName,
@@ -756,7 +766,7 @@ func createPrDetail(page string) http.HandlerFunc {
 
 		repoNs := web.Backend.CreateRepoNs(repoOwner.Name, repo.Name)
 		url := fmt.Sprintf("/r/%s/%s", repoOwner.Name, repo.Name)
-		err = tmpl.Execute(w, PrDetailData{
+		err = tmpl.ExecuteTemplate(w, "pr-detail.html", PrDetailData{
 			Page: "pr",
 			Repo: LinkData{
 				Url:  template.URL(url),
