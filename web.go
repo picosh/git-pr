@@ -281,7 +281,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("content-type", "text/html")
 	tmpl := getTemplate("index.html")
-	err = tmpl.ExecuteTemplate(w, "base.html", PrTableData{
+	err = tmpl.ExecuteTemplate(w, "index.html", PrTableData{
 		Prs: prdata,
 		MetaData: MetaData{
 			URL: web.Backend.Cfg.Url,
@@ -360,7 +360,7 @@ func userDetailHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("content-type", "text/html")
 	tmpl := getTemplate("user-detail.html")
-	err = tmpl.ExecuteTemplate(w, "base.html", UserDetailData{
+	err = tmpl.ExecuteTemplate(w, "user-detail.html", UserDetailData{
 		Prs: prdata,
 		UserData: UserData{
 			UserID:    user.ID,
@@ -428,7 +428,7 @@ func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("content-type", "text/html")
 	tmpl := getTemplate("repo-detail.html")
-	err = tmpl.ExecuteTemplate(w, "base.html", RepoDetailData{
+	err = tmpl.ExecuteTemplate(w, "repo-detail.html", RepoDetailData{
 		Name:     repo.Name,
 		UserID:   user.ID,
 		Username: userName,
