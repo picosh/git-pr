@@ -24,21 +24,13 @@
         {{template "user-pill" .UserData}}
         <span class="font-bold">
           {{if eq .Event "pr_created"}}
-            {{if eq $.Patchset.ID .Patchset.ID}}
-            created pr with <code>{{.FormattedPatchsetID}}</code>
-            {{else}}
             created pr with <a href="/ps/{{.Patchset.ID}}"><code>{{.FormattedPatchsetID}}</code></a>
-            {{end}}
           {{else if eq .Event "pr_patchset_added"}}
-            {{if eq $.Patchset.ID .Patchset.ID}}
-            added <code>{{.FormattedPatchsetID}}</code>
-            {{else}}
             added <a href="/ps/{{.Patchset.ID}}"><code>{{.FormattedPatchsetID}}</code></a>
-            {{end}}
           {{else if eq .Event "pr_patchset_deleted"}}
             deleted <code>{{.FormattedPatchsetID}}</code>
           {{else if eq .Event "pr_reviewed"}}
-            reviewed pr with <code class="pill-review">{{.FormattedPatchsetID}}</code>
+            reviewed pr with <a href="/ps/{{.Patchset.ID}}"><code class="pill-review">{{.FormattedPatchsetID}}</code></a>
           {{else if eq .Event "pr_patchset_replaced"}}
             replaced <code>{{.FormattedPatchsetID}}</code>
           {{else if eq .Event "pr_status_changed"}}
@@ -75,11 +67,7 @@
         {{end}}
 
         <div>
-          {{if eq .Patchset.ID $.Patchset.ID}}
-          <code class="{{if .Review}}pill-review{{end}}">{{.FormattedID}}</code>
-          {{else}}
           <a href="/ps/{{.Patchset.ID}}"><code class="{{if .Review}}pill-review{{end}}">{{.FormattedID}}</code></a>
-          {{end}}
           <span> by </span>
           {{template "user-pill" .UserData}}
           <span>on <date>{{.Date}}</date></span>

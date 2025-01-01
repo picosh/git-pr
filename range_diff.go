@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 
+	"github.com/bluekeyes/go-gitdiff/gitdiff"
 	ha "github.com/oddg/hungarian-algorithm"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
@@ -34,7 +36,7 @@ func NewPatchRange(patch *Patch) *PatchRange {
 type RangeDiffOutput struct {
 	Header *RangeDiffHeader
 	Order  int
-	Diff   []diffmatchpatch.Diff
+	Files  []*RangeDiffFile
 	Type   string
 }
 
@@ -86,7 +88,7 @@ func output(a []*PatchRange, b []*PatchRange) []*RangeDiffOutput {
 				&RangeDiffOutput{
 					Order:  patchA.Matching + 1,
 					Header: hdr,
-					Diff:   diff,
+					Files:  diff,
 					Type:   "diff",
 				},
 			)
@@ -98,32 +100,98 @@ func output(a []*PatchRange, b []*PatchRange) []*RangeDiffOutput {
 	return outputs
 }
 
-func DoDiff(src, dst string) []diffmatchpatch.Diff {
+type RangeDiffDiff struct {
+	OuterType string
+	InnerType string
+	Text      string
+}
+
+func toRangeDiffDiff(diff []diffmatchpatch.Diff) []RangeDiffDiff {
+	result := []RangeDiffDiff{}
+
+	for _, line := range diff {
+		outer := "equal"
+		switch line.Type {
+		case diffmatchpatch.DiffInsert:
+			outer = "insert"
+		case diffmatchpatch.DiffDelete:
+			outer = "delete"
+		}
+
+		fmtLine := strings.Split(line.Text, "\n")
+		for idx, ln := range fmtLine {
+			text := ln
+			if idx < len(fmtLine)-1 {
+				text = ln + "\n"
+			}
+			st := RangeDiffDiff{
+				Text:      text,
+				OuterType: outer,
+				InnerType: "equal",
+			}
+
+			if strings.HasPrefix(text, "+") {
+				st.InnerType = "insert"
+			} else if strings.HasPrefix(text, "-") {
+				st.InnerType = "delete"
+			}
+
+			result = append(result, st)
+		}
+	}
+
+	return result
+}
+
+func DoDiff(src, dst string) []RangeDiffDiff {
 	dmp := diffmatchpatch.New()
 	wSrc, wDst, warray := dmp.DiffLinesToChars(src, dst)
 	diffs := dmp.DiffMain(wSrc, wDst, false)
 	diffs = dmp.DiffCharsToLines(diffs, warray)
-	return diffs
+	return toRangeDiffDiff(diffs)
 }
 
-func outputDiff(patchA, patchB *PatchRange) []diffmatchpatch.Diff {
-	diffs := []diffmatchpatch.Diff{}
+type RangeDiffFile struct {
+	OldFile *gitdiff.File
+	NewFile *gitdiff.File
+	Diff    []RangeDiffDiff
+}
+
+func outputDiff(patchA, patchB *PatchRange) []*RangeDiffFile {
+	diffs := []*RangeDiffFile{}
 	for _, fileA := range patchA.Files {
 		for _, fileB := range patchB.Files {
 			if fileA.NewName == fileB.NewName {
-				strA := "\n@@ " + fileA.NewName + "\n"
+				strA := ""
 				for _, frag := range fileA.TextFragments {
 					for _, line := range frag.Lines {
 						strA += line.String()
 					}
 				}
-				strB := "\n@@ " + fileB.NewName + "\n"
+				strB := ""
 				for _, frag := range fileB.TextFragments {
 					for _, line := range frag.Lines {
 						strB += line.String()
 					}
 				}
-				diffs = append(diffs, DoDiff(strA, strB)...)
+				curDiff := DoDiff(strA, strB)
+				hasDiff := false
+				for _, dd := range curDiff {
+					if dd.OuterType != "equal" {
+						hasDiff = true
+						break
+					}
+				}
+				if !hasDiff {
+					continue
+				}
+				// curDiff := DoDiff(fileA.String(), fileB.String())
+				fp := &RangeDiffFile{
+					OldFile: fileA,
+					NewFile: fileB,
+					Diff:    curDiff,
+				}
+				diffs = append(diffs, fp)
 			}
 		}
 	}
@@ -212,14 +280,17 @@ func RangeDiffToStr(diffs []*RangeDiffOutput) string {
 	output := ""
 	for _, diff := range diffs {
 		output += diff.Header.String()
-		for _, d := range diff.Diff {
-			switch d.Type {
-			case diffmatchpatch.DiffEqual:
-				output += d.Text
-			case diffmatchpatch.DiffInsert:
-				output += d.Text
-			case diffmatchpatch.DiffDelete:
-				output += d.Text
+		for _, f := range diff.Files {
+			output += fmt.Sprintf("\n@@ %s\n", f.NewFile.NewName)
+			for _, d := range f.Diff {
+				switch d.OuterType {
+				case "equal":
+					output += d.Text
+				case "insert":
+					output += d.Text
+				case "delete":
+					output += d.Text
+				}
 			}
 		}
 	}

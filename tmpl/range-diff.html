@@ -53,27 +53,46 @@
               </code>
             </div>
 
-            <div class="group-h">
-              {{- if .Diff -}}
-                <pre>{{- range .Diff -}}
-                  {{- if eq .Type -1 -}}
-                    <span style="color: tomato;">{{.Text}}</span>
-                  {{- else -}}
-                    <span>{{.Text}}</span>
-                  {{- end -}}
-                {{- end -}}</pre>
-              {{- end -}}
+            <div>
+              {{- if .Files -}}
+                {{range .Files}}
+                  <div class="flex gap">
+                    <div class="flex-1" style="width: 48%;">
+                      <div>{{.OldFile.NewName}}</div>
+                      <pre>{{- range .Diff -}}
+                        {{- if eq .InnerType "insert" -}}
+                          <span style="color: limegreen;">{{.Text}}</span>
+                        {{- else if eq .InnerType "delete" -}}
+                          <span style="color: tomato;">{{.Text}}</span>
+                        {{- else if eq .OuterType "delete" -}}
+                          <span style="background-color: tomato;">{{.Text}}</span>
+                        {{- else if eq .OuterType "insert" -}}
+                        {{- else -}}
+                          <span>{{.Text}}</span>
+                        {{- end -}}
+                      {{- end -}}</pre>
+                    </div>
 
-              {{- if .Diff -}}
-                <pre>{{- range .Diff -}}
-                  {{- if eq .Type 1 -}}
-                    <span style="color: limegreen;">{{.Text}}</span>
-                  {{- else -}}
-                    <span>{{.Text}}</span>
-                  {{- end -}}
-                {{- end -}}</pre>
+                    <div class="flex-1" style="width: 48%;">
+                      <div>{{.NewFile.NewName}}</div>
+                      <pre>{{- range .Diff -}}
+                        {{- if eq .InnerType "insert" -}}
+                          <span style="color: limegreen;">{{.Text}}</span>
+                        {{- else if eq .InnerType "delete" -}}
+                          <span style="color: tomato;">{{.Text}}</span>
+                        {{- else if eq .OuterType "insert" -}}
+                          <span style="background-color: limegreen;">{{.Text}}</span>
+                        {{- else if eq .OuterType "delete" -}}
+                        {{- else -}}
+                          <span>{{.Text}}</span>
+                        {{- end -}}
+                      {{- end -}}</pre>
+                    </div>
+                  </div>
+                {{end}}
               {{- end -}}
             </div>
+          </div>
         {{- end -}}
       </div>
 
