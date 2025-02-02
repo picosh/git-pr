@@ -6,6 +6,7 @@
       <th class="text-left">Status</th>
       <th class="text-left">User</th>
       <th class="text-left">Title</th>
+      <th class="text-left">Patchsets</th>
       <th class="text-left">Created At</th>
     </tr>
   </thead>
@@ -22,6 +23,7 @@
           <code>#{{.ID}}</code>
           <a href="{{.PrLink.Url}}">{{.PrLink.Text}}</a>
         </td>
+        <td><code>{{.NumPatchsets}}</code></td>
         <td><date>{{.Date}}</date></td>
       </tr>
     {{else}}

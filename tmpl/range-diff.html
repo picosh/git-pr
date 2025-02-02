@@ -47,7 +47,7 @@
       <div class="group">
         {{range .PatchsetData.RangeDiff}}
           <div id="{{.Header.OldIdx}}-{{.Header.NewIdx}}">
-            <div>
+            <div class="mb">
               <code class='{{if eq .Type "rm"}}pill-admin{{else if eq .Type "add"}}pill-success{{else if eq .Type "diff"}}pill-review{{end}}'>
                 {{.Header}}
               </code>
@@ -58,15 +58,18 @@
                 {{range .Files}}
                   <div class="flex gap">
                     <div class="flex-1" style="width: 48%;">
-                      <div>{{.OldFile.NewName}}</div>
-                      <pre>{{- range .Diff -}}
-                        {{- if eq .InnerType "insert" -}}
+                      <div>
+                        {{if .OldFile.OldName}}<code>{{.OldFile.OldName}}</code>{{end}}
+                        {{if .OldFile.NewName}}<code>{{.OldFile.NewName}}</code>{{end}}
+                      </div>
+                      <pre class="m-0">{{- range .Diff -}}
+                        {{- if eq .OuterType "delete" -}}
+                          <span style="background-color: tomato;">{{.Text}}</span>
+                        {{- else if eq .OuterType "insert" -}}
+                        {{- else if eq .InnerType "insert" -}}
                           <span style="color: limegreen;">{{.Text}}</span>
                         {{- else if eq .InnerType "delete" -}}
                           <span style="color: tomato;">{{.Text}}</span>
-                        {{- else if eq .OuterType "delete" -}}
-                          <span style="background-color: tomato;">{{.Text}}</span>
-                        {{- else if eq .OuterType "insert" -}}
                         {{- else -}}
                           <span>{{.Text}}</span>
                         {{- end -}}
@@ -74,15 +77,18 @@
                     </div>
 
                     <div class="flex-1" style="width: 48%;">
-                      <div>{{.NewFile.NewName}}</div>
-                      <pre>{{- range .Diff -}}
-                        {{- if eq .InnerType "insert" -}}
+                      <div>
+                        {{if .NewFile.OldName}}<code>{{.NewFile.OldName}}</code>{{end}}
+                        {{if .NewFile.NewName}}<code>{{.NewFile.NewName}}</code>{{end}}
+                      </div>
+                      <pre class="m-0">{{- range .Diff -}}
+                        {{- if eq .OuterType "insert" -}}
+                          <span style="background-color: limegreen;">{{.Text}}</span>
+                        {{- else if eq .OuterType "delete" -}}
+                        {{- else if eq .InnerType "insert" -}}
                           <span style="color: limegreen;">{{.Text}}</span>
                         {{- else if eq .InnerType "delete" -}}
                           <span style="color: tomato;">{{.Text}}</span>
-                        {{- else if eq .OuterType "insert" -}}
-                          <span style="background-color: limegreen;">{{.Text}}</span>
-                        {{- else if eq .OuterType "delete" -}}
                         {{- else -}}
                           <span>{{.Text}}</span>
                         {{- end -}}

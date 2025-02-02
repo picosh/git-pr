@@ -24,7 +24,11 @@
 
           {{range $patch.PatchFiles}}
             <div class="flex justify-between items-center">
+              {{if .NewName}}
               <a class="flex-1 word-break-word mono" href="#patch-{{$patch.ID}}-{{.NewName}}">{{.NewName}}</a>
+              {{else}}
+              <a class="flex-1 word-break-word mono" href="#patch-{{$patch.ID}}-{{.OldName}}">{{.OldName}}</a>
+              {{end}}
               <div class="flex gap">
                 <code class="pill-success">+{{.Adds}}</code>
                 <code class="pill-admin">-{{.Dels}}</code>
@@ -49,6 +53,7 @@
           {{if $patch.Body}}<pre class="w-full">{{$patch.Body}}</pre>{{end}}
 
           {{range $patch.PatchFiles}}
+            {{if .NewName}}
             <details class="details-min" open="true" id="patch-{{$patch.ID}}-{{.NewName}}">
               <summary class="group-h patch-file">
                 <span class="mono">{{.NewName}}</span>
@@ -60,6 +65,19 @@
               </summary>
               <div>{{.DiffText}}</div>
             </details>
+            {{else}}
+            <details class="details-min" open="true" id="patch-{{$patch.ID}}-{{.OldName}}">
+              <summary class="group-h patch-file">
+                <span class="mono">{{.OldName}}</span>
+                <a href="#patch-{{$patch.ID}}-{{.OldName}}" class="word-break-word">link</a>
+                <div class="flex gap">
+                  <code class="pill-success">+{{.Adds}}</code>
+                  <code class="pill-admin">-{{.Dels}}</code>
+                </div>
+              </summary>
+              <div>{{.DiffText}}</div>
+            </details>
+            {{end}}
           {{end}}
         </div>
         <hr class="my" />

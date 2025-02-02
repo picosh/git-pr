@@ -203,6 +203,12 @@ func getPrTableData(web *WebCtx, prs []*PatchRequest, query url.Values) ([]*PrLi
 			continue
 		}
 
+		ps, err := web.Pr.GetPatchsetsByPrID(curpr.ID)
+		if err != nil {
+			web.Logger.Error("cannot get patchsets for pr", "err", err)
+			continue
+		}
+
 		if hasFilter {
 			if status != "" {
 				if status != curpr.Status {
@@ -241,9 +247,10 @@ func getPrTableData(web *WebCtx, prs []*PatchRequest, query url.Values) ([]*PrLi
 				Url:  template.URL(fmt.Sprintf("/prs/%d", curpr.ID)),
 				Text: curpr.Name,
 			},
-			DateOrig: curpr.CreatedAt,
-			Date:     curpr.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
-			Status:   curpr.Status,
+			NumPatchsets: len(ps),
+			DateOrig:     curpr.CreatedAt,
+			Date:         curpr.CreatedAt.Format(web.Backend.Cfg.TimeFormat),
+			Status:       curpr.Status,
 		}
 		prdata = append(prdata, prls)
 	}
@@ -306,14 +313,15 @@ type MetaData struct {
 
 type PrListData struct {
 	UserData
-	RepoNs   string
-	RepoLink LinkData
-	PrLink   LinkData
-	Title    string
-	ID       int64
-	DateOrig time.Time
-	Date     string
-	Status   string
+	RepoNs       string
+	RepoLink     LinkData
+	PrLink       LinkData
+	Title        string
+	NumPatchsets int
+	ID           int64
+	DateOrig     time.Time
+	Date         string
+	Status       string
 }
 
 func userDetailHandler(w http.ResponseWriter, r *http.Request) {

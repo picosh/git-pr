@@ -159,9 +159,16 @@ type RangeDiffFile struct {
 
 func outputDiff(patchA, patchB *PatchRange) []*RangeDiffFile {
 	diffs := []*RangeDiffFile{}
+
 	for _, fileA := range patchA.Files {
+		found := false
 		for _, fileB := range patchB.Files {
 			if fileA.NewName == fileB.NewName {
+				found = true
+				// this means both files have been deleted so we should skip
+				if fileA.NewName == "" {
+					continue
+				}
 				strA := ""
 				for _, frag := range fileA.TextFragments {
 					for _, line := range frag.Lines {
@@ -185,7 +192,6 @@ func outputDiff(patchA, patchB *PatchRange) []*RangeDiffFile {
 				if !hasDiff {
 					continue
 				}
-				// curDiff := DoDiff(fileA.String(), fileB.String())
 				fp := &RangeDiffFile{
 					OldFile: fileA,
 					NewFile: fileB,
@@ -193,6 +199,48 @@ func outputDiff(patchA, patchB *PatchRange) []*RangeDiffFile {
 				}
 				diffs = append(diffs, fp)
 			}
+		}
+
+		// find files in patchA but not in patchB
+		if !found {
+			strA := ""
+			for _, frag := range fileA.TextFragments {
+				for _, line := range frag.Lines {
+					strA += line.String()
+				}
+			}
+			fp := &RangeDiffFile{
+				OldFile: fileA,
+				NewFile: nil,
+				Diff:    DoDiff(strA, ""),
+			}
+			diffs = append(diffs, fp)
+		}
+	}
+
+	// find files in patchB not in patchA
+	for _, fileB := range patchB.Files {
+		found := false
+		for _, fileA := range patchA.Files {
+			if fileA.NewName == fileB.NewName {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			strB := ""
+			for _, frag := range fileB.TextFragments {
+				for _, line := range frag.Lines {
+					strB += line.String()
+				}
+			}
+			fp := &RangeDiffFile{
+				OldFile: nil,
+				NewFile: fileB,
+				Diff:    DoDiff("", strB),
+			}
+			diffs = append(diffs, fp)
 		}
 	}
 
