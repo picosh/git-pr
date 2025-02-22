@@ -207,17 +207,13 @@ curl localhost:3000
 > This project is being actively developed and we have not reached alpha status
 > yet.
 
-1. User-provided template files
-1. Better diff algo between patchsets
-1. Generate event log summary as a cover letter?
+1. Commenting system (git notes?)
 1. Support a `diff` workflow (convert `git diff` into mbox patch format)
-1. More robust ACL rules (OR integrate with self-hosted git repos like gitolite)
-1. Pubsub system to send events
+1. Moderation tooling
 1. Adapter to statically generate web view
 
 ## ideas
 
 1. TUI?
-1. Officially support git remotes?
 1. PR build steps? (e.g. ci/cd, status checks, merge checks)
 1. Bulk modify PRs? (rsync, sftp, sshfs)
