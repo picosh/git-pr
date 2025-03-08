@@ -39,8 +39,10 @@ services:
       - "${GITPR_SSH_V6:-[::1]:22}:2222"
 networks:
   git:
+    enable_ipv6: true
     driver_opts:
       com.docker.network.bridge.name: pr
     ipam:
       config:
-        - subnet: 172.25.0.0/16
+        - subnet: 172.28.0.0/16
+        - subnet: fd00:dead:beef:28::/112
