@@ -35,7 +35,7 @@ ID RepoID           Name                       Status     Patchsets User        
 7  contributor/ai   feat: lets build an rnn    [accepted] 1         admin       
 6  contributor/test Closed patch with review   [closed]   2         contributor 
 5  contributor/test Accepted patch with review [accepted] 2         contributor 
-4  contributor/test Reviewed patch             [reviewed] 2         contributor 
+4  contributor/test Reviewed patch             [open]     2         contributor 
 3  contributor/test Closed patch (contributor) [closed]   1         contributor 
 2  contributor/test Closed patch (admin)       [closed]   1         contributor 
 1  admin/test       Accepted patch             [accepted] 1         contributor 

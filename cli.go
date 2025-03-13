@@ -369,10 +369,6 @@ Here's how it works:
 								Usage: "only show accepted PRs",
 							},
 							&cli.BoolFlag{
-								Name:  "reviewed",
-								Usage: "only show reviewed PRs",
-							},
-							&cli.BoolFlag{
 								Name:  "mine",
 								Usage: "only show your own PRs",
 							},
@@ -406,7 +402,6 @@ Here's how it works:
 							onlyOpen := cCtx.Bool("open")
 							onlyAccepted := cCtx.Bool("accepted")
 							onlyClosed := cCtx.Bool("closed")
-							onlyReviewed := cCtx.Bool("reviewed")
 							onlyMine := cCtx.Bool("mine")
 
 							writer := NewTabWriter(sesh)
@@ -421,10 +416,6 @@ Here's how it works:
 								}
 
 								if onlyOpen && req.Status != "open" {
-									continue
-								}
-
-								if onlyReviewed && req.Status != "reviewed" {
 									continue
 								}
 
@@ -846,7 +837,7 @@ Here's how it works:
 						Flags: []cli.Flag{
 							&cli.BoolFlag{
 								Name:  "review",
-								Usage: "submit patchset and mark PR as reviewed",
+								Usage: "submit patchset mark it as a review",
 							},
 							&cli.BoolFlag{
 								Name:  "accept",
@@ -898,8 +889,7 @@ Here's how it works:
 							op := OpNormal
 							nextStatus := "open"
 							if isReview {
-								wish.Println(sesh, "Marking PR as reviewed")
-								nextStatus = "reviewed"
+								wish.Println(sesh, "Marking patchset as a review")
 								op = OpReview
 							} else if isAccept {
 								wish.Println(sesh, "Marking PR as accepted")

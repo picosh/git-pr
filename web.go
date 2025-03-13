@@ -112,7 +112,6 @@ type LinkData struct {
 type PrTableData struct {
 	Prs         []*PrListData
 	NumOpen     int
-	NumReviewed int
 	NumAccepted int
 	NumClosed   int
 	MetaData
@@ -291,15 +290,12 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	numOpen := 0
-	numReviewed := 0
 	numAccepted := 0
 	numClosed := 0
 	for _, pr := range prs {
 		switch pr.Status {
 		case "open":
 			numOpen += 1
-		case "reviewed":
-			numReviewed += 1
 		case "accepted":
 			numAccepted += 1
 		case "closed":
@@ -311,7 +307,6 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	tmpl := getTemplate("index.html")
 	err = tmpl.ExecuteTemplate(w, "index.html", PrTableData{
 		NumOpen:     numOpen,
-		NumReviewed: numReviewed,
 		NumAccepted: numAccepted,
 		NumClosed:   numClosed,
 		Prs:         prdata,
