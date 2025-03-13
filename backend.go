@@ -105,9 +105,10 @@ func (be *Backend) IsPrOwner(pka, pkb int64) bool {
 }
 
 type PrAcl struct {
-	CanModify bool
-	CanReview bool
-	CanDelete bool
+	CanModify      bool
+	CanDelete      bool
+	CanReview      bool
+	CanAddPatchset bool
 }
 
 func (be *Backend) GetPatchRequestAcl(repo *Repo, prq *PatchRequest, requester *User) *PrAcl {
@@ -127,6 +128,7 @@ func (be *Backend) GetPatchRequestAcl(repo *Repo, prq *PatchRequest, requester *
 		acl.CanModify = true
 		acl.CanReview = true
 		acl.CanDelete = true
+		acl.CanAddPatchset = true
 		return acl
 	}
 
@@ -135,6 +137,7 @@ func (be *Backend) GetPatchRequestAcl(repo *Repo, prq *PatchRequest, requester *
 		acl.CanModify = true
 		acl.CanReview = true
 		acl.CanDelete = true
+		acl.CanAddPatchset = true
 		return acl
 	}
 
@@ -143,13 +146,16 @@ func (be *Backend) GetPatchRequestAcl(repo *Repo, prq *PatchRequest, requester *
 		acl.CanModify = true
 		acl.CanReview = false
 		acl.CanDelete = true
+		acl.CanAddPatchset = true
 		return acl
 	}
 
 	// otherwise no perms
 	acl.CanModify = false
-	acl.CanReview = false
 	acl.CanDelete = false
+	// anyone can review or add a patchset
+	acl.CanReview = true
+	acl.CanAddPatchset = true
 
 	return acl
 }

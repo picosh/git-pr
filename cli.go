@@ -887,7 +887,7 @@ Here's how it works:
 							}
 
 							acl := be.GetPatchRequestAcl(repo, prq, user)
-							if !acl.CanModify {
+							if !acl.CanAddPatchset {
 								return fmt.Errorf("you are not authorized to add patchsets to pr")
 							}
 
