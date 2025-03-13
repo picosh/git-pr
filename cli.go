@@ -1,6 +1,7 @@
 package git
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -627,101 +628,126 @@ Here's how it works:
 						Name:      "accept",
 						Usage:     "Accept a PR",
 						Args:      true,
-						ArgsUsage: "[prID]",
+						ArgsUsage: "[prID], [prID]...",
 						Action: func(cCtx *cli.Context) error {
 							args := cCtx.Args()
 							if !args.Present() {
-								return fmt.Errorf("must provide a patch request ID")
+								return fmt.Errorf("must provide at least one patch request ID")
 							}
 
-							prID, err := strToInt(args.First())
-							if err != nil {
-								return err
+							prIDs := args.Tail()
+							prIDs = append(prIDs, args.First())
+
+							var errs error
+							for _, prIDStr := range prIDs {
+								prID, err := strToInt(prIDStr)
+								if err != nil {
+									wish.Errorln(sesh, err)
+									continue
+								}
+
+								prq, err := pr.GetPatchRequestByID(prID)
+								if err != nil {
+									return err
+								}
+
+								user, err := pr.UpsertUser(pubkey, userName)
+								if err != nil {
+									return err
+								}
+
+								repo, err := pr.GetRepoByID(prq.RepoID)
+								if err != nil {
+									return err
+								}
+
+								acl := be.GetPatchRequestAcl(repo, prq, user)
+								if !acl.CanReview {
+									return fmt.Errorf("you are not authorized to accept a PR")
+								}
+
+								if prq.Status == "accepted" {
+									return fmt.Errorf("PR has already been accepted")
+								}
+
+								err = pr.UpdatePatchRequestStatus(prID, user.ID, "accepted")
+								if err != nil {
+									return err
+								}
+								wish.Printf(sesh, "Accepted PR %s (#%d)\n", prq.Name, prq.ID)
+								err = prSummary(be, pr, sesh, prID)
+								if err != nil {
+									errs = errors.Join(errs, err)
+								}
+								wish.Printf(sesh, "\n\n")
 							}
 
-							prq, err := pr.GetPatchRequestByID(prID)
-							if err != nil {
-								return err
-							}
-
-							user, err := pr.UpsertUser(pubkey, userName)
-							if err != nil {
-								return err
-							}
-
-							repo, err := pr.GetRepoByID(prq.RepoID)
-							if err != nil {
-								return err
-							}
-
-							acl := be.GetPatchRequestAcl(repo, prq, user)
-							if !acl.CanReview {
-								return fmt.Errorf("you are not authorized to accept a PR")
-							}
-
-							if prq.Status == "accepted" {
-								return fmt.Errorf("PR has already been accepted")
-							}
-
-							err = pr.UpdatePatchRequestStatus(prID, user.ID, "accepted")
-							if err != nil {
-								return err
-							}
-							wish.Printf(sesh, "Accepted PR %s (#%d)\n", prq.Name, prq.ID)
-							return prSummary(be, pr, sesh, prID)
+							return errs
 						},
 					},
 					{
 						Name:      "close",
 						Usage:     "Close a PR",
 						Args:      true,
-						ArgsUsage: "[prID]",
+						ArgsUsage: "[prID], [prID]...",
 						Action: func(cCtx *cli.Context) error {
 							args := cCtx.Args()
 							if !args.Present() {
 								return fmt.Errorf("must provide a patch request ID")
 							}
 
-							prID, err := strToInt(args.First())
-							if err != nil {
-								return err
-							}
+							prIDs := args.Tail()
+							prIDs = append(prIDs, args.First())
 
-							prq, err := pr.GetPatchRequestByID(prID)
-							if err != nil {
-								return err
-							}
+							var errs error
+							for _, prIDStr := range prIDs {
+								prID, err := strToInt(prIDStr)
+								if err != nil {
+									wish.Errorln(sesh, err)
+									continue
+								}
 
-							patchUser, err := pr.GetUserByID(prq.UserID)
-							if err != nil {
-								return err
-							}
+								prq, err := pr.GetPatchRequestByID(prID)
+								if err != nil {
+									return err
+								}
 
-							repo, err := pr.GetRepoByID(prq.RepoID)
-							if err != nil {
-								return err
-							}
+								patchUser, err := pr.GetUserByID(prq.UserID)
+								if err != nil {
+									return err
+								}
 
-							acl := be.GetPatchRequestAcl(repo, prq, patchUser)
-							if !acl.CanModify {
-								return fmt.Errorf("you are not authorized to change PR status")
-							}
+								repo, err := pr.GetRepoByID(prq.RepoID)
+								if err != nil {
+									return err
+								}
 
-							if prq.Status == "closed" {
-								return fmt.Errorf("PR has already been closed")
-							}
+								acl := be.GetPatchRequestAcl(repo, prq, patchUser)
+								if !acl.CanModify {
+									return fmt.Errorf("you are not authorized to change PR status")
+								}
 
-							user, err := pr.UpsertUser(pubkey, userName)
-							if err != nil {
-								return err
-							}
+								if prq.Status == "closed" {
+									return fmt.Errorf("PR has already been closed")
+								}
 
-							err = pr.UpdatePatchRequestStatus(prID, user.ID, "closed")
-							if err != nil {
-								return err
+								user, err := pr.UpsertUser(pubkey, userName)
+								if err != nil {
+									return err
+								}
+
+								err = pr.UpdatePatchRequestStatus(prID, user.ID, "closed")
+								if err != nil {
+									return err
+								}
+								wish.Printf(sesh, "Closed PR %s (#%d)\n", prq.Name, prq.ID)
+								err = prSummary(be, pr, sesh, prID)
+								if err != nil {
+									errs = errors.Join(errs, err)
+								}
+								wish.Printf(sesh, "\n\n")
 							}
-							wish.Printf(sesh, "Closed PR %s (#%d)\n", prq.Name, prq.ID)
-							return prSummary(be, pr, sesh, prID)
+							return errs
 						},
 					},
 					{

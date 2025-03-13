@@ -109,6 +109,10 @@ type LinkData struct {
 	Text string
 }
 
+type BasicData struct {
+	MetaData
+}
+
 type PrTableData struct {
 	Prs         []*PrListData
 	NumOpen     int
@@ -266,6 +270,25 @@ func getPrTableData(web *WebCtx, prs []*PatchRequest, query url.Values) ([]*PrLi
 	}
 
 	return prdata, nil
+}
+
+func docsHandler(w http.ResponseWriter, r *http.Request) {
+	web, err := getWebCtx(r)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("content-type", "text/html")
+	tmpl := getTemplate("docs.html")
+	err = tmpl.ExecuteTemplate(w, "docs.html", BasicData{
+		MetaData: MetaData{
+			URL: web.Backend.Cfg.Url,
+		},
+	})
+	if err != nil {
+		web.Backend.Logger.Error("cannot execute template", "err", err)
+	}
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
@@ -1084,6 +1107,7 @@ func StartWebServer(cfg *GitCfg) {
 	http.HandleFunc("GET /r/{user}", ctxMdw(ctx, userDetailHandler))
 	http.HandleFunc("GET /rss/{user}", ctxMdw(ctx, rssHandler))
 	http.HandleFunc("GET /rss", ctxMdw(ctx, rssHandler))
+	http.HandleFunc("GET /docs", ctxMdw(ctx, docsHandler))
 	http.HandleFunc("GET /", ctxMdw(ctx, indexHandler))
 	http.HandleFunc("GET /syntax.css", ctxMdw(ctx, chromaStyleHandler))
 	embedFS, err := getEmbedFS(embedStaticFS, "static")
