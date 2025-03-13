@@ -148,8 +148,33 @@ func prSummary(be *Backend, pr GitPatchRequest, sesh ssh.Session, prID int64) er
 	return nil
 }
 
+func printPatchsetFromID(sesh ssh.Session, pr GitPatchRequest, psID int64) error {
+	patches, err := pr.GetPatchesByPatchsetID(psID)
+	if err != nil {
+		return err
+	}
+	printPatches(sesh, patches)
+	return nil
+}
+
+func printPatchsetFromPrID(sesh ssh.Session, pr GitPatchRequest, prID int64) error {
+	patchsets, err := pr.GetPatchsetsByPrID(prID)
+	if err != nil {
+		return err
+	}
+	ps := patchsets[len(patchsets)-1]
+	patches, err := pr.GetPatchesByPatchsetID(ps.ID)
+	if err != nil {
+		return err
+	}
+
+	printPatches(sesh, patches)
+	return nil
+}
+
 func NewCli(sesh ssh.Session, be *Backend, pr GitPatchRequest) *cli.App {
-	desc := `Patch requests (PR) are the simplest way to submit, review, and accept changes to your git repository.
+	desc := `Patchbin: a supercharged pastebin for git collaboration.
+
 Here's how it works:
 	- External contributor clones repo (git-clone)
 	- External contributor makes a code change (git-add & git-commit)
@@ -348,6 +373,35 @@ Here's how it works:
 				},
 			},
 			{
+				Name:      "print",
+				Usage:     "Print patches in a patchset",
+				Args:      true,
+				ArgsUsage: "[pr-X] or [ps-X]",
+				Action: func(cCtx *cli.Context) error {
+					args := cCtx.Args()
+					raw := args.First()
+					split := strings.Split(raw, "-")
+					if len(split) < 2 {
+						return fmt.Errorf("must provide ID in format: pr-X, ps-X")
+					}
+
+					prefix := split[0]
+					id, err := strToInt(split[1])
+					if err != nil {
+						return err
+					}
+
+					switch prefix {
+					case "pr":
+						err = printPatchsetFromPrID(sesh, pr, id)
+					case "ps":
+						err = printPatchsetFromID(sesh, pr, id)
+					}
+
+					return err
+				},
+			},
+			{
 				Name:  "pr",
 				Usage: "Manage Patch Requests (PR)",
 				Subcommands: []*cli.Command{
@@ -520,90 +574,6 @@ Here's how it works:
 							)
 
 							return prSummary(be, pr, sesh, prq.ID)
-						},
-					},
-					{
-						Name:      "diff",
-						Usage:     "Print a diff between the last two patchsets in a PR",
-						Args:      true,
-						ArgsUsage: "[prID]",
-						Action: func(cCtx *cli.Context) error {
-							args := cCtx.Args()
-							if !args.Present() {
-								return fmt.Errorf("must provide a patch request ID")
-							}
-
-							prID, err := strToInt(args.First())
-							if err != nil {
-								return err
-							}
-
-							patchsets, err := pr.GetPatchsetsByPrID(prID)
-							if err != nil {
-								be.Logger.Error("cannot get latest patchset", "err", err)
-								return err
-							}
-
-							if len(patchsets) == 0 {
-								return fmt.Errorf("no patchsets found for pr: %d", prID)
-							}
-
-							latest := patchsets[len(patchsets)-1]
-							var prev *Patchset
-							if len(patchsets) > 1 {
-								prev = patchsets[len(patchsets)-2]
-							}
-
-							rangeDiff, err := pr.DiffPatchsets(prev, latest)
-							if err != nil {
-								be.Logger.Error("could not diff patchset", "err", err)
-								return err
-							}
-
-							wish.Println(sesh, RangeDiffToStr(rangeDiff))
-							return nil
-						},
-					},
-					{
-						Name:      "print",
-						Usage:     "Print the patches for a PR",
-						Args:      true,
-						ArgsUsage: "[prID]",
-						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name:    "patchset",
-								Usage:   "Provide patchset ID to print a specific patchset (`patchset-xxx`, default is latest)",
-								Aliases: []string{"ps"},
-							},
-						},
-						Action: func(cCtx *cli.Context) error {
-							args := cCtx.Args()
-							if !args.Present() {
-								return fmt.Errorf("must provide a patch request ID")
-							}
-
-							prID, err := strToInt(args.First())
-							if err != nil {
-								return err
-							}
-
-							patchsets, err := pr.GetPatchsetsByPrID(prID)
-							if err != nil {
-								return err
-							}
-
-							patchset, err := getPatchsetFromOpt(patchsets, cCtx.String("patchset"))
-							if err != nil {
-								return err
-							}
-
-							patches, err := pr.GetPatchesByPatchsetID(patchset.ID)
-							if err != nil {
-								return err
-							}
-
-							printPatches(sesh, patches)
-							return nil
 						},
 					},
 					{

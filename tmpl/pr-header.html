@@ -17,16 +17,14 @@
   <details>
     <summary>Help</summary>
     <div class="group">
+      <pre class="m-0"># checkout latest patchset
+ssh {{.MetaData.URL}} print pr-{{.Pr.ID}} | git am -3</pre>
+      <pre class="m-0"># checkout any patchset in a patch request
+ssh {{.MetaData.URL}} print ps-X | git am -3</pre>
       <pre class="m-0"># add changes to patch request
 git format-patch {{.Branch}} --stdout | ssh {{.MetaData.URL}} pr add {{.Pr.ID}}</pre>
       <pre class="m-0"># add review to patch request
 git format-patch {{.Branch}} --stdout | ssh {{.MetaData.URL}} pr add --review {{.Pr.ID}}</pre>
-      <pre class="m-0"># remove patchset
-ssh {{.MetaData.URL}} ps rm ps-x</pre>
-      <pre class="m-0"># checkout all patches
-ssh {{.MetaData.URL}} pr print {{.Pr.ID}} | git am -3</pre>
-      <pre class="m-0"># print a diff between the last two patches in a patch request
-ssh {{.MetaData.URL}} pr diff {{.Pr.ID}}</pre>
       <pre class="m-0"># accept PR
 ssh {{.MetaData.URL}} pr accept {{.Pr.ID}}</pre>
       <pre class="m-0"># close PR
