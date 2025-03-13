@@ -122,8 +122,23 @@ type PrTableData struct {
 }
 
 type UserDetailData struct {
-	Prs      []*PrListData
-	UserData UserData
+	Prs         []*PrListData
+	UserData    UserData
+	NumOpen     int
+	NumAccepted int
+	NumClosed   int
+	MetaData
+}
+
+type RepoDetailData struct {
+	Name        string
+	UserID      int64
+	Username    string
+	Branch      string
+	Prs         []*PrListData
+	NumOpen     int
+	NumAccepted int
+	NumClosed   int
 	MetaData
 }
 
@@ -409,10 +424,27 @@ func userDetailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	numOpen := 0
+	numAccepted := 0
+	numClosed := 0
+	for _, pr := range prs {
+		switch pr.Status {
+		case "open":
+			numOpen += 1
+		case "accepted":
+			numAccepted += 1
+		case "closed":
+			numClosed += 1
+		}
+	}
+
 	w.Header().Set("content-type", "text/html")
 	tmpl := getTemplate("user-detail.html")
 	err = tmpl.ExecuteTemplate(w, "user-detail.html", UserDetailData{
-		Prs: prdata,
+		Prs:         prdata,
+		NumOpen:     numOpen,
+		NumAccepted: numAccepted,
+		NumClosed:   numClosed,
 		UserData: UserData{
 			UserID:    user.ID,
 			Name:      user.Name,
@@ -427,15 +459,6 @@ func userDetailHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		web.Backend.Logger.Error("cannot execute template", "err", err)
 	}
-}
-
-type RepoDetailData struct {
-	Name     string
-	UserID   int64
-	Username string
-	Branch   string
-	Prs      []*PrListData
-	MetaData
 }
 
 func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
@@ -477,13 +500,30 @@ func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	numOpen := 0
+	numAccepted := 0
+	numClosed := 0
+	for _, pr := range prs {
+		switch pr.Status {
+		case "open":
+			numOpen += 1
+		case "accepted":
+			numAccepted += 1
+		case "closed":
+			numClosed += 1
+		}
+	}
+
 	w.Header().Set("content-type", "text/html")
 	tmpl := getTemplate("repo-detail.html")
 	err = tmpl.ExecuteTemplate(w, "repo-detail.html", RepoDetailData{
-		Name:     repo.Name,
-		UserID:   user.ID,
-		Username: userName,
-		Prs:      prdata,
+		Name:        repo.Name,
+		UserID:      user.ID,
+		Username:    userName,
+		Prs:         prdata,
+		NumOpen:     numOpen,
+		NumAccepted: numAccepted,
+		NumClosed:   numClosed,
 		MetaData: MetaData{
 			URL: web.Backend.Cfg.Url,
 		},

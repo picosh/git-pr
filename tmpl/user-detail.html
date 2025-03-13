@@ -26,11 +26,11 @@
 <main class="group">
   <div>
     filter
-    <a href="/r/{{.UserData.Name}}">open</a>
+    <a href="/">open</a> <code>{{.NumOpen}}</code>
     &middot;
-    <a href="/r/{{.UserData.Name}}?status=accepted">accepted</a>
+    <a href="/?status=accepted">accepted</a> <code>{{.NumAccepted}}</code>
     &middot;
-    <a href="/r/{{.UserData.Name}}?status=closed">closed</a>
+    <a href="/?status=closed">closed</a> <code>{{.NumClosed}}</code>
   </div>
   {{template "pr-table" .Prs}}
 </main>
