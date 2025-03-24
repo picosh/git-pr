@@ -41,7 +41,7 @@
       </p>
 
       <p>
-        The goal is not to create another code forge here. The goal is to create a very
+        The goal is not to create another code forge, the goal is to create a very
         simple self-hosted git solution with the ability to collaborate with external
         contributors. All the code owner needs to setup a running git server:
       </p>
@@ -56,6 +56,8 @@
         <li>An SSH keypair</li>
         <li>An SSH client</li>
       </ul>
+
+      <div>Then everyone subscribes to our RSS feeds to receive updates to patch requests.</div>
 
       <h2 class="text-xl">the problem</h2>
 
@@ -252,6 +254,29 @@ git push origin main
     <div>Want to submit a v2 of the patch request?</div>
 
     <pre>git format-patch main --stdout | ssh pr.pico.sh pr add {prID}</pre>
+  </details>
+
+  <details>
+    <summary>How do I receive notifications?</summary>
+
+    <div>
+      We have different RSS feeds depending on the use case.  This is how you
+      can receive notifications for when someone submits or reviews patch requests.
+    </div>
+  </details>
+
+  <details>
+    <summary>Alternative git collaboration systems</summary>
+
+    <div>
+      <ol>
+        <li><a href="https://gerritcodereview.com/">Gerrit</a></li>
+        <li><a href="https://we.phorge.it/">Phorge</a> (fork of Phabricator)</li>
+        <li><a href="https://graphite.dev/docs/cli-quick-start">Graphite</a></li>
+        <li><a href="https://codeapprove.com/">CodeApprove</a></li>
+        <li><a href="https://reviewable.io/">Reviewable</a></li>
+      </ol>
+    </div>
   </details>
 </main>
 

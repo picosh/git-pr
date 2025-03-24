@@ -15,7 +15,33 @@
     <span>A pastebin supercharged for git collaboration</span> &middot;
     <a href="/docs">docs</a>
   </div>
-  <pre class="m-0">ssh {{.MetaData.URL}} help</pre>
+
+  <div class="box-sm">
+    <div>
+      Welcome to <a href="https://pico.sh">pico's</a> managed patchbin service!
+      This is a <strong>public</strong> service that is free to anyone who wants
+      to collaborate on git patches.  The idea is simple: submit a patchset to
+      our service and let anyone collaborate on it by submitting follow-up patchsets.
+      Using this service for the first time?  Creating a patch request is simple:
+    </div>
+
+    <pre class="text-sm">git format-patch main --stdout | ssh pr.pico.sh pr create {repo}</pre>
+
+    <div>
+      When running that command we will automatically create a user and a repo
+      if one doesn't exist. Once the patches have been submitted you'll receive
+      a link that you can send to a reviewer.  Anyone can review patch requests.
+      Want to submit a v2 of the patch request?
+    </div>
+
+    <pre class="text-sm">git format-patch main --stdout | ssh pr.pico.sh pr add {prID}</pre>
+
+    <div>
+      Downloading a patchset is easy as well:
+    </div>
+
+    <pre class="text-sm">ssh pr.pico.sh print pr-{prID}</pre>
+  </div>
 </header>
 
 <main>
