@@ -11,4 +11,5 @@ time_format = "2006-01-02"
 #   admin: only admins
 #   user: admins and users
 create_repo = "user"
+# add a description box to the top of the index page, supports HTML
 desc = ""
