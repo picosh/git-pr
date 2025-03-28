@@ -17,18 +17,23 @@
   <details>
     <summary>Help</summary>
     <div class="group">
-      <pre class="m-0"># checkout latest patchset
-ssh {{.MetaData.URL}} print pr-{{.Pr.ID}} | git am -3</pre>
-      <pre class="m-0"># checkout any patchset in a patch request
-ssh {{.MetaData.URL}} print ps-X | git am -3</pre>
-      <pre class="m-0"># add changes to patch request
-git format-patch {{.Branch}} --stdout | ssh {{.MetaData.URL}} pr add {{.Pr.ID}}</pre>
-      <pre class="m-0"># add review to patch request
-git format-patch {{.Branch}} --stdout | ssh {{.MetaData.URL}} pr add --review {{.Pr.ID}}</pre>
-      <pre class="m-0"># accept PR
-ssh {{.MetaData.URL}} pr accept {{.Pr.ID}}</pre>
-      <pre class="m-0"># close PR
-ssh {{.MetaData.URL}} pr close {{.Pr.ID}}</pre>
+      checkout latest patchset:
+      <pre class="m-0">ssh {{.MetaData.URL}} print pr-{{.Pr.ID}} | git am -3</pre>
+
+      checkout any patchset in a patch request:
+      <pre class="m-0">ssh {{.MetaData.URL}} print ps-X | git am -3</pre>
+
+      add changes to patch request:
+      <pre class="m-0">git format-patch {{.Branch}} --stdout | ssh {{.MetaData.URL}} pr add {{.Pr.ID}}</pre>
+
+      add review to patch request:
+      <pre class="m-0">git format-patch {{.Branch}} --stdout | ssh {{.MetaData.URL}} pr add --review {{.Pr.ID}}</pre>
+
+      accept PR:
+      <pre class="m-0">ssh {{.MetaData.URL}} pr accept {{.Pr.ID}}</pre>
+
+      close PR:
+      <pre class="m-0">ssh {{.MetaData.URL}} pr close {{.Pr.ID}}</pre>
     </div>
   </details>
 </header>

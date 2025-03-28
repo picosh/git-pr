@@ -287,25 +287,6 @@ func getPrTableData(web *WebCtx, prs []*PatchRequest, query url.Values) ([]*PrLi
 	return prdata, nil
 }
 
-func docsHandler(w http.ResponseWriter, r *http.Request) {
-	web, err := getWebCtx(r)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("content-type", "text/html")
-	tmpl := getTemplate("docs.html")
-	err = tmpl.ExecuteTemplate(w, "docs.html", BasicData{
-		MetaData: MetaData{
-			URL: web.Backend.Cfg.Url,
-		},
-	})
-	if err != nil {
-		web.Backend.Logger.Error("cannot execute template", "err", err)
-	}
-}
-
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	web, err := getWebCtx(r)
 	if err != nil {
@@ -349,7 +330,8 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		NumClosed:   numClosed,
 		Prs:         prdata,
 		MetaData: MetaData{
-			URL: web.Backend.Cfg.Url,
+			URL:  web.Backend.Cfg.Url,
+			Desc: template.HTML(web.Backend.Cfg.Desc),
 		},
 	})
 	if err != nil {
@@ -366,7 +348,8 @@ type UserData struct {
 }
 
 type MetaData struct {
-	URL string
+	URL  string
+	Desc template.HTML
 }
 
 type PrListData struct {
@@ -1122,6 +1105,7 @@ func StartWebServer(cfg *GitCfg) {
 	}
 	formatter := formatterHtml.New(
 		formatterHtml.WithLineNumbers(true),
+		formatterHtml.LineNumbersInTable(true),
 		formatterHtml.WithClasses(true),
 		formatterHtml.WithLinkableLineNumbers(true, "gitpr"),
 	)
@@ -1147,7 +1131,6 @@ func StartWebServer(cfg *GitCfg) {
 	http.HandleFunc("GET /r/{user}", ctxMdw(ctx, userDetailHandler))
 	http.HandleFunc("GET /rss/{user}", ctxMdw(ctx, rssHandler))
 	http.HandleFunc("GET /rss", ctxMdw(ctx, rssHandler))
-	http.HandleFunc("GET /docs", ctxMdw(ctx, docsHandler))
 	http.HandleFunc("GET /", ctxMdw(ctx, indexHandler))
 	http.HandleFunc("GET /syntax.css", ctxMdw(ctx, chromaStyleHandler))
 	embedFS, err := getEmbedFS(embedStaticFS, "static")

@@ -11,3 +11,4 @@ time_format = "2006-01-02"
 #   admin: only admins
 #   user: admins and users
 create_repo = "user"
+desc = ""

@@ -27,6 +27,7 @@ type GitCfg struct {
 	CreateRepo string          `koanf:"create_repo"`
 	Theme      string          `koanf:"theme"`
 	TimeFormat string          `koanf:"time_format"`
+	Desc       string          `koanf:"desc"`
 	Logger     *slog.Logger
 }
 
@@ -113,6 +114,7 @@ func NewGitCfg(logger *slog.Logger) *GitCfg {
 		"theme", out.Theme,
 		"time_format", out.TimeFormat,
 		"create_repo", out.CreateRepo,
+		"desc", out.Desc,
 	)
 
 	for _, pubkey := range out.AdminsStr {
