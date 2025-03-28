@@ -173,7 +173,7 @@ func printPatchsetFromPrID(sesh ssh.Session, pr GitPatchRequest, prID int64) err
 }
 
 func NewCli(sesh ssh.Session, be *Backend, pr GitPatchRequest) *cli.App {
-	desc := `Patchbin: a supercharged pastebin for git collaboration.
+	desc := fmt.Sprintf(`git-pr: A pastebin supercharged for git collaboration.
 
 Here's how it works:
 	- External contributor clones repo (git-clone)
@@ -189,7 +189,11 @@ Here's how it works:
 	- External contributor reviews and removes comments in code!
 	- External contributor submits another patch (git-format-patch)
 	- Owner applies patches locally (git-am)
-	- Owner marks PR as accepted and pushes code to main (git-push)`
+	- Owner marks PR as accepted and pushes code to main (git-push)
+
+To get started, submit a new patch request:
+  git format-patch main --stdout | ssh %s pr create {repo}
+`, be.Cfg.Url)
 
 	pubkey := be.Pubkey(sesh.PublicKey())
 	userName := sesh.User()
