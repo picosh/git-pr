@@ -21,8 +21,8 @@ snapshot:
 .PHONY: snapshot
 
 build:
-	go build -o ./build/ssh ./cmd/ssh
-	go build -o ./build/web ./cmd/web
+	go build -o ./build/git-ssh ./cmd/git-ssh
+	go build -o ./build/git-web ./cmd/git-web
 .PHONY: build
 
 bp-setup:

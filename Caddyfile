@@ -48,6 +48,6 @@
 }
 
 :443 {
-	reverse_proxy web:3000
+	reverse_proxy git-web:3000
 	encode zstd gzip
 }
