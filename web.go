@@ -390,7 +390,7 @@ func userDetailHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	isAdmin := web.Backend.IsAdmin(pk)
 
-	prs, err := web.Pr.GetPatchRequests()
+	prs, err := web.Pr.GetPatchRequestsByPubkey(user.Pubkey)
 	if err != nil {
 		web.Logger.Error("cannot get prs", "err", err)
 		w.WriteHeader(http.StatusInternalServerError)

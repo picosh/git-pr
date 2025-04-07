@@ -38,6 +38,7 @@ type GitPatchRequest interface {
 	GetPatchRequestByID(prID int64) (*PatchRequest, error)
 	GetPatchRequests() ([]*PatchRequest, error)
 	GetPatchRequestsByRepoID(repoID int64) ([]*PatchRequest, error)
+	GetPatchRequestsByPubkey(pubkey string) ([]*PatchRequest, error)
 	GetPatchsetsByPrID(prID int64) ([]*Patchset, error)
 	GetPatchsetByID(patchsetID int64) (*Patchset, error)
 	GetLatestPatchsetByPrID(prID int64) (*Patchset, error)
@@ -267,6 +268,16 @@ func (cmd PrCmd) GetPatchRequestsByRepoID(repoID int64) ([]*PatchRequest, error)
 		&prs,
 		"SELECT * FROM patch_requests WHERE repo_id=? ORDER BY id DESC",
 		repoID,
+	)
+	return prs, err
+}
+
+func (cmd PrCmd) GetPatchRequestsByPubkey(pubkey string) ([]*PatchRequest, error) {
+	prs := []*PatchRequest{}
+	err := cmd.Backend.DB.Select(
+		&prs,
+		"SELECT pr.* FROM patch_requests pr, app_users au WHERE pr.user_id=au.id AND au.pubkey=? ORDER BY id DESC",
+		pubkey,
 	)
 	return prs, err
 }
