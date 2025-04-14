@@ -45,7 +45,7 @@ WORKDIR /app
 COPY --from=builder-web /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder-web /go/bin/git-web ./git-web
 
-CMD ["/app/web"]
+CMD ["/app/git-web"]
 
 FROM scratch as release-ssh
 

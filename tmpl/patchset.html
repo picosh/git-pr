@@ -63,7 +63,11 @@
                   <code class="pill-admin">-{{.Dels}}</code>
                 </div>
               </summary>
+              {{if .IsBinary}}
+              <div><pre>Binaries are not rendered as diffs.</pre></div>
+              {{else}}
               <div>{{.DiffText}}</div>
+              {{end}}
             </details>
             {{else}}
             <details class="details-min" open="true" id="patch-{{$patch.ID}}-{{.OldName}}">
@@ -75,7 +79,11 @@
                   <code class="pill-admin">-{{.Dels}}</code>
                 </div>
               </summary>
+              {{if .IsBinary}}
+              <div><pre>Binaries are not rendered as diffs.</pre></div>
+              {{else}}
               <div>{{.DiffText}}</div>
+              {{end}}
             </details>
             {{end}}
           {{end}}
