@@ -1,11 +1,6 @@
 services:
-  web:
-    image: ghcr.io/picosh/pico/git-web:latest
-    restart: always
-    volumes:
-      - ./data/git-pr/data:/app/data
-  ssh:
-    image: ghcr.io/picosh/pico/git-ssh:latest
+  git-pr:
+    image: ghcr.io/picosh/pico/git-pr:latest
     restart: always
     volumes:
       - ./data/git-pr/data:/app/data

@@ -159,16 +159,10 @@ vim ./data/git-pr.toml
 
 ## docker
 
-Run the ssh app image:
+Run the app image:
 
 ```bash
-docker run -d -v ./data:/app/data ghcr.io/picosh/pico/git-ssh:latest
-```
-
-Run the web app image:
-
-```bash
-docker run -d -v ./data:/app/data ghcr.io/picosh/pico/git-web:latest
+docker run -d -v ./data:/app/data ghcr.io/picosh/pico/git-pr:latest
 ```
 
 ## golang
@@ -180,11 +174,7 @@ make build
 ```
 
 ```bash
-./build/ssh --config ./data/git-pr.toml
-```
-
-```bash
-./build/web --config ./data/git-pr.toml
+./build/git-pr --config ./data/git-pr.toml
 ```
 
 ## done!

@@ -21,8 +21,7 @@ snapshot:
 .PHONY: snapshot
 
 build:
-	go build -o ./build/git-ssh ./cmd/git-ssh
-	go build -o ./build/git-web ./cmd/git-web
+	go build -o ./build/git-pr ./cmd/git-pr
 .PHONY: build
 
 bp-setup:
@@ -30,12 +29,8 @@ bp-setup:
 	$(DOCKER_CMD) buildx use pico
 .PHONY: bp-setup
 
-bp-web: bp-setup
-	$(DOCKER_BUILDX_BUILD) -t "ghcr.io/picosh/pico/git-web:$(DOCKER_TAG)" --target release-web .
-.PHONY: bp-web
-
-bp: bp-web
-	$(DOCKER_BUILDX_BUILD) -t "ghcr.io/picosh/pico/git-ssh:$(DOCKER_TAG)" --target release-ssh .
+bp: bp-setup
+	$(DOCKER_BUILDX_BUILD) -t "ghcr.io/picosh/pico/git-pr:$(DOCKER_TAG)" --target release-pr .
 .PHONY: bp
 
 deploy: bp-web

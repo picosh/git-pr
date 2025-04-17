@@ -1086,9 +1086,7 @@ func getEmbedFS(ffs embed.FS, dirName string) (fs.FS, error) {
 	return fsys, nil
 }
 
-func StartWebServer(cfg *GitCfg) {
-	addr := fmt.Sprintf("%s:%s", cfg.Host, cfg.WebPort)
-
+func GitWebServer(cfg *GitCfg) http.Handler {
 	dbpath := filepath.Join(cfg.DataDir, "pr.db?_fk=on")
 	dbh, err := SqliteOpen("file:"+dbpath, cfg.Logger)
 	if err != nil {
@@ -1122,28 +1120,24 @@ func StartWebServer(cfg *GitCfg) {
 
 	// ensure legacy router is disabled
 	// GODEBUG=httpmuxgo121=0
-	http.HandleFunc("GET /prs/{id}", ctxMdw(ctx, createPrDetail("pr")))
-	http.HandleFunc("GET /prs/{id}/rss", ctxMdw(ctx, rssHandler))
-	http.HandleFunc("GET /ps/{id}", ctxMdw(ctx, createPrDetail("ps")))
-	http.HandleFunc("GET /rd/{id}", ctxMdw(ctx, createPrDetail("rd")))
-	http.HandleFunc("GET /r/{user}/{repo}/rss", ctxMdw(ctx, rssHandler))
-	http.HandleFunc("GET /r/{user}/{repo}", ctxMdw(ctx, repoDetailHandler))
-	http.HandleFunc("GET /r/{user}", ctxMdw(ctx, userDetailHandler))
-	http.HandleFunc("GET /rss/{user}", ctxMdw(ctx, rssHandler))
-	http.HandleFunc("GET /rss", ctxMdw(ctx, rssHandler))
-	http.HandleFunc("GET /", ctxMdw(ctx, indexHandler))
-	http.HandleFunc("GET /syntax.css", ctxMdw(ctx, chromaStyleHandler))
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /prs/{id}", ctxMdw(ctx, createPrDetail("pr")))
+	mux.HandleFunc("GET /prs/{id}/rss", ctxMdw(ctx, rssHandler))
+	mux.HandleFunc("GET /ps/{id}", ctxMdw(ctx, createPrDetail("ps")))
+	mux.HandleFunc("GET /rd/{id}", ctxMdw(ctx, createPrDetail("rd")))
+	mux.HandleFunc("GET /r/{user}/{repo}/rss", ctxMdw(ctx, rssHandler))
+	mux.HandleFunc("GET /r/{user}/{repo}", ctxMdw(ctx, repoDetailHandler))
+	mux.HandleFunc("GET /r/{user}", ctxMdw(ctx, userDetailHandler))
+	mux.HandleFunc("GET /rss/{user}", ctxMdw(ctx, rssHandler))
+	mux.HandleFunc("GET /rss", ctxMdw(ctx, rssHandler))
+	mux.HandleFunc("GET /", ctxMdw(ctx, indexHandler))
+	mux.HandleFunc("GET /syntax.css", ctxMdw(ctx, chromaStyleHandler))
 	embedFS, err := getEmbedFS(embedStaticFS, "static")
 	if err != nil {
 		panic(err)
 	}
 	userFS := getUserDefinedFS(cfg.DataDir, "static")
 
-	http.HandleFunc("GET /static/{file}", ctxMdw(ctx, serveFile(userFS, embedFS)))
-
-	cfg.Logger.Info("starting web server", "addr", addr)
-	err = http.ListenAndServe(addr, nil)
-	if err != nil {
-		cfg.Logger.Error("listen", "err", err)
-	}
+	mux.HandleFunc("GET /static/{file}", ctxMdw(ctx, serveFile(userFS, embedFS)))
+	return mux
 }

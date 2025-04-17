@@ -1,6 +1,7 @@
 package git
 
 import (
+	"context"
 	"log/slog"
 	"os"
 	"testing"
@@ -23,8 +24,8 @@ func testSingleTenantE2E(t *testing.T) {
 		os.RemoveAll(dataDir)
 	}()
 	suite := setupTest(dataDir, cfgSingleTenantTmpl)
-	done := make(chan error)
-	go GitSshServer(suite.cfg, done)
+	s := GitSshServer(suite.cfg)
+	go s.ListenAndServe()
 	// Hack to wait for startup
 	time.Sleep(time.Millisecond * 100)
 
@@ -43,7 +44,7 @@ func testSingleTenantE2E(t *testing.T) {
 	bail(err)
 	snaps.MatchSnapshot(t, actual)
 
-	done <- nil
+	s.Shutdown(context.Background())
 }
 
 func testMultiTenantE2E(t *testing.T) {
@@ -53,8 +54,8 @@ func testMultiTenantE2E(t *testing.T) {
 		os.RemoveAll(dataDir)
 	}()
 	suite := setupTest(dataDir, cfgMultiTenantTmpl)
-	done := make(chan error)
-	go GitSshServer(suite.cfg, done)
+	s := GitSshServer(suite.cfg)
+	go s.ListenAndServe()
 
 	time.Sleep(time.Millisecond * 100)
 
@@ -120,7 +121,7 @@ func testMultiTenantE2E(t *testing.T) {
 	bail(err)
 	snaps.MatchSnapshot(t, actual)
 
-	done <- nil
+	s.Shutdown(context.Background())
 }
 
 type TestSuite struct {

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -37,9 +38,12 @@ func main() {
 	git.LoadConfigFile(cfgPath, logger)
 	cfg := git.NewGitCfg(logger)
 
-	go git.GitSshServer(cfg, nil)
+	s := git.GitSshServer(cfg)
+	go s.ListenAndServe()
 	time.Sleep(time.Millisecond * 100)
-	go git.StartWebServer(cfg)
+	w := git.GitWebServer(cfg)
+	addr := fmt.Sprintf("%s:%s", cfg.Host, cfg.WebPort)
+	go http.ListenAndServe(addr, w)
 
 	// Hack to wait for startup
 	time.Sleep(time.Millisecond * 100)

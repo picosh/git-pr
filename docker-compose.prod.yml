@@ -18,19 +18,12 @@ services:
       - "${GITPR_HTTP_V4:-80}:80"
       - "${GITPR_HTTPS_V6:-[::1]:443}:443"
       - "${GITPR_HTTP_V6:-[::1]:80}:80"
-  web:
-    command: "/app/git-web --config ${GITPR_CONFIG_PATH}"
+  git-pr:
+    command: "/app/git-pr --config ${GITPR_CONFIG_PATH}"
     networks:
       git:
         aliases:
           - web
-    env_file:
-      - .env.prod
-  ssh:
-    command: "/app/git-ssh --config ${GITPR_CONFIG_PATH}"
-    networks:
-      git:
-        aliases:
           - ssh
     env_file:
       - .env.prod

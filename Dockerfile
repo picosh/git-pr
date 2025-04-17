@@ -10,7 +10,7 @@ COPY go.* ./
 
 RUN go mod download
 
-FROM builder-deps as builder-web
+FROM builder-deps as builder
 
 COPY . .
 
@@ -22,37 +22,14 @@ ENV LDFLAGS="-s -w"
 
 ENV GOOS=${TARGETOS} GOARCH=${TARGETARCH}
 
-RUN go build -ldflags "$LDFLAGS" -o /go/bin/git-web ./cmd/git-web
+RUN go build -ldflags "$LDFLAGS" -o /go/bin/git-pr ./cmd/git-pr
 
-FROM builder-deps as builder-ssh
-
-COPY . .
-
-ARG TARGETOS
-ARG TARGETARCH
-
-ENV CGO_ENABLED=0
-ENV LDFLAGS="-s -w"
-
-ENV GOOS=${TARGETOS} GOARCH=${TARGETARCH}
-
-RUN go build -ldflags "$LDFLAGS" -o /go/bin/git-ssh ./cmd/git-ssh
-
-FROM scratch as release-web
-
-WORKDIR /app
-
-COPY --from=builder-web /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=builder-web /go/bin/git-web ./git-web
-
-CMD ["/app/git-web"]
-
-FROM scratch as release-ssh
+FROM scratch as release
 
 WORKDIR /app
 ENV TERM="xterm-256color"
 
-COPY --from=builder-ssh /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=builder-ssh /go/bin/git-ssh ./git-ssh
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /go/bin/git-pr ./git-pr
 
-CMD ["/app/git-ssh"]
+CMD ["/app/git-pr"]
