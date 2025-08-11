@@ -27,8 +27,29 @@ import (
 	"github.com/gorilla/feeds"
 )
 
-//go:embed tmpl/*
-var tmplFS embed.FS
+var (
+	//go:embed tmpl/*
+	tmplFS    embed.FS
+	indexTmpl = getTemplate("index.html")
+	prTmpl    = getTemplate("pr.html")
+	userTmpl  = getTemplate("user.html")
+	repoTmpl  = getTemplate("repo.html")
+)
+
+func getTemplate(page string) *template.Template {
+	tmpl, err := template.New("").Funcs(template.FuncMap{
+		"sha": shaFn,
+	}).ParseFS(
+		tmplFS,
+		filepath.Join("tmpl", "pages", page),
+		filepath.Join("tmpl", "components", "*.html"),
+		filepath.Join("tmpl", "base.html"),
+	)
+	if err != nil {
+		panic(err)
+	}
+	return tmpl.Lookup(page)
+}
 
 //go:embed static/*
 var embedStaticFS embed.FS
@@ -81,27 +102,6 @@ func shaFn(sha string) string {
 		return "(none)"
 	}
 	return truncateSha(sha)
-}
-
-func getTemplate(file string) *template.Template {
-	tmpl, err := template.New("").Funcs(template.FuncMap{
-		"sha": shaFn,
-	}).ParseFS(
-		tmplFS,
-		filepath.Join("tmpl", file),
-		filepath.Join("tmpl", "user-pill.html"),
-		filepath.Join("tmpl", "patchset.html"),
-		filepath.Join("tmpl", "range-diff.html"),
-		filepath.Join("tmpl", "pr-header.html"),
-		filepath.Join("tmpl", "pr-list-item.html"),
-		filepath.Join("tmpl", "pr-table.html"),
-		filepath.Join("tmpl", "pr-status.html"),
-		filepath.Join("tmpl", "base.html"),
-	)
-	if err != nil {
-		panic(err)
-	}
-	return tmpl
 }
 
 type LinkData struct {
@@ -323,8 +323,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("content-type", "text/html")
-	tmpl := getTemplate("index.html")
-	err = tmpl.ExecuteTemplate(w, "index.html", PrTableData{
+	err = indexTmpl.Execute(w, PrTableData{
 		NumOpen:     numOpen,
 		NumAccepted: numAccepted,
 		NumClosed:   numClosed,
@@ -422,8 +421,7 @@ func userDetailHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("content-type", "text/html")
-	tmpl := getTemplate("user-detail.html")
-	err = tmpl.ExecuteTemplate(w, "user-detail.html", UserDetailData{
+	err = userTmpl.Execute(w, UserDetailData{
 		Prs:         prdata,
 		NumOpen:     numOpen,
 		NumAccepted: numAccepted,
@@ -498,8 +496,7 @@ func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("content-type", "text/html")
-	tmpl := getTemplate("repo-detail.html")
-	err = tmpl.ExecuteTemplate(w, "repo-detail.html", RepoDetailData{
+	err = repoTmpl.Execute(w, RepoDetailData{
 		Name:        repo.Name,
 		UserID:      user.ID,
 		Username:    userName,
@@ -772,7 +769,6 @@ func createPrDetail(page string) http.HandlerFunc {
 		}
 
 		w.Header().Set("content-type", "text/html")
-		tmpl := getTemplate("pr-detail.html")
 		pk, err := web.Backend.PubkeyToPublicKey(user.Pubkey)
 		if err != nil {
 			web.Logger.Error("cannot parse pubkey for pr user", "err", err)
@@ -840,7 +836,7 @@ func createPrDetail(page string) http.HandlerFunc {
 
 		repoNs := web.Backend.CreateRepoNs(repoOwner.Name, repo.Name)
 		url := fmt.Sprintf("/r/%s/%s", repoOwner.Name, repo.Name)
-		err = tmpl.ExecuteTemplate(w, "pr-detail.html", PrDetailData{
+		err = prTmpl.Execute(w, PrDetailData{
 			Page: "pr",
 			Repo: LinkData{
 				Url:  template.URL(url),
