@@ -56,6 +56,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	rd1, err := fixtures.Fixtures.ReadFile("a_b_reorder.patch")
+	if err != nil {
+		panic(err)
+	}
+	rd2, err := fixtures.Fixtures.ReadFile("a_c_changed_commit.patch")
+	if err != nil {
+		panic(err)
+	}
 
 	// Accepted patch
 	userKey.MustCmd(patch, "pr create test")
@@ -86,6 +94,11 @@ func main() {
 	userKey.MustCmd(patch, "pr create test")
 	userKey.MustCmd(nil, "pr edit 6 Closed patch with review")
 	adminKey.MustCmd(otherPatch, "pr add --close 6")
+
+	// Range Diff
+	userKey.MustCmd(rd1, "pr create test")
+	userKey.MustCmd(nil, "pr edit 7 Range Diff")
+	userKey.MustCmd(rd2, "pr add 7")
 
 	fmt.Println("time to do some testing...")
 	ch := make(chan os.Signal, 1)
