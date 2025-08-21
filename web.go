@@ -718,13 +718,7 @@ func createPrDetail(page string) http.HandlerFunc {
 				}
 
 				// highlight review
-				isReview := false
-				for _, pID := range reviewIDs {
-					if pID == patch.ID {
-						isReview = true
-						break
-					}
-				}
+				isReview := slices.Contains(reviewIDs, patch.ID)
 
 				patchFiles := []*PatchFile{}
 				for _, file := range diffFiles {

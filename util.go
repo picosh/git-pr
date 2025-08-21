@@ -15,11 +15,13 @@ import (
 	"github.com/charmbracelet/ssh"
 )
 
-var baseCommitRe = regexp.MustCompile(`base-commit: (.+)\s*`)
-var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-var startOfPatch = "From "
-var patchsetPrefix = "ps-"
-var prPrefix = "pr-"
+var (
+	baseCommitRe   = regexp.MustCompile(`base-commit: (.+)\s*`)
+	letters        = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	startOfPatch   = "From "
+	patchsetPrefix = "ps-"
+	prPrefix       = "pr-"
+)
 
 // https://stackoverflow.com/a/22892986
 func randSeq(n int) string {

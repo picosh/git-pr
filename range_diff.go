@@ -11,8 +11,10 @@ import (
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
-var COST_MAX = 65536
-var RANGE_DIFF_CREATION_FACTOR_DEFAULT = 60
+var (
+	COST_MAX                           = 65536
+	RANGE_DIFF_CREATION_FACTOR_DEFAULT = 60
+)
 
 type PatchRange struct {
 	*Patch
