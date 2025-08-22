@@ -595,6 +595,7 @@ func createPrDetail(page string) http.HandlerFunc {
 				}
 			}
 		case "ps":
+			fallthrough
 		case "rd":
 			{
 				ps, err = web.Pr.GetPatchsetByID(int64(prID))
