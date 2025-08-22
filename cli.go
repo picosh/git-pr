@@ -466,15 +466,15 @@ To get started, submit a new patch request:
 							writer := NewTabWriter(sesh)
 							fmt.Fprintln(writer, "ID\tRepoID\tName\tStatus\tPatchsets\tUser\tDate")
 							for _, req := range prs {
-								if onlyAccepted && req.Status != "accepted" {
+								if onlyAccepted && req.Status != StatusAccepted {
 									continue
 								}
 
-								if onlyClosed && req.Status != "closed" {
+								if onlyClosed && req.Status != StatusClosed {
 									continue
 								}
 
-								if onlyOpen && req.Status != "open" {
+								if onlyOpen && req.Status != StatusOpen {
 									continue
 								}
 
@@ -640,11 +640,11 @@ To get started, submit a new patch request:
 									return fmt.Errorf("you are not authorized to accept a PR")
 								}
 
-								if prq.Status == "accepted" {
+								if prq.Status == StatusAccepted {
 									return fmt.Errorf("PR has already been accepted")
 								}
 
-								err = pr.UpdatePatchRequestStatus(prID, user.ID, "accepted")
+								err = pr.UpdatePatchRequestStatus(prID, user.ID, StatusAccepted)
 								if err != nil {
 									return err
 								}
@@ -701,7 +701,7 @@ To get started, submit a new patch request:
 									return fmt.Errorf("you are not authorized to change PR status")
 								}
 
-								if prq.Status == "closed" {
+								if prq.Status == StatusClosed {
 									return fmt.Errorf("PR has already been closed")
 								}
 
@@ -710,7 +710,7 @@ To get started, submit a new patch request:
 									return err
 								}
 
-								err = pr.UpdatePatchRequestStatus(prID, user.ID, "closed")
+								err = pr.UpdatePatchRequestStatus(prID, user.ID, StatusClosed)
 								if err != nil {
 									return err
 								}
@@ -760,7 +760,7 @@ To get started, submit a new patch request:
 								return fmt.Errorf("you are not authorized to change PR status")
 							}
 
-							if prq.Status == "open" {
+							if prq.Status == StatusOpen {
 								return fmt.Errorf("PR is already open")
 							}
 
@@ -769,7 +769,7 @@ To get started, submit a new patch request:
 								return err
 							}
 
-							err = pr.UpdatePatchRequestStatus(prID, user.ID, "open")
+							err = pr.UpdatePatchRequestStatus(prID, user.ID, StatusOpen)
 							if err == nil {
 								wish.Printf(sesh, "Reopened PR %s (#%d)\n", prq.Name, prq.ID)
 							}
@@ -887,17 +887,17 @@ To get started, submit a new patch request:
 							}
 
 							op := OpNormal
-							nextStatus := "open"
+							nextStatus := StatusOpen
 							if isReview {
 								wish.Println(sesh, "Marking patchset as a review")
 								op = OpReview
 							} else if isAccept {
 								wish.Println(sesh, "Marking PR as accepted")
-								nextStatus = "accepted"
+								nextStatus = StatusAccepted
 								op = OpAccept
 							} else if isClose {
 								wish.Println(sesh, "Marking PR as closed")
-								nextStatus = "closed"
+								nextStatus = StatusClosed
 								op = OpClose
 							}
 

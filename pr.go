@@ -43,7 +43,7 @@ type GitPatchRequest interface {
 	GetPatchsetByID(patchsetID int64) (*Patchset, error)
 	GetLatestPatchsetByPrID(prID int64) (*Patchset, error)
 	GetPatchesByPatchsetID(prID int64) ([]*Patch, error)
-	UpdatePatchRequestStatus(prID, userID int64, status string) error
+	UpdatePatchRequestStatus(prID, userID int64, status Status) error
 	UpdatePatchRequestName(prID, userID int64, name string) error
 	DeletePatchsetByID(userID, prID int64, patchsetID int64) error
 	CreateEventLog(tx *sqlx.Tx, eventLog EventLog) error
@@ -293,7 +293,7 @@ func (cmd PrCmd) GetPatchRequestByID(prID int64) (*PatchRequest, error) {
 }
 
 // Status types: open, closed, accepted, reviewed.
-func (cmd PrCmd) UpdatePatchRequestStatus(prID int64, userID int64, status string) error {
+func (cmd PrCmd) UpdatePatchRequestStatus(prID int64, userID int64, status Status) error {
 	tx, err := cmd.Backend.DB.Beginx()
 	if err != nil {
 		return err

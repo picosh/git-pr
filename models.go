@@ -7,6 +7,15 @@ import (
 	"github.com/bluekeyes/go-gitdiff/gitdiff"
 )
 
+type Status string
+
+const (
+	StatusOpen     Status = "open"
+	StatusClosed   Status = "closed"
+	StatusAccepted Status = "accepted"
+	StatusReviewed Status = "reviewed"
+)
+
 // User is a db model for users.
 type User struct {
 	ID        int64     `db:"id"`
@@ -41,7 +50,7 @@ type PatchRequest struct {
 	RepoID    int64     `db:"repo_id"`
 	Name      string    `db:"name"`
 	Text      string    `db:"text"`
-	Status    string    `db:"status"`
+	Status    Status    `db:"status"`
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
 	// only used for aggregate queries

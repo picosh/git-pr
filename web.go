@@ -145,8 +145,8 @@ type RepoDetailData struct {
 func createPrDataSorter(sort, sortDir string) func(a, b *PrListData) int {
 	return func(a *PrListData, b *PrListData) int {
 		if sort == "status" {
-			statusA := strings.ToLower(a.Status)
-			statusB := strings.ToLower(b.Status)
+			statusA := strings.ToLower(string(a.Status))
+			statusB := strings.ToLower(string(b.Status))
 			if sortDir == "asc" {
 				return strings.Compare(statusA, statusB)
 			} else {
@@ -191,9 +191,9 @@ func createPrDataSorter(sort, sortDir string) func(a, b *PrListData) int {
 
 func getPrTableData(web *WebCtx, prs []*PatchRequest, query url.Values) ([]*PrListData, error) {
 	prdata := []*PrListData{}
-	status := strings.ToLower(query.Get("status"))
+	status := Status(strings.ToLower(query.Get("status")))
 	if status == "" {
-		status = "open"
+		status = StatusOpen
 	}
 	username := strings.ToLower(query.Get("user"))
 	title := strings.ToLower(query.Get("title"))
@@ -361,7 +361,7 @@ type PrListData struct {
 	ID           int64
 	DateOrig     time.Time
 	Date         string
-	Status       string
+	Status       Status
 }
 
 func userDetailHandler(w http.ResponseWriter, r *http.Request) {
@@ -518,7 +518,7 @@ type PrData struct {
 	ID     int64
 	Title  string
 	Date   string
-	Status string
+	Status Status
 }
 
 type PatchFile struct {
