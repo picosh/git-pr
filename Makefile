@@ -33,7 +33,12 @@ endif
 .PHONY: bp-setup
 
 bp: bp-setup
-	$(DOCKER_BUILDX_BUILD) "ghcr.io/picosh/pico/git-pr:$(DOCKER_TAG)" --target release .
+	$(DOCKER_BUILDX_BUILD) ghcr.io/picosh/pico/git-pr:$(DOCKER_TAG) --target release .
+ifeq ($(DOCKER_CMD),docker)
+	# docker
+else
+	podman manifest push ghcr.io/picosh/pico/git-pr:$(DOCKER_TAG)
+endif
 .PHONY: bp
 
 smol:

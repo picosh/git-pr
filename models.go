@@ -120,19 +120,25 @@ func (e EventData) String() string {
 }
 
 func (e *EventData) Scan(value any) error {
-	if value == nil {
+	if value == nil || value == "" {
 		return nil
 	}
-	var bytes []byte
+
+	var byt []byte
 	switch v := value.(type) {
 	case []byte:
-		bytes = v
+		byt = v
 	case string:
-		bytes = []byte(v)
+		byt = []byte(v)
 	default:
 		return fmt.Errorf("cannot scan %T into EventData", value)
 	}
-	return json.Unmarshal(bytes, e)
+
+	if len(byt) == 0 {
+		return nil
+	}
+
+	return json.Unmarshal(byt, e)
 }
 
 func (e EventData) Value() (driver.Value, error) {
