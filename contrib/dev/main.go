@@ -68,17 +68,17 @@ func main() {
 	// Accepted patch
 	userKey.MustCmd(patch, "pr create test")
 	userKey.MustCmd(nil, "pr edit 1 Accepted patch")
-	adminKey.MustCmd(nil, "pr accept 1")
+	adminKey.MustCmd(nil, `pr accept --comment "lgtm!" 1`)
 
 	// Closed patch (admin)
 	userKey.MustCmd(patch, "pr create test")
 	userKey.MustCmd(nil, "pr edit 2 Closed patch (admin)")
-	adminKey.MustCmd(nil, "pr close 2")
+	adminKey.MustCmd(nil, `pr close --comment "Thanks for the effort! I think we might use PR #1 though." 2`)
 
 	// Closed patch (contributor)
 	userKey.MustCmd(patch, "pr create test")
 	userKey.MustCmd(nil, "pr edit 3 Closed patch (contributor)")
-	userKey.MustCmd(nil, "pr close 3")
+	userKey.MustCmd(nil, `pr close --comment "Woops, didn't mean to submit yet" 3`)
 
 	// Reviewed patch
 	userKey.MustCmd(patch, "pr create test")
@@ -88,12 +88,12 @@ func main() {
 	// Accepted patch with review
 	userKey.MustCmd(patch, "pr create test")
 	userKey.MustCmd(nil, "pr edit 5 Accepted patch with review")
-	adminKey.MustCmd(otherPatch, "pr add --accept 5")
+	adminKey.MustCmd(otherPatch, `pr add --accept --comment "L G T M" 5`)
 
 	// Closed patch with review
 	userKey.MustCmd(patch, "pr create test")
 	userKey.MustCmd(nil, "pr edit 6 Closed patch with review")
-	adminKey.MustCmd(otherPatch, "pr add --close 6")
+	adminKey.MustCmd(otherPatch, `pr add --close --comment "So close! I think we might try something else instead." 6`)
 
 	// Range Diff
 	userKey.MustCmd(rd1, "pr create test")

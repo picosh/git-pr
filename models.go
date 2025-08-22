@@ -105,8 +105,9 @@ type EventLog struct {
 }
 
 type EventData struct {
-	Name   string `json:"name,omitempty"`
-	Status Status `json:"status,omitempty"`
+	Name    string `json:"name,omitempty"`
+	Status  Status `json:"status,omitempty"`
+	Comment string `json:"comment,omitempty"`
 }
 
 func (e EventData) String() string {

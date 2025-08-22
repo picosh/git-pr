@@ -603,6 +603,12 @@ To get started, submit a new patch request:
 						Usage:     "Accept a PR",
 						Args:      true,
 						ArgsUsage: "[prID], [prID]...",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:  "comment",
+								Usage: "add a comment to the patchset(s)",
+							},
+						},
 						Action: func(cCtx *cli.Context) error {
 							args := cCtx.Args()
 							if !args.Present() {
@@ -644,7 +650,7 @@ To get started, submit a new patch request:
 									return fmt.Errorf("PR has already been accepted")
 								}
 
-								err = pr.UpdatePatchRequestStatus(prID, user.ID, StatusAccepted)
+								err = pr.UpdatePatchRequestStatus(prID, user.ID, StatusAccepted, cCtx.String("comment"))
 								if err != nil {
 									return err
 								}
@@ -664,6 +670,12 @@ To get started, submit a new patch request:
 						Usage:     "Close a PR",
 						Args:      true,
 						ArgsUsage: "[prID], [prID]...",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:  "comment",
+								Usage: "add a comment to the patchset(s)",
+							},
+						},
 						Action: func(cCtx *cli.Context) error {
 							args := cCtx.Args()
 							if !args.Present() {
@@ -710,7 +722,7 @@ To get started, submit a new patch request:
 									return err
 								}
 
-								err = pr.UpdatePatchRequestStatus(prID, user.ID, StatusClosed)
+								err = pr.UpdatePatchRequestStatus(prID, user.ID, StatusClosed, cCtx.String("comment"))
 								if err != nil {
 									return err
 								}
@@ -729,6 +741,12 @@ To get started, submit a new patch request:
 						Usage:     "Reopen a PR",
 						Args:      true,
 						ArgsUsage: "[prID]",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:  "comment",
+								Usage: "add a comment to the patchset",
+							},
+						},
 						Action: func(cCtx *cli.Context) error {
 							args := cCtx.Args()
 							if !args.Present() {
@@ -769,7 +787,7 @@ To get started, submit a new patch request:
 								return err
 							}
 
-							err = pr.UpdatePatchRequestStatus(prID, user.ID, StatusOpen)
+							err = pr.UpdatePatchRequestStatus(prID, user.ID, StatusOpen, cCtx.String("comment"))
 							if err == nil {
 								wish.Printf(sesh, "Reopened PR %s (#%d)\n", prq.Name, prq.ID)
 							}
@@ -847,6 +865,10 @@ To get started, submit a new patch request:
 								Name:  "close",
 								Usage: "submit patchset and mark PR as closed",
 							},
+							&cli.StringFlag{
+								Name:  "comment",
+								Usage: "add a comment to the patchset",
+							},
 						},
 						Action: func(cCtx *cli.Context) error {
 							args := cCtx.Args()
@@ -912,7 +934,7 @@ To get started, submit a new patch request:
 							}
 
 							if prq.Status != nextStatus {
-								err = pr.UpdatePatchRequestStatus(prID, user.ID, nextStatus)
+								err = pr.UpdatePatchRequestStatus(prID, user.ID, nextStatus, cCtx.String("comment"))
 								if err != nil {
 									return err
 								}
