@@ -2,6 +2,9 @@ package git
 
 import (
 	"database/sql"
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/bluekeyes/go-gitdiff/gitdiff"
@@ -97,6 +100,40 @@ type EventLog struct {
 	PatchRequestID sql.NullInt64 `db:"patch_request_id"`
 	PatchsetID     sql.NullInt64 `db:"patchset_id"`
 	Event          string        `db:"event"`
-	Data           string        `db:"data"`
 	CreatedAt      time.Time     `db:"created_at"`
+	Data           EventData     `db:"data"`
+}
+
+type EventData struct {
+	Name   string `json:"name,omitempty"`
+	Status Status `json:"status,omitempty"`
+}
+
+func (e EventData) String() string {
+	b, _ := json.Marshal(e)
+	bs := string(b)
+	if bs == "{}" {
+		return ""
+	}
+	return bs
+}
+
+func (e *EventData) Scan(value any) error {
+	if value == nil {
+		return nil
+	}
+	var bytes []byte
+	switch v := value.(type) {
+	case []byte:
+		bytes = v
+	case string:
+		bytes = []byte(v)
+	default:
+		return fmt.Errorf("cannot scan %T into EventData", value)
+	}
+	return json.Unmarshal(bytes, e)
+}
+
+func (e EventData) Value() (driver.Value, error) {
+	return json.Marshal(e)
 }

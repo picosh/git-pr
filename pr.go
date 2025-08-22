@@ -322,7 +322,9 @@ func (cmd PrCmd) UpdatePatchRequestStatus(prID int64, userID int64, status Statu
 		RepoID:         sql.NullInt64{Int64: pr.RepoID, Valid: true},
 		PatchRequestID: sql.NullInt64{Int64: prID, Valid: true},
 		Event:          "pr_status_changed",
-		Data:           fmt.Sprintf(`{"status":"%s"}`, status),
+		Data: EventData{
+			Status: status,
+		},
 	})
 	if err != nil {
 		return err
@@ -364,7 +366,9 @@ func (cmd PrCmd) UpdatePatchRequestName(prID int64, userID int64, name string) e
 		RepoID:         sql.NullInt64{Int64: pr.RepoID, Valid: true},
 		PatchRequestID: sql.NullInt64{Int64: prID, Valid: true},
 		Event:          "pr_name_changed",
-		Data:           fmt.Sprintf(`{"name":"%s"}`, name),
+		Data: EventData{
+			Name: name,
+		},
 	})
 	if err != nil {
 		return err
