@@ -10,16 +10,16 @@ ID RepoID Name                    Status Patchsets User        Date
 PR submitted! Use the ID for interacting with this PR.
 Info
 ====
-URL: https://localhost/prs/9
+URL: https://localhost/prs/10
 Repo: contributor/bin
 
 ID Name                    Status Date
-9  feat: lets build an rnn [open] 
+10 feat: lets build an rnn [open] 
 
 Patchsets
 ====
 ID    Type User        Date
-ps-13      contributor 
+ps-14      contributor 
 
 Patches from latest patchset
 ====
@@ -30,7 +30,8 @@ Idx Title                   Commit  Author                   Date
 
 [TestE2E - 3]
 ID RepoID           Name                       Status     Patchsets User        Date
-9  contributor/bin  feat: lets build an rnn    [open]     1         contributor 
+10 contributor/bin  feat: lets build an rnn    [open]     1         contributor 
+9  admin/ai         feat: lets build an rnn    [accepted] 1         contributor 
 8  admin/ai         feat: lets build an rnn    [accepted] 2         contributor 
 7  contributor/ai   feat: lets build an rnn    [accepted] 1         admin       
 6  contributor/test Closed patch with review   [closed]   2         contributor 
@@ -47,5 +48,7 @@ RepoID   PrID PatchsetID Event             Created Data
 admin/ai 8    ps-11      pr_created                
 admin/ai 8    ps-12      pr_patchset_added         
 admin/ai 8               pr_status_changed         {"status":"accepted"}
+admin/ai 9    ps-13      pr_created                
+admin/ai 9               pr_status_changed         {"status":"accepted","comment":"nice work"}
 
 ---

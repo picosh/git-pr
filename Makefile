@@ -5,7 +5,6 @@ DOCKER_BUILDX_BUILD?=$(DOCKER_CMD) buildx build --push --platform $(DOCKER_PLATF
 
 fmt:
 	go fmt ./...
-	deno fmt README.md
 .PHONY: fmt
 
 lint:
