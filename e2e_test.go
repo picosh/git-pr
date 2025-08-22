@@ -21,11 +21,13 @@ func testSingleTenantE2E(t *testing.T) {
 	t.Log("single tenant end-to-end tests")
 	dataDir := util.CreateTmpDir()
 	defer func() {
-		os.RemoveAll(dataDir)
+		_ = os.RemoveAll(dataDir)
 	}()
 	suite := setupTest(dataDir, cfgSingleTenantTmpl)
 	s := GitSshServer(suite.cfg)
-	go s.ListenAndServe()
+	go func() {
+		_ = s.ListenAndServe()
+	}()
 	// Hack to wait for startup
 	time.Sleep(time.Millisecond * 100)
 
@@ -44,18 +46,20 @@ func testSingleTenantE2E(t *testing.T) {
 	bail(err)
 	snaps.MatchSnapshot(t, actual)
 
-	s.Shutdown(context.Background())
+	_ = s.Shutdown(context.Background())
 }
 
 func testMultiTenantE2E(t *testing.T) {
 	t.Log("multi tenant end-to-end tests")
 	dataDir := util.CreateTmpDir()
 	defer func() {
-		os.RemoveAll(dataDir)
+		_ = os.RemoveAll(dataDir)
 	}()
 	suite := setupTest(dataDir, cfgMultiTenantTmpl)
 	s := GitSshServer(suite.cfg)
-	go s.ListenAndServe()
+	go func() {
+		_ = s.ListenAndServe()
+	}()
 
 	time.Sleep(time.Millisecond * 100)
 
@@ -121,7 +125,7 @@ func testMultiTenantE2E(t *testing.T) {
 	bail(err)
 	snaps.MatchSnapshot(t, actual)
 
-	s.Shutdown(context.Background())
+	_ = s.Shutdown(context.Background())
 }
 
 type TestSuite struct {

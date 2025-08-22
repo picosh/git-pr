@@ -1,0 +1,12 @@
+version: "2"
+
+linters:
+  enable:
+    - godot
+
+formatters:
+  enable:
+    - goimports
+
+run:
+  timeout: 10m

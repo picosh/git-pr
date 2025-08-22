@@ -29,7 +29,7 @@ func main() {
 	dataDir := util.CreateTmpDir()
 	defer func() {
 		if *cleanupFlag {
-			os.RemoveAll(dataDir)
+			_ = os.RemoveAll(dataDir)
 		}
 	}()
 
@@ -39,11 +39,15 @@ func main() {
 	cfg := git.NewGitCfg(logger)
 
 	s := git.GitSshServer(cfg)
-	go s.ListenAndServe()
+	go func() {
+		_ = s.ListenAndServe()
+	}()
 	time.Sleep(time.Millisecond * 100)
 	w := git.GitWebServer(cfg)
 	addr := fmt.Sprintf("%s:%s", cfg.Host, cfg.WebPort)
-	go http.ListenAndServe(addr, w)
+	go func() {
+		_ = http.ListenAndServe(addr, w)
+	}()
 
 	// Hack to wait for startup
 	time.Sleep(time.Millisecond * 100)

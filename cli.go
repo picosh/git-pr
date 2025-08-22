@@ -77,13 +77,13 @@ func prSummary(be *Backend, pr GitPatchRequest, sesh ssh.Session, prID int64) er
 	wish.Printf(sesh, "Repo: %s\n\n", be.CreateRepoNs(repoUser.Name, repo.Name))
 
 	writer := NewTabWriter(sesh)
-	fmt.Fprintln(writer, "ID\tName\tStatus\tDate")
-	fmt.Fprintf(
+	_, _ = fmt.Fprintln(writer, "ID\tName\tStatus\tDate")
+	_, _ = fmt.Fprintf(
 		writer,
 		"%d\t%s\t[%s]\t%s\n",
 		request.ID, request.Name, request.Status, request.CreatedAt.Format(be.Cfg.TimeFormat),
 	)
-	writer.Flush()
+	_ = writer.Flush()
 
 	patchsets, err := pr.GetPatchsetsByPrID(prID)
 	if err != nil {
@@ -93,7 +93,7 @@ func prSummary(be *Backend, pr GitPatchRequest, sesh ssh.Session, prID int64) er
 	wish.Printf(sesh, "\nPatchsets\n====\n")
 
 	writerSet := NewTabWriter(sesh)
-	fmt.Fprintln(writerSet, "ID\tType\tUser\tDate")
+	_, _ = fmt.Fprintln(writerSet, "ID\tType\tUser\tDate")
 	for _, patchset := range patchsets {
 		user, err := pr.GetUserByID(patchset.UserID)
 		if err != nil {
@@ -105,7 +105,7 @@ func prSummary(be *Backend, pr GitPatchRequest, sesh ssh.Session, prID int64) er
 			isReview = "[review]"
 		}
 
-		fmt.Fprintf(
+		_, _ = fmt.Fprintf(
 			writerSet,
 			"%s\t%s\t%s\t%s\n",
 			getFormattedPatchsetID(patchset.ID),
@@ -114,7 +114,7 @@ func prSummary(be *Backend, pr GitPatchRequest, sesh ssh.Session, prID int64) er
 			patchset.CreatedAt.Format(be.Cfg.TimeFormat),
 		)
 	}
-	writerSet.Flush()
+	_ = writerSet.Flush()
 
 	latest, err := getPatchsetFromOpt(patchsets, "")
 	if err != nil {
@@ -130,10 +130,10 @@ func prSummary(be *Backend, pr GitPatchRequest, sesh ssh.Session, prID int64) er
 
 	opatches := patches
 	w := NewTabWriter(sesh)
-	fmt.Fprintln(w, "Idx\tTitle\tCommit\tAuthor\tDate")
+	_, _ = fmt.Fprintln(w, "Idx\tTitle\tCommit\tAuthor\tDate")
 	for idx, patch := range opatches {
 		timestamp := patch.AuthorDate.Format(be.Cfg.TimeFormat)
-		fmt.Fprintf(
+		_, _ = fmt.Fprintf(
 			w,
 			"%d\t%s\t%s\t%s <%s>\t%s\n",
 			idx,
@@ -144,7 +144,7 @@ func prSummary(be *Backend, pr GitPatchRequest, sesh ssh.Session, prID int64) er
 			timestamp,
 		)
 	}
-	w.Flush()
+	_ = w.Flush()
 	return nil
 }
 
@@ -263,7 +263,7 @@ To get started, submit a new patch request:
 					}
 
 					writer := NewTabWriter(sesh)
-					fmt.Fprintln(writer, "RepoID\tPrID\tPatchsetID\tEvent\tCreated\tData")
+					_, _ = fmt.Fprintln(writer, "RepoID\tPrID\tPatchsetID\tEvent\tCreated\tData")
 					for _, eventLog := range eventLogs {
 						repo, err := pr.GetRepoByID(eventLog.RepoID.Int64)
 						if err != nil {
@@ -275,7 +275,7 @@ To get started, submit a new patch request:
 							be.Logger.Error("repo user not found", "repo", repo, "err", err)
 							continue
 						}
-						fmt.Fprintf(
+						_, _ = fmt.Fprintf(
 							writer,
 							"%s\t%d\t%s\t%s\t%s\t%s\n",
 							be.CreateRepoNs(repoUser.Name, repo.Name),
@@ -286,7 +286,7 @@ To get started, submit a new patch request:
 							eventLog.Data,
 						)
 					}
-					writer.Flush()
+					_ = writer.Flush()
 					return nil
 				},
 			},
@@ -464,7 +464,7 @@ To get started, submit a new patch request:
 							onlyMine := cCtx.Bool("mine")
 
 							writer := NewTabWriter(sesh)
-							fmt.Fprintln(writer, "ID\tRepoID\tName\tStatus\tPatchsets\tUser\tDate")
+							_, _ = fmt.Fprintln(writer, "ID\tRepoID\tName\tStatus\tPatchsets\tUser\tDate")
 							for _, req := range prs {
 								if onlyAccepted && req.Status != StatusAccepted {
 									continue
@@ -506,7 +506,7 @@ To get started, submit a new patch request:
 									continue
 								}
 
-								fmt.Fprintf(
+								_, _ = fmt.Fprintf(
 									writer,
 									"%d\t%s\t%s\t[%s]\t%d\t%s\t%s\n",
 									req.ID,
@@ -518,7 +518,7 @@ To get started, submit a new patch request:
 									req.CreatedAt.Format(be.Cfg.TimeFormat),
 								)
 							}
-							writer.Flush()
+							_ = writer.Flush()
 							return nil
 						},
 					},

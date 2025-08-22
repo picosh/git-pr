@@ -26,8 +26,8 @@ func CreateCfgFile(dataDir, cfgTmpl string, adminKey UserSSH) string {
 	if err != nil {
 		panic(err)
 	}
-	_, _ = cfgFi.WriteString(fmt.Sprintf(cfgTmpl, dataDir, adminKey.Public()))
-	cfgFi.Close()
+	_, _ = fmt.Fprintf(cfgFi, cfgTmpl, dataDir, adminKey.Public())
+	_ = cfgFi.Close()
 	return cfgPath
 }
 
@@ -71,13 +71,17 @@ func (s UserSSH) Cmd(patch []byte, cmd string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer client.Close()
+	defer func() {
+		_ = client.Close()
+	}()
 
 	session, err := client.NewSession()
 	if err != nil {
 		return "", err
 	}
-	defer session.Close()
+	defer func() {
+		_ = session.Close()
+	}()
 
 	stdinPipe, err := session.StdinPipe()
 	if err != nil {
@@ -100,7 +104,7 @@ func (s UserSSH) Cmd(patch []byte, cmd string) (string, error) {
 		}
 	}
 
-	stdinPipe.Close()
+	_ = stdinPipe.Close()
 
 	if err := session.Wait(); err != nil {
 		return "", err

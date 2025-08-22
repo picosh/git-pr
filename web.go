@@ -584,26 +584,32 @@ func createPrDetail(page string) http.HandlerFunc {
 
 		var pr *PatchRequest
 		var ps *Patchset
-		if page == "pr" {
-			pr, err = web.Pr.GetPatchRequestByID(int64(prID))
-			if err != nil {
-				web.Pr.Backend.Logger.Error("cannot get prs", "err", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
+		switch page {
+		case "pr":
+			{
+				pr, err = web.Pr.GetPatchRequestByID(int64(prID))
+				if err != nil {
+					web.Pr.Backend.Logger.Error("cannot get prs", "err", err)
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
 			}
-		} else if page == "ps" || page == "rd" {
-			ps, err = web.Pr.GetPatchsetByID(int64(prID))
-			if err != nil {
-				web.Pr.Backend.Logger.Error("cannot get patchset", "err", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
+		case "ps":
+		case "rd":
+			{
+				ps, err = web.Pr.GetPatchsetByID(int64(prID))
+				if err != nil {
+					web.Pr.Backend.Logger.Error("cannot get patchset", "err", err)
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
 
-			pr, err = web.Pr.GetPatchRequestByID(int64(ps.PatchRequestID))
-			if err != nil {
-				web.Pr.Backend.Logger.Error("cannot get pr", "err", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
+				pr, err = web.Pr.GetPatchRequestByID(int64(ps.PatchRequestID))
+				if err != nil {
+					web.Pr.Backend.Logger.Error("cannot get pr", "err", err)
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
 			}
 		}
 
@@ -685,7 +691,7 @@ func createPrDetail(page string) http.HandlerFunc {
 				if psID != data.ID {
 					continue
 				}
-				if !data.Patchset.Review {
+				if !data.Review {
 					continue
 				}
 

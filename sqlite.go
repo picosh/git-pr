@@ -208,7 +208,7 @@ func SqliteOpen(dsn string, logger *slog.Logger) (*sqlx.DB, error) {
 
 	err = sqliteUpgrade(db)
 	if err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, err
 	}
 
