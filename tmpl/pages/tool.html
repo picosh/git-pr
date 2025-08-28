@@ -1,0 +1,53 @@
+{{template "base" .}}
+
+{{define "title"}}range-diff tool{{end}}
+
+{{define "meta"}}
+<meta property="og:title" content="range-diff tool" />
+<meta property="og:url" content="https://{{.MetaData.URL}}/tool" />
+<meta property="og:type" content="object" />
+<meta property="og:site_name" content="{{.MetaData.URL}}" />
+{{end}}
+
+{{define "body"}}
+  {{if .PatchsetData.RangeDiff}}
+    <div class="p-1">
+      {{template "range-diff" .}}
+    </div>
+  {{else}}
+    <main class="flex justify-center">
+      <div class="container mt">
+        <div>
+          <h1 class="text-xl">range-diff</h1>
+          <div>
+            A tool to compare two commit ranges (e.g. two versions of a branch) by cross-referencing similar commits and then diff'ing them.
+            This means the old patches and the new patches do not need to be in the same order.
+            You can read the <a href="https://git-scm.com/docs/git-range-diff">git <code>range-diff</code> docs</a> to learn more about it.
+          </div>
+          <div class="mb">
+            In order to use this tool, you need to print both versions of a branch by running <a href="https://git-scm.com/docs/git-format-patch">git <code>format-patch</code></a>.
+          </div>
+          <pre>git switch branch-1
+git format-patch --stdout origin/main # paste into old box
+git switch branch-2
+git format-patch --stdout origin/main # paste into new box</pre>
+        </div>
+
+        <form method="post" action="/tool" style="text-align: right;">
+          <div class="flex gap items-center">
+            <div class="flex-1" >
+              <h2 class="text-lg">old patchset</h2>
+              <textarea name="prev_patchset" style="width: 100%; height: 100vh; max-height: 500px;"></textarea>
+            </div>
+            <div>&gt;&gt;</div>
+            <div class="flex-1" >
+              <h2 class="text-lg">new patchset</h2>
+              <textarea name="next_patchset" style="width: 100%; height: 100vh; max-height: 500px;"></textarea>
+            </div>
+          </div>
+          <button type="submit" class="btn mt" style="background-color: transparent;">submit</button>
+        </form>
+      </div>
+    </main>
+  {{end}}
+{{end}}

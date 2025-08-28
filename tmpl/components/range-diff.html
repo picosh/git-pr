@@ -58,10 +58,11 @@
                 {{range .Files}}
                   <div class="flex gap">
                     <div class="flex-1" style="width: 48%;">
+                      <h3 class="text-md">old</h3>
                       <div>
                         {{if .OldFile}}
-                          {{if .OldFile.OldName}}<code>{{.OldFile.OldName}}</code>{{end}}
-                          {{if .OldFile.NewName}}<code>{{.OldFile.NewName}}</code>{{end}}
+                          {{if .OldFile.OldName}}old:<code>{{.OldFile.OldName}}</code>{{end}}
+                          {{if .OldFile.NewName}}new:<code>{{.OldFile.NewName}}</code>{{end}}
                         {{end}}
                       </div>
                       <pre class="m-0">{{- range .Diff -}}
@@ -79,9 +80,10 @@
                     </div>
 
                     <div class="flex-1" style="width: 48%;">
+                      <h3 class="text-md">new</h3>
                       <div>
-                        {{if .NewFile.OldName}}<code>{{.NewFile.OldName}}</code>{{end}}
-                        {{if .NewFile.NewName}}<code>{{.NewFile.NewName}}</code>{{end}}
+                        {{if .NewFile.OldName}}old:<code>{{.NewFile.OldName}}</code>{{end}}
+                        {{if .NewFile.NewName}}new:<code>{{.NewFile.NewName}}</code>{{end}}
                       </div>
                       <pre class="m-0">{{- range .Diff -}}
                         {{- if eq .OuterType "insert" -}}

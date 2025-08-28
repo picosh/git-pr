@@ -34,6 +34,7 @@ var (
 	prTmpl    = getTemplate("pr.html")
 	userTmpl  = getTemplate("user.html")
 	repoTmpl  = getTemplate("repo.html")
+	toolTmpl  = getTemplate("tool.html")
 )
 
 func getTemplate(page string) *template.Template {
@@ -567,6 +568,12 @@ type PrDetailData struct {
 	MetaData
 }
 
+type ToolData struct {
+	Patchset     *Patchset
+	PatchsetData *PatchsetData
+	MetaData
+}
+
 func createPrDetail(page string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
@@ -873,6 +880,78 @@ func createPrDetail(page string) http.HandlerFunc {
 	}
 }
 
+func toolHandlerGet(w http.ResponseWriter, r *http.Request) {
+	web, err := getWebCtx(r)
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+
+	err = toolTmpl.Execute(w, ToolData{
+		MetaData: MetaData{
+			URL: web.Backend.Cfg.Url,
+		},
+		Patchset: &Patchset{
+			ID: 0,
+		},
+		PatchsetData: &PatchsetData{
+			RangeDiff: []*RangeDiffOutput{},
+		},
+	})
+	if err != nil {
+		web.Backend.Logger.Error("cannot execute template", "err", err)
+	}
+}
+
+func toolHandlerPost(w http.ResponseWriter, r *http.Request) {
+	web, err := getWebCtx(r)
+	if err != nil {
+		web.Backend.Logger.Error("web ctx not found", "err", err)
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		web.Backend.Logger.Error("parse form", "err", err)
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	prevPs := r.PostFormValue("prev_patchset")
+	prevPs = strings.ReplaceAll(prevPs, "\r", "")
+	nextPs := r.PostFormValue("next_patchset")
+	nextPs = strings.ReplaceAll(nextPs, "\r", "")
+
+	prevPatchset, err := ParsePatchset(strings.NewReader(prevPs))
+	if err != nil {
+		web.Backend.Logger.Error("parse prev patchset", "err", err)
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+	nextPatchset, err := ParsePatchset(strings.NewReader(nextPs))
+	if err != nil {
+		web.Backend.Logger.Error("parse next patchset", "err", err)
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+	rangeDiff := RangeDiff(prevPatchset, nextPatchset)
+
+	err = toolTmpl.Execute(w, ToolData{
+		MetaData: MetaData{
+			URL: web.Backend.Cfg.Url,
+		},
+		Patchset: &Patchset{
+			ID: 0,
+		},
+		PatchsetData: &PatchsetData{
+			RangeDiff: rangeDiff,
+		},
+	})
+	if err != nil {
+		web.Backend.Logger.Error("cannot execute template", "err", err)
+	}
+}
+
 func rssHandler(w http.ResponseWriter, r *http.Request) {
 	web, err := getWebCtx(r)
 	if err != nil {
@@ -1127,6 +1206,8 @@ func GitWebServer(cfg *GitCfg) http.Handler {
 	mux.HandleFunc("GET /r/{user}", ctxMdw(ctx, userDetailHandler))
 	mux.HandleFunc("GET /rss/{user}", ctxMdw(ctx, rssHandler))
 	mux.HandleFunc("GET /rss", ctxMdw(ctx, rssHandler))
+	mux.HandleFunc("GET /tool", ctxMdw(ctx, toolHandlerGet))
+	mux.HandleFunc("POST /tool", ctxMdw(ctx, toolHandlerPost))
 	mux.HandleFunc("GET /", ctxMdw(ctx, indexHandler))
 	mux.HandleFunc("GET /syntax.css", ctxMdw(ctx, chromaStyleHandler))
 	embedFS, err := getEmbedFS(embedStaticFS, "static")
