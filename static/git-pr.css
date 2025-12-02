@@ -20,6 +20,10 @@ details {
   margin-bottom: 0;
 }
 
+.text-2xl {
+  text-transform: lowercase;
+}
+
 .pill-success {
   border: 1px solid var(--success);
   color: var(--success);
@@ -60,18 +64,27 @@ details {
   height: max-content;
 }
 
+.mb-0 {
+  margin-bottom: 0;
+}
+
 .patch-file {
   position: sticky;
   top: 0;
   left: 0;
   padding: var(--grid-height) 0;
   background-color: var(--bg-color);
+  margin: 0;
 }
 
 .details-min {
   border: 0;
   margin: 0;
   padding: 0;
+}
+
+.chroma {
+  margin: 0;
 }
 
 .chroma .gi {

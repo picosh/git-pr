@@ -2,7 +2,7 @@
 <div class="group">
   <div class="flex gap-2 collapse">
     <div class="group patchset-list" style="width: 350px;">
-      <h2 class="text-xl mt">
+      <h2 class="text-xl">
         Patchset <code>ps-{{.Patchset.ID}}</code>
       </h2>
 
@@ -23,7 +23,7 @@
           </div>
 
           {{range $patch.PatchFiles}}
-            <div class="flex justify-between items-center">
+            <div class="flex justify-between items-center text-sm">
               {{if .NewName}}
               <a class="flex-1 word-break-word mono" href="#patch-{{$patch.ID}}-{{.NewName}}">{{.NewName}}</a>
               {{else}}
@@ -42,26 +42,26 @@
         </div>
       {{end}}
 
-      <div><a href="#top">Back to top</a></div>
+      <div><a href="#top" class="text-sm">Back to top</a></div>
     </div>
 
     <div class="max-w flex-1">
       {{range $patch := .Patches}}
         <div class="group" id="{{$patch.Url}}">
-          <h3 class="text-lg text-transform-none mono"><a href="#{{$patch.Url}}">{{$patch.Title}}</a></h3>
+          <div class="box">
+            <h3 class="text-lg text-transform-none mono mb-0"><a href="#{{$patch.Url}}">{{$patch.Title}}</a></h3>
+          </div>
 
           {{if $patch.Body}}<pre class="w-full">{{$patch.Body}}</pre>{{end}}
 
           {{range $patch.PatchFiles}}
             {{if .NewName}}
             <details class="details-min" open="true" id="patch-{{$patch.ID}}-{{.NewName}}">
-              <summary class="group-h patch-file">
-                <span class="mono">{{.NewName}}</span>
+              <summary class="patch-file">
+                <code class="pill-success">+{{.Adds}}</code>
+                <code class="pill-admin">-{{.Dels}}</code>
+                <span class="mono ml">{{.NewName}}</span>
                 <a href="#patch-{{$patch.ID}}-{{.NewName}}" class="word-break-word">link</a>
-                <div class="flex gap">
-                  <code class="pill-success">+{{.Adds}}</code>
-                  <code class="pill-admin">-{{.Dels}}</code>
-                </div>
               </summary>
               {{if .IsBinary}}
               <div><pre>Binaries are not rendered as diffs.</pre></div>
@@ -71,13 +71,11 @@
             </details>
             {{else}}
             <details class="details-min" open="true" id="patch-{{$patch.ID}}-{{.OldName}}">
-              <summary class="group-h patch-file">
-                <span class="mono">{{.OldName}}</span>
+              <summary class="patch-file">
+                <code class="pill-success">+{{.Adds}}</code>
+                <code class="pill-admin">-{{.Dels}}</code>
+                <span class="mono ml">{{.OldName}}</span>
                 <a href="#patch-{{$patch.ID}}-{{.OldName}}" class="word-break-word">link</a>
-                <div class="flex gap">
-                  <code class="pill-success">+{{.Adds}}</code>
-                  <code class="pill-admin">-{{.Dels}}</code>
-                </div>
               </summary>
               {{if .IsBinary}}
               <div><pre>Binaries are not rendered as diffs.</pre></div>
