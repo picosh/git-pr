@@ -116,13 +116,7 @@ func toRangeDiffDiff(diff []diffmatchpatch.Diff) []RangeDiffDiff {
 	result := []RangeDiffDiff{}
 
 	for _, line := range diff {
-		outer := "equal"
-		switch line.Type {
-		case diffmatchpatch.DiffInsert:
-			outer = "insert"
-		case diffmatchpatch.DiffDelete:
-			outer = "delete"
-		}
+		outerDiffType := line.Type
 
 		fmtLine := strings.Split(line.Text, "\n")
 		for idx, ln := range fmtLine {
@@ -130,16 +124,28 @@ func toRangeDiffDiff(diff []diffmatchpatch.Diff) []RangeDiffDiff {
 			if idx < len(fmtLine)-1 {
 				text = ln + "\n"
 			}
+
+			// Determine inner type based on line prefix (+/-/space)
+			inner := "equal"
+			if strings.HasPrefix(text, "+") {
+				inner = "insert"
+			} else if strings.HasPrefix(text, "-") {
+				inner = "delete"
+			}
+
+			// Determine outer type based on diff result
+			outer := "equal"
+			switch outerDiffType {
+			case diffmatchpatch.DiffInsert:
+				outer = "insert"
+			case diffmatchpatch.DiffDelete:
+				outer = "delete"
+			}
+
 			st := RangeDiffDiff{
 				Text:      text,
 				OuterType: outer,
-				InnerType: "equal",
-			}
-
-			if strings.HasPrefix(text, "+") {
-				st.InnerType = "insert"
-			} else if strings.HasPrefix(text, "-") {
-				st.InnerType = "delete"
+				InnerType: inner,
 			}
 
 			result = append(result, st)
@@ -209,7 +215,7 @@ func outputDiff(patchA, patchB *PatchRange) []*RangeDiffFile {
 					// No difference in actual changes, skip this file
 					continue
 				}
-				// Use full lines (with context) for display
+				// Use all lines (with context) for display
 				strA := extractAllLines(fileA)
 				strB := extractAllLines(fileB)
 				curDiff := DoDiff(strA, strB)
