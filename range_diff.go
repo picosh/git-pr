@@ -331,7 +331,13 @@ func RangeDiffToStr(diffs []*RangeDiffOutput) string {
 	for _, diff := range diffs {
 		output += diff.Header.String()
 		for _, f := range diff.Files {
-			output += fmt.Sprintf("\n@@ %s\n", f.NewFile.NewName)
+			fileName := ""
+			if f.NewFile != nil {
+				fileName = f.NewFile.NewName
+			} else if f.OldFile != nil {
+				fileName = f.OldFile.NewName
+			}
+			output += fmt.Sprintf("\n@@ %s\n", fileName)
 			for _, d := range f.Diff {
 				switch d.OuterType {
 				case "equal":

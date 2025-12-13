@@ -180,7 +180,18 @@ func TestRangeDiffChangedCommit(t *testing.T) {
 	    Z 10
 	    Z B
 */
-// func TestRangeDiffRenamedFile(t *testing.T) {}
+func TestRangeDiffRenamedFile(t *testing.T) {
+	actual := cmp("a_b_reorder.patch", "a_c_renamed_file.patch")
+	if !strings.Contains(actual, "1:  33c682a = 1:  33c682a") {
+		t.Fatal("expected first commit to be equal")
+	}
+	if !strings.Contains(actual, "2:  22dde12 ! 2:  aabbcc1") {
+		t.Fatal("expected second commit to show diff marker")
+	}
+	if !strings.Contains(actual, "DOCS.md") {
+		t.Fatal("expected renamed file DOCS.md in output")
+	}
+}
 
 // file with mode only change
 /*
@@ -218,7 +229,15 @@ func TestRangeDiffChangedCommit(t *testing.T) {
 	    + ## other-file (mode change 100644 => 100755) ##
 	3:  $(test_oid t4) = 3:  $(test_oid o3) s/12/B/
 */
-// func TestRangeDiffFileWithModeOnlyChange(t *testing.T) {}
+func TestRangeDiffFileWithModeOnlyChange(t *testing.T) {
+	actual := cmp("a_b_reorder.patch", "a_c_mode_change.patch")
+	if !strings.Contains(actual, "1:  33c682a ! 1:  33c682a") {
+		t.Fatal("expected first commit to show diff marker due to new file")
+	}
+	if !strings.Contains(actual, "run.sh") {
+		t.Fatal("expected run.sh script in output")
+	}
+}
 
 // file added and later removed
 /*
@@ -257,7 +276,18 @@ func TestRangeDiffChangedCommit(t *testing.T) {
 	    + ## new-file (deleted) ##
 	4:  $(test_oid t4) = 4:  $(test_oid s4) s/12/B/
 */
-// func TestRangeDiffFileAddedThenRemoved(t *testing.T) {}
+func TestRangeDiffFileAddedThenRemoved(t *testing.T) {
+	actual := cmp("a_b_reorder.patch", "a_c_file_added_removed.patch")
+	if !strings.Contains(actual, "1:  33c682a = 1:  33c682a") {
+		t.Fatal("expected first commit to be equal")
+	}
+	if !strings.Contains(actual, "temp.txt") {
+		t.Fatal("expected temp.txt in output")
+	}
+	if !strings.Contains(actual, "-:  ------- > 3:  ccddee1") {
+		t.Fatal("expected third commit to be added")
+	}
+}
 
 // changed message
 /*
@@ -275,4 +305,110 @@ func TestRangeDiffChangedCommit(t *testing.T) {
 	3:  $(test_oid t3) = 3:  $(test_oid m3) s/11/B/
 	4:  $(test_oid t4) = 4:  $(test_oid m4) s/12/B/
 */
-// func TestRangeDiffChangedMessage(t *testing.T) {}
+func TestRangeDiffChangedMessage(t *testing.T) {
+	actual := cmp("a_b_reorder.patch", "a_c_changed_message.patch")
+	if !strings.Contains(actual, "1:  33c682a = 1:  33c682a") {
+		t.Fatal("expected first commit to be equal")
+	}
+	if !strings.Contains(actual, "2:  22dde12 ! 2:  ddeeff1") {
+		t.Fatal("expected second commit to show diff marker due to message change")
+	}
+}
+
+func TestRangeDiffEmptyPatchset(t *testing.T) {
+	a, err := fixtures.Fixtures.Open("a_b_reorder.patch")
+	bail(err)
+	aPatches, err := ParsePatchset(a)
+	bail(err)
+	bPatches := []*Patch{}
+
+	actual := RangeDiff(aPatches, bPatches)
+	result := RangeDiffToStr(actual)
+
+	if len(aPatches) != 2 {
+		t.Fatalf("expected 2 patches in a, got %d", len(aPatches))
+	}
+	if !strings.Contains(result, "< -:") {
+		t.Fatal("expected removed commit markers when comparing to empty patchset")
+	}
+	if !strings.Contains(result, "1:  33c682a < -:") {
+		t.Fatal("expected first commit to show as removed")
+	}
+	if !strings.Contains(result, "2:  22dde12 < -:") {
+		t.Fatal("expected second commit to show as removed")
+	}
+}
+
+func TestRangeDiffEmptyToNonEmpty(t *testing.T) {
+	b, err := fixtures.Fixtures.Open("a_b_reorder.patch")
+	bail(err)
+	bPatches, err := ParsePatchset(b)
+	bail(err)
+	aPatches := []*Patch{}
+
+	actual := RangeDiff(aPatches, bPatches)
+	result := RangeDiffToStr(actual)
+
+	if len(bPatches) != 2 {
+		t.Fatalf("expected 2 patches in b, got %d", len(bPatches))
+	}
+	if !strings.Contains(result, "> 1:") {
+		t.Fatal("expected added commit markers when comparing from empty patchset")
+	}
+	if !strings.Contains(result, "-:  ------- > 1:  33c682a") {
+		t.Fatal("expected first commit to show as added")
+	}
+}
+
+func TestRangeDiffSquashedCommits(t *testing.T) {
+	actual := cmp("a_b_reorder.patch", "a_c_squashed.patch")
+
+	if !strings.Contains(actual, "< -:") {
+		t.Fatal("expected at least one commit to show as removed (squashed away)")
+	}
+	if !strings.Contains(actual, "aabbccd") {
+		t.Fatal("expected squashed commit sha in output")
+	}
+}
+
+func TestRangeDiffSplitCommits(t *testing.T) {
+	actual := cmp("a_b_reorder.patch", "a_c_split.patch")
+
+	if !strings.Contains(actual, "-:  ------- >") {
+		t.Fatal("expected added commit marker for split commit")
+	}
+	if !strings.Contains(actual, "aabb112") {
+		t.Fatal("expected new split commit sha (aabb112) in output")
+	}
+	if !strings.Contains(actual, "33c682a") {
+		t.Fatal("expected original commit sha in output")
+	}
+}
+
+func TestRangeDiffDifferentAuthor(t *testing.T) {
+	actual := cmp("a_b_reorder.patch", "a_c_different_author.patch")
+
+	if !strings.Contains(actual, "!") {
+		t.Fatal("expected diff marker (!) for commits with different author")
+	}
+	if !strings.Contains(actual, "33c682a") && !strings.Contains(actual, "22dde12") {
+		t.Fatal("expected commit shas in output")
+	}
+}
+
+func TestRangeDiffMultipleFilesInCommit(t *testing.T) {
+	actual := cmp("a_b_reorder.patch", "a_c_multi_file_change.patch")
+
+	if !strings.Contains(actual, "1:  33c682a = 1:  33c682a") {
+		t.Fatal("expected first commit to be equal")
+	}
+	if !strings.Contains(actual, "2:  22dde12 ! 2:  bbccdd1") {
+		t.Fatal("expected second commit to show diff marker")
+	}
+	if !strings.Contains(actual, "CONTRIBUTING.md") {
+		t.Fatal("expected CONTRIBUTING.md in diff output")
+	}
+	if !strings.Contains(actual, "LICENSE.md") {
+		t.Fatal("expected LICENSE.md in diff output")
+	}
+}
