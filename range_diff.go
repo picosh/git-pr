@@ -294,12 +294,23 @@ func outputRemovedPatch(patch *PatchRange) []*RangeDiffFile {
 
 // RangeDiffHeader is a header combining old and new change pairs.
 type RangeDiffHeader struct {
-	OldIdx       int
-	OldSha       string
-	NewIdx       int
-	NewSha       string
-	Title        string
-	ContentEqual bool
+	OldIdx         int
+	OldSha         string
+	OldAuthorName  string
+	OldAuthorEmail string
+	OldTitle       string
+	OldBody        string
+	NewIdx         int
+	NewSha         string
+	NewAuthorName  string
+	NewAuthorEmail string
+	NewTitle       string
+	NewBody        string
+	Title          string
+	ContentEqual   bool
+	AuthorChanged  bool
+	TitleChanged   bool
+	BodyChanged    bool
 }
 
 func NewRangeDiffHeader(a *PatchRange, b *PatchRange, aIndex, bIndex int) *RangeDiffHeader {
@@ -307,12 +318,20 @@ func NewRangeDiffHeader(a *PatchRange, b *PatchRange, aIndex, bIndex int) *Range
 	if a == nil {
 		hdr.NewIdx = bIndex
 		hdr.NewSha = b.CommitSha
+		hdr.NewAuthorName = b.AuthorName
+		hdr.NewAuthorEmail = b.AuthorEmail
+		hdr.NewTitle = b.Title
+		hdr.NewBody = b.Body
 		hdr.Title = b.Title
 		return hdr
 	}
 	if b == nil {
 		hdr.OldIdx = aIndex
 		hdr.OldSha = a.CommitSha
+		hdr.OldAuthorName = a.AuthorName
+		hdr.OldAuthorEmail = a.AuthorEmail
+		hdr.OldTitle = a.Title
+		hdr.OldBody = a.Body
 		hdr.Title = a.Title
 		return hdr
 	}
@@ -321,6 +340,19 @@ func NewRangeDiffHeader(a *PatchRange, b *PatchRange, aIndex, bIndex int) *Range
 	hdr.NewIdx = bIndex
 	hdr.OldSha = a.CommitSha
 	hdr.NewSha = b.CommitSha
+	hdr.OldAuthorName = a.AuthorName
+	hdr.OldAuthorEmail = a.AuthorEmail
+	hdr.OldTitle = a.Title
+	hdr.OldBody = a.Body
+	hdr.NewAuthorName = b.AuthorName
+	hdr.NewAuthorEmail = b.AuthorEmail
+	hdr.NewTitle = b.Title
+	hdr.NewBody = b.Body
+
+	// Check what changed
+	hdr.AuthorChanged = a.AuthorName != b.AuthorName || a.AuthorEmail != b.AuthorEmail
+	hdr.TitleChanged = a.Title != b.Title
+	hdr.BodyChanged = a.Body != b.Body
 
 	if a.ContentSha == b.ContentSha {
 		hdr.Title = a.Title

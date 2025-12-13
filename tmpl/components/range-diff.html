@@ -53,6 +53,34 @@
               </code>
             </div>
 
+            {{if or .Header.AuthorChanged .Header.TitleChanged .Header.BodyChanged}}
+            <div class="box mb">
+              <dl>
+                {{if .Header.AuthorChanged}}
+                <dt>author changed</dt>
+                <dd>
+                  <div><span style="color: tomato;">- {{.Header.OldAuthorName}} &lt;{{.Header.OldAuthorEmail}}&gt;</span></div>
+                  <div><span style="color: limegreen;">+ {{.Header.NewAuthorName}} &lt;{{.Header.NewAuthorEmail}}&gt;</span></div>
+                </dd>
+                {{end}}
+                {{if .Header.TitleChanged}}
+                <dt>title changed</dt>
+                <dd>
+                  <div><span style="color: tomato;">- {{.Header.OldTitle}}</span></div>
+                  <div><span style="color: limegreen;">+ {{.Header.NewTitle}}</span></div>
+                </dd>
+                {{end}}
+                {{if .Header.BodyChanged}}
+                <dt>message changed</dt>
+                <dd>
+                  <pre style="color: tomato; margin: 0;">- {{.Header.OldBody}}</pre>
+                  <pre style="color: limegreen; margin: 0;">+ {{.Header.NewBody}}</pre>
+                </dd>
+                {{end}}
+              </dl>
+            </div>
+            {{end}}
+
             <div>
               {{- if .Files -}}
                 {{range .Files}}
@@ -68,11 +96,11 @@
                       <pre class="m-0">{{- range .Diff -}}
                         {{- if eq .OuterType "delete" -}}
                           {{- if eq .InnerType "insert" -}}
-                            <span style="background-color: tomato; color: limegreen;">{{.Text}}</span>
+                            <span style="background-color: rgba(255,99,71,0.25); color: limegreen;">{{.Text}}</span>
                           {{- else if eq .InnerType "delete" -}}
-                            <span style="background-color: tomato; color: #8B0000;">{{.Text}}</span>
+                            <span style="background-color: rgba(255,99,71,0.25); color: tomato;">{{.Text}}</span>
                           {{- else -}}
-                            <span style="background-color: tomato;">{{.Text}}</span>
+                            <span style="background-color: rgba(255,99,71,0.25);">{{.Text}}</span>
                           {{- end -}}
                         {{- else if eq .OuterType "insert" -}}
                         {{- else if eq .InnerType "insert" -}}
@@ -96,11 +124,11 @@
                       <pre class="m-0">{{- range .Diff -}}
                         {{- if eq .OuterType "insert" -}}
                           {{- if eq .InnerType "insert" -}}
-                            <span style="background-color: limegreen; color: #006400;">{{.Text}}</span>
+                            <span style="background-color: rgba(50,205,50,0.25); color: limegreen;">{{.Text}}</span>
                           {{- else if eq .InnerType "delete" -}}
-                            <span style="background-color: limegreen; color: tomato;">{{.Text}}</span>
+                            <span style="background-color: rgba(50,205,50,0.25); color: tomato;">{{.Text}}</span>
                           {{- else -}}
-                            <span style="background-color: limegreen;">{{.Text}}</span>
+                            <span style="background-color: rgba(50,205,50,0.25);">{{.Text}}</span>
                           {{- end -}}
                         {{- else if eq .OuterType "delete" -}}
                         {{- else if eq .InnerType "insert" -}}
