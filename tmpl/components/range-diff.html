@@ -67,7 +67,13 @@
                       </div>
                       <pre class="m-0">{{- range .Diff -}}
                         {{- if eq .OuterType "delete" -}}
-                          <span style="background-color: tomato;">{{.Text}}</span>
+                          {{- if eq .InnerType "insert" -}}
+                            <span style="background-color: tomato; color: limegreen;">{{.Text}}</span>
+                          {{- else if eq .InnerType "delete" -}}
+                            <span style="background-color: tomato; color: #8B0000;">{{.Text}}</span>
+                          {{- else -}}
+                            <span style="background-color: tomato;">{{.Text}}</span>
+                          {{- end -}}
                         {{- else if eq .OuterType "insert" -}}
                         {{- else if eq .InnerType "insert" -}}
                           <span style="color: limegreen;">{{.Text}}</span>
@@ -89,7 +95,13 @@
                       </div>
                       <pre class="m-0">{{- range .Diff -}}
                         {{- if eq .OuterType "insert" -}}
-                          <span style="background-color: limegreen;">{{.Text}}</span>
+                          {{- if eq .InnerType "insert" -}}
+                            <span style="background-color: limegreen; color: #006400;">{{.Text}}</span>
+                          {{- else if eq .InnerType "delete" -}}
+                            <span style="background-color: limegreen; color: tomato;">{{.Text}}</span>
+                          {{- else -}}
+                            <span style="background-color: limegreen;">{{.Text}}</span>
+                          {{- end -}}
                         {{- else if eq .OuterType "delete" -}}
                         {{- else if eq .InnerType "insert" -}}
                           <span style="color: limegreen;">{{.Text}}</span>
