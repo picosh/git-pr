@@ -172,6 +172,8 @@ func ParsePatchset(patchset io.Reader) ([]*Patch, error) {
 // changes related to a patch.
 // We cannot rely on patch.CommitSha because it includes the commit date
 // that will change when a user fetches and applies the patch locally.
+// We only include +/- lines (not context) so that rebased patches with
+// different context lines but identical changes are considered equal.
 func calcContentSha(diffFiles []*gitdiff.File, header *gitdiff.PatchHeader) string {
 	authorName := ""
 	authorEmail := ""
@@ -203,13 +205,25 @@ func calcContentSha(diffFiles []*gitdiff.File, header *gitdiff.PatchHeader) stri
 			continue
 		}
 
+		// Include file names and mode changes, but not OID prefixes since those
+		// change when context lines shift (e.g., after rebase)
 		dff := fmt.Sprintf(
-			"%s->%s %s..%s %s->%s\n",
+			"%s->%s %s->%s\n",
 			diff.OldName, diff.NewName,
-			diff.OldOIDPrefix, diff.NewOIDPrefix,
 			diff.OldMode.String(), diff.NewMode.String(),
 		)
 		content += dff
+
+		// Include only added and deleted lines, not context lines.
+		// This ensures patches with identical changes but different context
+		// (due to rebasing) are considered equal.
+		for _, frag := range diff.TextFragments {
+			for _, line := range frag.Lines {
+				if line.Op == gitdiff.OpAdd || line.Op == gitdiff.OpDelete {
+					content += line.String()
+				}
+			}
+		}
 	}
 	sha := sha256.Sum256([]byte(content))
 	shaStr := hex.EncodeToString(sha[:])

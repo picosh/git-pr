@@ -82,8 +82,10 @@
                     <div class="flex-1" style="width: 48%;">
                       <h3 class="text-md">new</h3>
                       <div>
-                        {{if .NewFile.OldName}}old:<code>{{.NewFile.OldName}}</code>{{end}}
-                        {{if .NewFile.NewName}}new:<code>{{.NewFile.NewName}}</code>{{end}}
+                        {{if .NewFile}}
+                          {{if .NewFile.OldName}}old:<code>{{.NewFile.OldName}}</code>{{end}}
+                          {{if .NewFile.NewName}}new:<code>{{.NewFile.NewName}}</code>{{end}}
+                        {{end}}
                       </div>
                       <pre class="m-0">{{- range .Diff -}}
                         {{- if eq .OuterType "insert" -}}

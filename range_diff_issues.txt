@@ -1,0 +1,12 @@
+When git format-patch is run at different times or from different base commits, even for identical code changes, the patches can differ in:
+
+Element
+Why it changes
+Hunk headers (@@ -10,7 +10,7 @@)
+Line numbers shift if upstream changed
+Context lines
+Different surrounding code after rebase
+Hunk boundaries
+Git may split/merge hunks differently
+Function context (@@ ... @@ func name)
+Different function nearby

@@ -47,12 +47,14 @@ func output(a []*PatchRange, b []*PatchRange) []*RangeDiffOutput {
 	for i, patchA := range a {
 		if patchA.Matching == -1 {
 			hdr := NewRangeDiffHeader(patchA, nil, i+1, -1)
+			files := outputRemovedPatch(patchA)
 			outputs = append(
 				outputs,
 				&RangeDiffOutput{
 					Header: hdr,
 					Type:   "rm",
 					Order:  i + 1,
+					Files:  files,
 				},
 			)
 		}
@@ -61,12 +63,14 @@ func output(a []*PatchRange, b []*PatchRange) []*RangeDiffOutput {
 	for j, patchB := range b {
 		if patchB.Matching == -1 {
 			hdr := NewRangeDiffHeader(nil, patchB, -1, j+1)
+			files := outputAddedPatch(patchB)
 			outputs = append(
 				outputs,
 				&RangeDiffOutput{
 					Header: hdr,
 					Type:   "add",
 					Order:  j + 1,
+					Files:  files,
 				},
 			)
 			continue
@@ -153,6 +157,33 @@ func DoDiff(src, dst string) []RangeDiffDiff {
 	return toRangeDiffDiff(diffs)
 }
 
+// extractChangedLines extracts only added and deleted lines from a file's fragments,
+// ignoring context lines. This is used for comparing patches where context lines
+// may differ due to rebasing but the actual changes are the same.
+func extractChangedLines(file *gitdiff.File) string {
+	var result strings.Builder
+	for _, frag := range file.TextFragments {
+		for _, line := range frag.Lines {
+			if line.Op == gitdiff.OpAdd || line.Op == gitdiff.OpDelete {
+				result.WriteString(line.String())
+			}
+		}
+	}
+	return result.String()
+}
+
+// extractAllLines extracts all lines (including context) from a file's fragments.
+// This is used for displaying the full diff with context.
+func extractAllLines(file *gitdiff.File) string {
+	var result strings.Builder
+	for _, frag := range file.TextFragments {
+		for _, line := range frag.Lines {
+			result.WriteString(line.String())
+		}
+	}
+	return result.String()
+}
+
 type RangeDiffFile struct {
 	OldFile *gitdiff.File
 	NewFile *gitdiff.File
@@ -171,29 +202,17 @@ func outputDiff(patchA, patchB *PatchRange) []*RangeDiffFile {
 				if fileA.NewName == "" {
 					continue
 				}
-				strA := ""
-				for _, frag := range fileA.TextFragments {
-					for _, line := range frag.Lines {
-						strA += line.String()
-					}
-				}
-				strB := ""
-				for _, frag := range fileB.TextFragments {
-					for _, line := range frag.Lines {
-						strB += line.String()
-					}
-				}
-				curDiff := DoDiff(strA, strB)
-				hasDiff := false
-				for _, dd := range curDiff {
-					if dd.OuterType != "equal" {
-						hasDiff = true
-						break
-					}
-				}
-				if !hasDiff {
+				// Compare only +/- lines to determine if there's a meaningful diff
+				changedA := extractChangedLines(fileA)
+				changedB := extractChangedLines(fileB)
+				if changedA == changedB {
+					// No difference in actual changes, skip this file
 					continue
 				}
+				// Use full lines (with context) for display
+				strA := extractAllLines(fileA)
+				strB := extractAllLines(fileB)
+				curDiff := DoDiff(strA, strB)
 				fp := &RangeDiffFile{
 					OldFile: fileA,
 					NewFile: fileB,
@@ -205,12 +224,7 @@ func outputDiff(patchA, patchB *PatchRange) []*RangeDiffFile {
 
 		// find files in patchA but not in patchB
 		if !found {
-			strA := ""
-			for _, frag := range fileA.TextFragments {
-				for _, line := range frag.Lines {
-					strA += line.String()
-				}
-			}
+			strA := extractAllLines(fileA)
 			fp := &RangeDiffFile{
 				OldFile: fileA,
 				NewFile: nil,
@@ -231,12 +245,7 @@ func outputDiff(patchA, patchB *PatchRange) []*RangeDiffFile {
 		}
 
 		if !found {
-			strB := ""
-			for _, frag := range fileB.TextFragments {
-				for _, line := range frag.Lines {
-					strB += line.String()
-				}
-			}
+			strB := extractAllLines(fileB)
 			fp := &RangeDiffFile{
 				OldFile: nil,
 				NewFile: fileB,
@@ -246,6 +255,34 @@ func outputDiff(patchA, patchB *PatchRange) []*RangeDiffFile {
 		}
 	}
 
+	return diffs
+}
+
+func outputAddedPatch(patch *PatchRange) []*RangeDiffFile {
+	diffs := []*RangeDiffFile{}
+	for _, file := range patch.Files {
+		strB := extractAllLines(file)
+		fp := &RangeDiffFile{
+			OldFile: nil,
+			NewFile: file,
+			Diff:    DoDiff("", strB),
+		}
+		diffs = append(diffs, fp)
+	}
+	return diffs
+}
+
+func outputRemovedPatch(patch *PatchRange) []*RangeDiffFile {
+	diffs := []*RangeDiffFile{}
+	for _, file := range patch.Files {
+		strA := extractAllLines(file)
+		fp := &RangeDiffFile{
+			OldFile: file,
+			NewFile: nil,
+			Diff:    DoDiff(strA, ""),
+		}
+		diffs = append(diffs, fp)
+	}
 	return diffs
 }
 

@@ -1,0 +1,24 @@
+From cccc3333333333333333333333333333cccccccc Mon Sep 17 00:00:00 2001
+From: Test User <test@example.com>
+Date: Tue, 23 Jul 2024 10:07:57 -0400
+Subject: [PATCH] fix: change timeout value
+
+---
+ server.go | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/server.go b/server.go
+index 1111111..2222222 100644
+--- a/server.go
++++ b/server.go
+@@ -10,7 +10,7 @@ func init() {
+ 	log.Println("starting")
+ 	db.Connect()
+ 	cache.Init()
+-	timeout := 30
++	timeout := 60
+ 	server.Start()
+ 	log.Println("ready")
+ }
+-- 
+2.45.2

@@ -74,11 +74,14 @@ func TestRangeDiffTrivialReordering(t *testing.T) {
 */
 func TestRangeDiffRemovedCommit(t *testing.T) {
 	actual := cmp("a_b_reorder.patch", "a_c_rm_commit.patch")
-	expected := `1:  33c682a < -:  ------- chore: add torch and create random tensor
-2:  22dde12 = 1:  7dbb94c docs: readme
-`
-	if expected != actual {
-		t.Fatal(fail(expected, actual))
+	if !strings.Contains(actual, "1:  33c682a < -:  ------- chore: add torch and create random tensor") {
+		t.Fatal("expected removed commit header not found")
+	}
+	if !strings.Contains(actual, "2:  22dde12 = 1:  7dbb94c docs: readme") {
+		t.Fatal("expected equal commit header not found")
+	}
+	if !strings.Contains(actual, "requirements.txt") {
+		t.Fatal("expected file diff for removed commit")
 	}
 }
 
@@ -92,12 +95,17 @@ func TestRangeDiffRemovedCommit(t *testing.T) {
 */
 func TestRangeDiffAddedCommit(t *testing.T) {
 	actual := cmp("a_b_reorder.patch", "a_c_added_commit.patch")
-	expected := `1:  33c682a = 1:  33c682a chore: add torch and create random tensor
-2:  22dde12 = 2:  22dde12 docs: readme
--:  ------- > 3:  b248060 chore: make tensor 6x6
-`
-	if expected != actual {
-		t.Fatal(fail(expected, actual))
+	if !strings.Contains(actual, "1:  33c682a = 1:  33c682a chore: add torch and create random tensor") {
+		t.Fatal("expected first equal commit header not found")
+	}
+	if !strings.Contains(actual, "2:  22dde12 = 2:  22dde12 docs: readme") {
+		t.Fatal("expected second equal commit header not found")
+	}
+	if !strings.Contains(actual, "-:  ------- > 3:  b248060 chore: make tensor 6x6") {
+		t.Fatal("expected added commit header not found")
+	}
+	if !strings.Contains(actual, "train.py") {
+		t.Fatal("expected file diff for added commit")
 	}
 }
 
@@ -410,5 +418,33 @@ func TestRangeDiffMultipleFilesInCommit(t *testing.T) {
 	}
 	if !strings.Contains(actual, "LICENSE.md") {
 		t.Fatal("expected LICENSE.md in diff output")
+	}
+}
+
+func TestRangeDiffIgnoresContextLines(t *testing.T) {
+	actual := cmp("context_lines_v1.patch", "context_lines_v2.patch")
+
+	if !strings.Contains(actual, "=") {
+		t.Fatal("expected equal marker (=) since +/- lines are identical")
+	}
+	if strings.Contains(actual, "!") {
+		t.Fatal("should not show diff marker (!) when only context lines differ")
+	}
+	if strings.Contains(actual, "old_value") || strings.Contains(actual, "new_value") {
+		t.Fatal("should not have file diff output when changes are equal")
+	}
+}
+
+func TestRangeDiffNormalizesHunkHeaders(t *testing.T) {
+	actual := cmp("hunk_header_v1.patch", "hunk_header_v2.patch")
+
+	if !strings.Contains(actual, "=") {
+		t.Fatal("expected equal marker (=) since changes are identical despite different hunk headers")
+	}
+	if strings.Contains(actual, "!") {
+		t.Fatal("should not show diff marker (!) when only hunk header line numbers differ")
+	}
+	if strings.Contains(actual, "@@ server.go") {
+		t.Fatal("should not have file diff output when changes are equal")
 	}
 }
