@@ -16,3 +16,4 @@ __debug_bin
 test.db
 review.patch
 .aider*
+git_src/
