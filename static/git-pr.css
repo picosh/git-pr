@@ -61,7 +61,8 @@ details {
   position: sticky;
   top: 0;
   left: 0;
-  height: max-content;
+  max-height: 100vh;
+  overflow-y: auto;
 }
 
 .mb-0 {
@@ -85,6 +86,7 @@ details {
 
 .chroma {
   margin: 0;
+  overflow-x: auto;
 }
 
 .chroma .gi {
