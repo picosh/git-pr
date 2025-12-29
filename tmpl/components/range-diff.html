@@ -82,7 +82,7 @@
             {{end}}
 
             <div>
-              {{- if .Files -}}
+              {{- if and .Files (ne .Type "add") -}}
                 {{range .Files}}
                   <div class="flex gap">
                     <div class="flex-1" style="width: 48%;">

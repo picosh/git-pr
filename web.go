@@ -545,6 +545,7 @@ type EventLogData struct {
 	*Patchset
 	FormattedPatchsetID string
 	Date                string
+	RangeDiff           []*RangeDiffOutput
 }
 
 type PatchsetData struct {
@@ -557,6 +558,7 @@ type PatchsetData struct {
 
 type PrDetailData struct {
 	Page         string
+	Tab          string
 	Repo         LinkData
 	Pr           PrData
 	Patchset     *Patchset
@@ -805,6 +807,7 @@ func createPrDetail(page string) http.HandlerFunc {
 				return
 			}
 			var logps *Patchset
+			var rangeDiff []*RangeDiffOutput
 			if eventlog.PatchsetID.Int64 > 0 {
 				logps, err = web.Pr.GetPatchsetByID(eventlog.PatchsetID.Int64)
 				if err != nil {
@@ -812,12 +815,19 @@ func createPrDetail(page string) http.HandlerFunc {
 					w.WriteHeader(http.StatusUnprocessableEntity)
 					return
 				}
+				for _, psData := range patchsetsData {
+					if psData.Patchset.ID == eventlog.PatchsetID.Int64 {
+						rangeDiff = psData.RangeDiff
+						break
+					}
+				}
 			}
 
 			logData = append(logData, EventLogData{
 				EventLog:            eventlog,
 				FormattedPatchsetID: getFormattedPatchsetID(eventlog.PatchsetID.Int64),
 				Patchset:            logps,
+				RangeDiff:           rangeDiff,
 				UserData: UserData{
 					UserID:    user.ID,
 					Name:      user.Name,
@@ -845,8 +855,14 @@ func createPrDetail(page string) http.HandlerFunc {
 
 		repoNs := web.Backend.CreateRepoNs(repoOwner.Name, repo.Name)
 		url := fmt.Sprintf("/r/%s/%s", repoOwner.Name, repo.Name)
+		tab := "timeline"
+		if page == "ps" || page == "rd" {
+			tab = "patchsets"
+		}
+
 		err = prTmpl.Execute(w, PrDetailData{
-			Page: "pr",
+			Page: page,
+			Tab:  tab,
 			Repo: LinkData{
 				Url:  template.URL(url),
 				Text: repoNs,

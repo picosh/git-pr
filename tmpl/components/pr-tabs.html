@@ -1,0 +1,6 @@
+{{define "pr-tabs"}}
+<div class="pr-tabs">
+  <a href="/prs/{{.Pr.ID}}" class="pr-tab{{if eq .Tab "timeline"}} pr-tab-active{{end}}">Timeline</a>
+  <a href="/ps/{{.Patchset.ID}}" class="pr-tab{{if eq .Tab "patchsets"}} pr-tab-active{{end}}">Patchsets</a>
+</div>
+{{end}}

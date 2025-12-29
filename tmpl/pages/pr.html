@@ -16,10 +16,27 @@
 {{template "pr-header" .}}
 
 <main class="group">
-  <div class="flex gap-2 collapse">
-    <div class="group text-sm" style="width: 300px;">
-      <h3 class="text-lg">Logs</h3>
-      {{range .Logs}}
+  {{template "pr-tabs" .}}
+
+  {{if eq .Tab "timeline"}}
+  <div class="group text-sm timeline">
+    {{range .Logs}}
+    <div class="timeline-item">
+      {{if .RangeDiff}}
+      <details class="mb">
+        <summary class="text-sm">Range Diff ↕ <code><a href="/rd/{{.Patchset.ID}}">rd-{{.Patchset.ID}}</a></code></summary>
+        <div class="group">
+        {{- range .RangeDiff -}}
+          <div>
+            <code class='{{if eq .Type "rm"}}pill-admin{{else if eq .Type "add"}}pill-success{{else if eq .Type "diff"}}pill-review{{end}}'>
+              {{.Header}}
+            </code>
+          </div>
+        {{- end -}}
+        </div>
+      </details>
+      {{end}}
+
       <div>
         {{template "user-pill" .UserData}}
         <span class="font-bold">
@@ -44,44 +61,15 @@
         <span>on <date>{{.Date}}</date></span>
         {{if .Data.String}}<code>{{.Data}}</code>{{end}}
       </div>
-      {{end}}
     </div>
-
-    <div class="group text-sm flex-1">
-      <h3 class="text-lg">Patchsets</h3>
-
-      {{range .Patchsets}}
-        {{if .RangeDiff}}
-        <details>
-          <summary class="text-sm">Range Diff ↕ <code><a href="/rd/{{.ID}}">rd-{{.ID}}</a></code></summary>
-          <div class="group">
-          {{- range .RangeDiff -}}
-            <div>
-              <code class='{{if eq .Type "rm"}}pill-admin{{else if eq .Type "add"}}pill-success{{else if eq .Type "diff"}}pill-review{{end}}'>
-                {{.Header}}
-              </code>
-            </div>
-          {{- end -}}
-          </div>
-        </details>
-        {{end}}
-
-        <div>
-          <a href="/ps/{{.Patchset.ID}}"><code class="{{if .Review}}pill-review{{end}}">{{.FormattedID}}</code></a>
-          <span> by </span>
-          {{template "user-pill" .UserData}}
-          <span>on <date>{{.Date}}</date></span>
-        </div>
-      {{end}}
-    </div>
+    {{end}}
   </div>
-
-  <hr class="w-full" />
-
+  {{else}}
   {{if .IsRangeDiff}}
     {{template "range-diff" .}}
   {{else}}
     {{template "patchset" .}}
+  {{end}}
   {{end}}
 </main>
 {{end}}

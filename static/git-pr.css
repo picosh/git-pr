@@ -101,6 +101,31 @@ details {
   overflow-x: scroll;
 }
 
+.pr-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--grey-light);
+  margin-bottom: var(--line-height);
+}
+
+.pr-tab {
+  padding: 0.5rem 1rem;
+  text-decoration: none;
+  border: 1px solid transparent;
+  border-bottom: none;
+  margin-bottom: -1px;
+}
+
+.pr-tab:hover {
+  background-color: var(--grey-light);
+}
+
+.pr-tab-active {
+  border-color: var(--grey-light);
+  border-bottom: 1px solid var(--bg-color);
+  background-color: var(--bg-color);
+}
+
 @media only screen and (max-width: 40em) {
   .collapse {
     flex-direction: column;
