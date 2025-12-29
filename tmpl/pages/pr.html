@@ -19,9 +19,9 @@
   {{template "pr-tabs" .}}
 
   {{if eq .Tab "timeline"}}
-  <div class="group text-sm timeline">
+  <div class="group timeline">
     {{range .Logs}}
-    <div class="timeline-item">
+    <div class="timeline-item{{if eq .Event "pr_status_changed"}} timeline-status-{{.Data.Status}}{{end}}">
       {{if .RangeDiff}}
       <details class="mb">
         <summary class="text-sm">Range Diff ↕ <code><a href="/rd/{{.Patchset.ID}}">rd-{{.Patchset.ID}}</a></code></summary>
@@ -37,6 +37,18 @@
       </details>
       {{end}}
 
+      {{if eq .Event "pr_status_changed"}}
+      <div>
+        {{template "user-pill" .UserData}}
+        <span class="font-bold">changed status to
+          <code class="pill-status-{{.Data.Status}}">{{.Data.Status}}</code>
+        </span>
+        <span>on <date>{{.Date}}</date></span>
+      </div>
+      {{if .Data.Comment}}
+      <div class="status-change-comment">{{.Data.Comment}}</div>
+      {{end}}
+      {{else}}
       <div>
         {{template "user-pill" .UserData}}
         <span class="font-bold">
@@ -50,17 +62,15 @@
             reviewed pr with <a href="/ps/{{.Patchset.ID}}"><code class="pill-review">{{.FormattedPatchsetID}}</code></a>
           {{else if eq .Event "pr_patchset_replaced"}}
             replaced <code>{{.FormattedPatchsetID}}</code>
-          {{else if eq .Event "pr_status_changed"}}
-            changed status
           {{else if eq .Event "pr_name_changed"}}
-            changed pr name
+            changed pr name to <code>{{.Data.Name}}</code>
           {{else}}
             {{.Event}}
           {{end}}
         </span>
         <span>on <date>{{.Date}}</date></span>
-        {{if .Data.String}}<code>{{.Data}}</code>{{end}}
       </div>
+      {{end}}
     </div>
     {{end}}
   </div>

@@ -116,14 +116,75 @@ details {
   margin-bottom: -1px;
 }
 
-.pr-tab:hover {
-  background-color: var(--grey-light);
-}
-
 .pr-tab-active {
   border-color: var(--grey-light);
   border-bottom: 1px solid var(--bg-color);
   background-color: var(--bg-color);
+}
+
+.timeline {
+  border-left: 2px solid var(--grey-light);
+  padding-left: var(--line-height);
+  margin-left: 0.5rem;
+  gap: var(--line-height);
+  margin-bottom: calc(var(--line-height) * 3);
+}
+
+.timeline-item {
+  position: relative;
+}
+
+.timeline-item::before {
+  content: "";
+  position: absolute;
+  left: calc(-1 * var(--line-height) - 0.25rem - 1px);
+  top: 0.5rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  background-color: var(--grey-light);
+  border-radius: 50%;
+}
+
+.timeline-status-accepted::before {
+  background-color: var(--success);
+}
+
+.timeline-status-closed::before {
+  background-color: var(--admin);
+}
+
+.timeline-status-reviewed::before {
+  background-color: var(--review);
+}
+
+.timeline-status-open::before {
+  background-color: var(--link-color);
+}
+
+.status-change-comment {
+  background-color: var(--blockquote-bg);
+  padding: var(--grid-height);
+  margin-top: var(--grid-height);
+}
+
+.pill-status-accepted {
+  border: 1px solid var(--success);
+  color: var(--success);
+}
+
+.pill-status-closed {
+  border: 1px solid var(--admin);
+  color: var(--admin);
+}
+
+.pill-status-reviewed {
+  border: 1px solid var(--review);
+  color: var(--review);
+}
+
+.pill-status-open {
+  border: 1px solid var(--link-color);
+  color: var(--link-color);
 }
 
 @media only screen and (max-width: 40em) {
