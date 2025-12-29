@@ -501,6 +501,7 @@ func repoDetailHandler(w http.ResponseWriter, r *http.Request) {
 		Name:        repo.Name,
 		UserID:      user.ID,
 		Username:    userName,
+		Branch:      "main",
 		Prs:         prdata,
 		NumOpen:     numOpen,
 		NumAccepted: numAccepted,
