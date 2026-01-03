@@ -816,7 +816,7 @@ func createPrDetail(page string) http.HandlerFunc {
 					return
 				}
 				for _, psData := range patchsetsData {
-					if psData.Patchset.ID == eventlog.PatchsetID.Int64 {
+					if psData.ID == eventlog.PatchsetID.Int64 {
 						rangeDiff = psData.RangeDiff
 						break
 					}

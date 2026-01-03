@@ -15,6 +15,9 @@ test:
 	go test ./...
 .PHONY: test
 
+check: fmt lint test
+.PHONY: check
+
 snapshot:
 	UPDATE_SNAPS=true go test ./...
 .PHONY: snapshot
