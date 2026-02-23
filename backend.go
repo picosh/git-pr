@@ -141,7 +141,7 @@ func (be *Backend) GetPatchRequestAcl(repo *Repo, prq *PatchRequest, requester *
 		return acl
 	}
 
-	// pr creator have special priv
+	// pr creator has special priv
 	if be.IsPrOwner(prq.UserID, requester.ID) {
 		acl.CanModify = true
 		acl.CanReview = false
@@ -153,8 +153,8 @@ func (be *Backend) GetPatchRequestAcl(repo *Repo, prq *PatchRequest, requester *
 	// otherwise no perms
 	acl.CanModify = false
 	acl.CanDelete = false
-	// anyone can review or add a patchset
-	acl.CanReview = true
+	acl.CanReview = false
+	// anyone can add a patchset
 	acl.CanAddPatchset = true
 
 	return acl
