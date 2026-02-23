@@ -31,7 +31,7 @@ type GitPatchRequest interface {
 	GetRepoByID(repoID int64) (*Repo, error)
 	GetRepoByName(user *User, repoName string) (*Repo, error)
 	CreateRepo(user *User, repoName string) (*Repo, error)
-	UpsertUser(pubkey, name string) (*User, error)
+	RegisterUser(pubkey, name string) (*User, error)
 	IsBanned(pubkey, ipAddress string) error
 	SubmitPatchRequest(repoID int64, userID int64, patchset io.Reader) (*PatchRequest, error)
 	SubmitPatchset(prID, userID int64, op PatchsetOp, patchset io.Reader) ([]*Patch, error)
@@ -194,16 +194,16 @@ func (pr PrCmd) createUser(pubkey, name string) (*User, error) {
 	return user, err
 }
 
-func (pr PrCmd) UpsertUser(pubkey, name string) (*User, error) {
+func (pr PrCmd) RegisterUser(pubkey, name string) (*User, error) {
 	sanName := strings.ToLower(name)
 	if pubkey == "" {
 		return nil, fmt.Errorf("must provide pubkey during upsert")
 	}
-	user, err := pr.GetUserByPubkey(pubkey)
-	if err != nil {
-		user, err = pr.createUser(pubkey, sanName)
+	_, err := pr.GetUserByPubkey(pubkey)
+	if err == nil {
+		return nil, fmt.Errorf("pubkey is already registered by another user")
 	}
-	return user, err
+	return pr.createUser(pubkey, sanName)
 }
 
 func (pr PrCmd) GetPatchsetsByPrID(prID int64) ([]*Patchset, error) {

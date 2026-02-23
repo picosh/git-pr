@@ -13,6 +13,10 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+func errNotExist(host, pubkey string) error {
+	return fmt.Errorf("User does not exist, run `ssh <username>@%s register` to create an account\nPubkey: %s", host, pubkey)
+}
+
 func NewTabWriter(out io.Writer) *tabwriter.Writer {
 	return tabwriter.NewWriter(out, 0, 0, 1, ' ', tabwriter.TabIndent)
 }
@@ -237,7 +241,7 @@ To get started, submit a new patch request:
 					pubkey := be.Pubkey(sesh.PublicKey())
 					user, err := pr.GetUserByPubkey(pubkey)
 					if err != nil {
-						return err
+						return errNotExist(be.Cfg.Host, pubkey)
 					}
 					isPubkey := cCtx.Bool("pubkey")
 					prID := cCtx.Int64("pr")
@@ -287,6 +291,21 @@ To get started, submit a new patch request:
 						)
 					}
 					_ = writer.Flush()
+					return nil
+				},
+			},
+			{
+				Name:  "register",
+				Usage: "Create an account",
+				Args:  true,
+				Flags: []cli.Flag{},
+				Action: func(cCtx *cli.Context) error {
+					pubkey := be.Pubkey(sesh.PublicKey())
+					user, err := pr.RegisterUser(pubkey, userName)
+					if err != nil {
+						return err
+					}
+					wish.Printf(sesh, "User created successfully!\nUser: %s\nPubkey: %s\n", user.Name, pubkey)
 					return nil
 				},
 			},
@@ -347,9 +366,9 @@ To get started, submit a new patch request:
 						Args:      true,
 						ArgsUsage: "[repoName]",
 						Action: func(cCtx *cli.Context) error {
-							user, err := pr.UpsertUser(pubkey, userName)
+							user, err := pr.GetUserByPubkey(pubkey)
 							if err != nil {
-								return err
+								return errNotExist(be.Cfg.Host, pubkey)
 							}
 
 							args := cCtx.Args()
@@ -528,9 +547,9 @@ To get started, submit a new patch request:
 						Args:      true,
 						ArgsUsage: "[repoName]",
 						Action: func(cCtx *cli.Context) error {
-							user, err := pr.UpsertUser(pubkey, userName)
+							user, err := pr.GetUserByPubkey(pubkey)
 							if err != nil {
-								return err
+								return errNotExist(be.Cfg.Host, pubkey)
 							}
 
 							args := cCtx.Args()
@@ -631,9 +650,9 @@ To get started, submit a new patch request:
 									return err
 								}
 
-								user, err := pr.UpsertUser(pubkey, userName)
+								user, err := pr.GetUserByPubkey(pubkey)
 								if err != nil {
-									return err
+									return errNotExist(be.Cfg.Host, pubkey)
 								}
 
 								repo, err := pr.GetRepoByID(prq.RepoID)
@@ -717,9 +736,9 @@ To get started, submit a new patch request:
 									return fmt.Errorf("PR has already been closed")
 								}
 
-								user, err := pr.UpsertUser(pubkey, userName)
+								user, err := pr.GetUserByPubkey(pubkey)
 								if err != nil {
-									return err
+									return errNotExist(be.Cfg.Host, pubkey)
 								}
 
 								err = pr.UpdatePatchRequestStatus(prID, user.ID, StatusClosed, cCtx.String("comment"))
@@ -782,9 +801,9 @@ To get started, submit a new patch request:
 								return fmt.Errorf("PR is already open")
 							}
 
-							user, err := pr.UpsertUser(pubkey, userName)
+							user, err := pr.GetUserByPubkey(pubkey)
 							if err != nil {
-								return err
+								return errNotExist(be.Cfg.Host, pubkey)
 							}
 
 							err = pr.UpdatePatchRequestStatus(prID, user.ID, StatusOpen, cCtx.String("comment"))
@@ -814,9 +833,9 @@ To get started, submit a new patch request:
 								return err
 							}
 
-							user, err := pr.UpsertUser(pubkey, userName)
+							user, err := pr.GetUserByPubkey(pubkey)
 							if err != nil {
-								return err
+								return errNotExist(be.Cfg.Host, pubkey)
 							}
 
 							repo, err := pr.GetRepoByID(prq.RepoID)
@@ -885,9 +904,9 @@ To get started, submit a new patch request:
 								return err
 							}
 
-							user, err := pr.UpsertUser(pubkey, userName)
+							user, err := pr.GetUserByPubkey(pubkey)
 							if err != nil {
-								return err
+								return errNotExist(be.Cfg.Host, pubkey)
 							}
 
 							isReview := cCtx.Bool("review")

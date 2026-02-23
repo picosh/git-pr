@@ -227,12 +227,16 @@ git push origin main
     <summary>First time user?</summary>
 
     <div>
-      Using this service for the first time?  Creating a patch request is simple:
+      Using this service for the first time? First you need to create an account:
     </div>
 
-    <pre>git format-patch main --stdout | ssh {{.MetaData.URL}} pr create {repo}</pre>
+    <blockquote>{username} is the name of your account</blockquote>
 
-    <div>When running that command we will automatically create a user and a repo if one doesn't exist.</div>
+    <pre>ssh {username}@{{.MetaData.URL}} register</pre>
+
+    <div>After that, creating a patch request is simple:</div>
+
+    <pre>git format-patch main --stdout | ssh {{.MetaData.URL}} pr create {repo}</pre>
 
     <div>Want to submit a v2 of the patch request?</div>
 

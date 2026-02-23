@@ -31,6 +31,9 @@ func testSingleTenantE2E(t *testing.T) {
 	// Hack to wait for startup
 	time.Sleep(time.Millisecond * 100)
 
+	suite.userKey.MustCmd(suite.patch, "register")
+	suite.adminKey.MustCmd(suite.patch, "register")
+
 	t.Log("User cannot create repo")
 	_, err := suite.userKey.Cmd(suite.patch, "pr create test")
 	if err == nil {
@@ -62,6 +65,9 @@ func testMultiTenantE2E(t *testing.T) {
 	}()
 
 	time.Sleep(time.Millisecond * 100)
+
+	suite.userKey.MustCmd(suite.patch, "register")
+	suite.adminKey.MustCmd(suite.patch, "register")
 
 	t.Log("Admin should be able to create a repo")
 	suite.adminKey.MustCmd(nil, "repo create test")
