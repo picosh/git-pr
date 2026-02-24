@@ -3,23 +3,25 @@ package git
 import (
 	"fmt"
 
-	"github.com/charmbracelet/ssh"
-	"github.com/charmbracelet/wish"
+	"github.com/picosh/pico/pkg/pssh"
 )
 
-func GitPatchRequestMiddleware(be *Backend, pr GitPatchRequest) wish.Middleware {
-	return func(next ssh.Handler) ssh.Handler {
-		return func(sesh ssh.Session) {
+func GitPatchRequestMiddleware(be *Backend, pr GitPatchRequest) pssh.SSHServerMiddleware {
+	return func(next pssh.SSHServerHandler) pssh.SSHServerHandler {
+		return func(sesh *pssh.SSHServerConnSession) error {
 			args := sesh.Command()
 			cli := NewCli(sesh, be, pr)
 			margs := append([]string{"git"}, args...)
+			be.Logger.Info("ssh args", "args", args)
 			err := cli.Run(margs)
 			if err != nil {
 				be.Logger.Error("error when running cli", "err", err)
-				wish.Fatalln(sesh, fmt.Errorf("err: %w", err))
-				next(sesh)
-				return
+				sesh.Fatal(fmt.Errorf("err: %w", err))
+				_ = next(sesh)
+				return err
 			}
+
+			return nil
 		}
 	}
 }

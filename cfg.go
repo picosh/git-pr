@@ -22,6 +22,7 @@ type GitCfg struct {
 	Host       string          `koanf:"host"`
 	SshPort    string          `koanf:"ssh_port"`
 	WebPort    string          `koanf:"web_port"`
+	PromPort   string          `koanf:"prom_port"`
 	AdminsStr  []string        `koanf:"admins"`
 	Admins     []ssh.PublicKey `koanf:"admins_pk"`
 	CreateRepo string          `koanf:"create_repo"`

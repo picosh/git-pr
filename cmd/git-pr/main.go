@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	git "github.com/picosh/git-pr"
 )
@@ -26,15 +25,6 @@ func main() {
 	git.LoadConfigFile(*fpath, logger)
 	cfg := git.NewGitCfg(logger)
 
-	// SSH Server
-	ssh := git.GitSshServer(cfg)
-	cfg.Logger.Info("starting SSH server", "host", cfg.Host, "port", cfg.SshPort)
-	go func() {
-		if err := ssh.ListenAndServe(); err != nil {
-			cfg.Logger.Error("serve error", "err", err)
-		}
-	}()
-
 	// Web Server
 	addr := fmt.Sprintf("%s:%s", cfg.Host, cfg.WebPort)
 	web := git.GitWebServer(cfg)
@@ -45,13 +35,26 @@ func main() {
 		}
 	}()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	// SSH Server
+	ssh := git.GitSshServer(ctx, cfg)
+
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-	<-done
-	cfg.Logger.Info("stopping SSH server")
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer func() { cancel() }()
-	if err := ssh.Shutdown(ctx); err != nil {
-		cfg.Logger.Error("shutdown", "err", err)
+	logger.Info("starting SSH server", "addr", ssh.Config.ListenAddr)
+	go func() {
+		if err := ssh.ListenAndServe(); err != nil {
+			logger.Error("serve", "err", err.Error())
+			os.Exit(1)
+		}
+	}()
+
+	exit := func() {
+		logger.Info("stopping ssh server")
+		cancel()
 	}
+
+	<-done
+	exit()
 }

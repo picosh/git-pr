@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -38,7 +39,9 @@ func main() {
 	git.LoadConfigFile(cfgPath, logger)
 	cfg := git.NewGitCfg(logger)
 
-	s := git.GitSshServer(cfg)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s := git.GitSshServer(ctx, cfg)
 	go func() {
 		_ = s.ListenAndServe()
 	}()

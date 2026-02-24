@@ -24,7 +24,9 @@ func testSingleTenantE2E(t *testing.T) {
 		_ = os.RemoveAll(dataDir)
 	}()
 	suite := setupTest(dataDir, cfgSingleTenantTmpl)
-	s := GitSshServer(suite.cfg)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s := GitSshServer(ctx, suite.cfg)
 	go func() {
 		_ = s.ListenAndServe()
 	}()
@@ -48,8 +50,6 @@ func testSingleTenantE2E(t *testing.T) {
 	actual, err := suite.userKey.Cmd(nil, "pr ls")
 	bail(err)
 	snaps.MatchSnapshot(t, actual)
-
-	_ = s.Shutdown(context.Background())
 }
 
 func testMultiTenantE2E(t *testing.T) {
@@ -59,7 +59,9 @@ func testMultiTenantE2E(t *testing.T) {
 		_ = os.RemoveAll(dataDir)
 	}()
 	suite := setupTest(dataDir, cfgMultiTenantTmpl)
-	s := GitSshServer(suite.cfg)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s := GitSshServer(ctx, suite.cfg)
 	go func() {
 		_ = s.ListenAndServe()
 	}()
@@ -135,8 +137,6 @@ func testMultiTenantE2E(t *testing.T) {
 	actual, err = suite.userKey.Cmd(nil, "logs --repo admin/ai")
 	bail(err)
 	snaps.MatchSnapshot(t, actual)
-
-	_ = s.Shutdown(context.Background())
 }
 
 type TestSuite struct {

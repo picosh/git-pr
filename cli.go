@@ -8,8 +8,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/charmbracelet/ssh"
-	"github.com/charmbracelet/wish"
+	"github.com/picosh/pico/pkg/pssh"
 	"github.com/urfave/cli/v2"
 )
 
@@ -45,22 +44,22 @@ func getPatchsetFromOpt(patchsets []*Patchset, optPatchsetID string) (*Patchset,
 	return nil, fmt.Errorf("cannot find patchset: %s", optPatchsetID)
 }
 
-func printPatches(sesh ssh.Session, patches []*Patch) {
+func printPatches(sesh *pssh.SSHServerConnSession, patches []*Patch) {
 	if len(patches) == 1 {
-		wish.Println(sesh, patches[0].RawText)
+		sesh.Println(patches[0].RawText)
 		return
 	}
 
 	opatches := patches
 	for idx, patch := range opatches {
-		wish.Println(sesh, patch.RawText)
+		sesh.Println(patch.RawText)
 		if idx < len(patches)-1 {
-			wish.Printf(sesh, "\n\n\n")
+			sesh.Printf("\n\n\n")
 		}
 	}
 }
 
-func prSummary(be *Backend, pr GitPatchRequest, sesh ssh.Session, prID int64) error {
+func prSummary(be *Backend, pr GitPatchRequest, sesh *pssh.SSHServerConnSession, prID int64) error {
 	request, err := pr.GetPatchRequestByID(prID)
 	if err != nil {
 		return err
@@ -76,9 +75,9 @@ func prSummary(be *Backend, pr GitPatchRequest, sesh ssh.Session, prID int64) er
 		return err
 	}
 
-	wish.Printf(sesh, "Info\n====\n")
-	wish.Printf(sesh, "URL: https://%s/prs/%d\n", be.Cfg.Url, prID)
-	wish.Printf(sesh, "Repo: %s\n\n", be.CreateRepoNs(repoUser.Name, repo.Name))
+	sesh.Printf("Info\n====\n")
+	sesh.Printf("URL: https://%s/prs/%d\n", be.Cfg.Url, prID)
+	sesh.Printf("Repo: %s\n\n", be.CreateRepoNs(repoUser.Name, repo.Name))
 
 	writer := NewTabWriter(sesh)
 	_, _ = fmt.Fprintln(writer, "ID\tName\tStatus\tDate")
@@ -94,7 +93,7 @@ func prSummary(be *Backend, pr GitPatchRequest, sesh ssh.Session, prID int64) er
 		return err
 	}
 
-	wish.Printf(sesh, "\nPatchsets\n====\n")
+	sesh.Printf("\nPatchsets\n====\n")
 
 	writerSet := NewTabWriter(sesh)
 	_, _ = fmt.Fprintln(writerSet, "ID\tType\tUser\tDate")
@@ -130,7 +129,7 @@ func prSummary(be *Backend, pr GitPatchRequest, sesh ssh.Session, prID int64) er
 		return err
 	}
 
-	wish.Printf(sesh, "\nPatches from latest patchset\n====\n")
+	sesh.Printf("\nPatches from latest patchset\n====\n")
 
 	opatches := patches
 	w := NewTabWriter(sesh)
@@ -152,7 +151,7 @@ func prSummary(be *Backend, pr GitPatchRequest, sesh ssh.Session, prID int64) er
 	return nil
 }
 
-func printPatchsetFromID(sesh ssh.Session, pr GitPatchRequest, psID int64) error {
+func printPatchsetFromID(sesh *pssh.SSHServerConnSession, pr GitPatchRequest, psID int64) error {
 	patches, err := pr.GetPatchesByPatchsetID(psID)
 	if err != nil {
 		return err
@@ -161,7 +160,7 @@ func printPatchsetFromID(sesh ssh.Session, pr GitPatchRequest, psID int64) error
 	return nil
 }
 
-func printPatchsetFromPrID(sesh ssh.Session, pr GitPatchRequest, prID int64) error {
+func printPatchsetFromPrID(sesh *pssh.SSHServerConnSession, pr GitPatchRequest, prID int64) error {
 	patchsets, err := pr.GetPatchsetsByPrID(prID)
 	if err != nil {
 		return err
@@ -176,7 +175,7 @@ func printPatchsetFromPrID(sesh ssh.Session, pr GitPatchRequest, prID int64) err
 	return nil
 }
 
-func NewCli(sesh ssh.Session, be *Backend, pr GitPatchRequest) *cli.App {
+func NewCli(sesh *pssh.SSHServerConnSession, be *Backend, pr GitPatchRequest) *cli.App {
 	desc := fmt.Sprintf(`git-pr (v%s): A pastebin supercharged for git collaboration.
 
 Here's how it works:
@@ -209,12 +208,12 @@ To get started, submit a new patch request:
 		ErrWriter:   sesh,
 		ExitErrHandler: func(cCtx *cli.Context, err error) {
 			if err != nil {
-				wish.Fatalln(sesh, fmt.Errorf("err: %w", err))
+				sesh.Fatal(fmt.Errorf("err: %w", err))
 			}
 		},
 		OnUsageError: func(cCtx *cli.Context, err error, isSubcommand bool) error {
 			if err != nil {
-				wish.Fatalln(sesh, fmt.Errorf("err: %w", err))
+				sesh.Fatal(fmt.Errorf("err: %w", err))
 			}
 			return nil
 		},
@@ -305,7 +304,7 @@ To get started, submit a new patch request:
 					if err != nil {
 						return err
 					}
-					wish.Printf(sesh, "User created successfully!\nUser: %s\nPubkey: %s\n", user.Name, pubkey)
+					sesh.Printf("User created successfully!\nUser: %s\nPubkey: %s\n", user.Name, pubkey)
 					return nil
 				},
 			},
@@ -350,7 +349,7 @@ To get started, submit a new patch request:
 							if err != nil {
 								return err
 							}
-							wish.Printf(sesh, "successfully removed patchset: %d\n", patchsetID)
+							sesh.Printf("successfully removed patchset: %d\n", patchsetID)
 							return nil
 						},
 					},
@@ -389,7 +388,7 @@ To get started, submit a new patch request:
 								}
 							}
 
-							wish.Printf(sesh, "repo created: %s/%s", user.Name, repo.Name)
+							sesh.Printf("repo created: %s/%s", user.Name, repo.Name)
 							return nil
 						},
 					},
@@ -591,8 +590,7 @@ To get started, submit a new patch request:
 							if err != nil {
 								return err
 							}
-							wish.Println(
-								sesh,
+							sesh.Println(
 								"PR submitted! Use the ID for interacting with this PR.",
 							)
 
@@ -641,7 +639,7 @@ To get started, submit a new patch request:
 							for _, prIDStr := range prIDs {
 								prID, err := strToInt(prIDStr)
 								if err != nil {
-									wish.Errorln(sesh, err)
+									sesh.Errorln(err)
 									continue
 								}
 
@@ -673,12 +671,12 @@ To get started, submit a new patch request:
 								if err != nil {
 									return err
 								}
-								wish.Printf(sesh, "Accepted PR %s (#%d)\n", prq.Name, prq.ID)
+								sesh.Printf("Accepted PR %s (#%d)\n", prq.Name, prq.ID)
 								err = prSummary(be, pr, sesh, prID)
 								if err != nil {
 									errs = errors.Join(errs, err)
 								}
-								wish.Printf(sesh, "\n\n")
+								sesh.Printf("\n\n")
 							}
 
 							return errs
@@ -708,7 +706,7 @@ To get started, submit a new patch request:
 							for _, prIDStr := range prIDs {
 								prID, err := strToInt(prIDStr)
 								if err != nil {
-									wish.Errorln(sesh, err)
+									sesh.Errorln(err)
 									continue
 								}
 
@@ -745,12 +743,12 @@ To get started, submit a new patch request:
 								if err != nil {
 									return err
 								}
-								wish.Printf(sesh, "Closed PR %s (#%d)\n", prq.Name, prq.ID)
+								sesh.Printf("Closed PR %s (#%d)\n", prq.Name, prq.ID)
 								err = prSummary(be, pr, sesh, prID)
 								if err != nil {
 									errs = errors.Join(errs, err)
 								}
-								wish.Printf(sesh, "\n\n")
+								sesh.Printf("\n\n")
 							}
 							return errs
 						},
@@ -808,7 +806,7 @@ To get started, submit a new patch request:
 
 							err = pr.UpdatePatchRequestStatus(prID, user.ID, StatusOpen, cCtx.String("comment"))
 							if err == nil {
-								wish.Printf(sesh, "Reopened PR %s (#%d)\n", prq.Name, prq.ID)
+								sesh.Printf("Reopened PR %s (#%d)\n", prq.Name, prq.ID)
 							}
 							return prSummary(be, pr, sesh, prID)
 						},
@@ -860,7 +858,7 @@ To get started, submit a new patch request:
 								title,
 							)
 							if err == nil {
-								wish.Printf(sesh, "New title: %s (%d)\n", title, prq.ID)
+								sesh.Printf("New title: %s (%d)\n", title, prq.ID)
 							}
 
 							return err
@@ -930,14 +928,14 @@ To get started, submit a new patch request:
 							op := OpNormal
 							nextStatus := StatusOpen
 							if isReview {
-								wish.Println(sesh, "Marking patchset as a review")
+								sesh.Println("Marking patchset as a review")
 								op = OpReview
 							} else if isAccept {
-								wish.Println(sesh, "Marking PR as accepted")
+								sesh.Println("Marking PR as accepted")
 								nextStatus = StatusAccepted
 								op = OpAccept
 							} else if isClose {
-								wish.Println(sesh, "Marking PR as closed")
+								sesh.Println("Marking PR as closed")
 								nextStatus = StatusClosed
 								op = OpClose
 							}
@@ -948,7 +946,7 @@ To get started, submit a new patch request:
 							}
 
 							if len(patches) == 0 {
-								wish.Println(sesh, "Patches submitted! However none were saved, probably because they already exist in the system")
+								sesh.Println("Patches submitted! However none were saved, probably because they already exist in the system")
 								return nil
 							}
 
@@ -959,7 +957,7 @@ To get started, submit a new patch request:
 								}
 							}
 
-							wish.Println(sesh, "Patches submitted!")
+							sesh.Println("Patches submitted!")
 							return prSummary(be, pr, sesh, prID)
 						},
 					},
