@@ -177,7 +177,7 @@ func printPatchsetFromPrID(sesh ssh.Session, pr GitPatchRequest, prID int64) err
 }
 
 func NewCli(sesh ssh.Session, be *Backend, pr GitPatchRequest) *cli.App {
-	desc := fmt.Sprintf(`git-pr: A pastebin supercharged for git collaboration.
+	desc := fmt.Sprintf(`git-pr (v%s): A pastebin supercharged for git collaboration.
 
 Here's how it works:
 	- External contributor clones repo (git-clone)
@@ -197,7 +197,7 @@ Here's how it works:
 
 To get started, submit a new patch request:
   git format-patch main --stdout | ssh %s pr create {repo}
-`, be.Cfg.Url)
+`, GITPR_VERSION, be.Cfg.Url)
 
 	pubkey := be.Pubkey(sesh.PublicKey())
 	userName := sesh.User()
