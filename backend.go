@@ -1,14 +1,14 @@
 package git
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"strings"
 
-	"github.com/charmbracelet/ssh"
 	"github.com/jmoiron/sqlx"
-	gossh "golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh"
 )
 
 type Backend struct {
@@ -74,7 +74,7 @@ func (be *Backend) Pubkey(pk ssh.PublicKey) string {
 }
 
 func (be *Backend) KeyForFingerprint(pk ssh.PublicKey) string {
-	return gossh.FingerprintSHA256(pk)
+	return ssh.FingerprintSHA256(pk)
 }
 
 func (be *Backend) PubkeyToPublicKey(pubkey string) (ssh.PublicKey, error) {
@@ -91,9 +91,13 @@ func (be *Backend) KeysEqual(pka, pkb string) bool {
 	return pka == pkb
 }
 
+func (be *Backend) PublicKeysEqual(a, b ssh.PublicKey) bool {
+	return bytes.Equal(a.Marshal(), b.Marshal())
+}
+
 func (be *Backend) IsAdmin(pk ssh.PublicKey) bool {
 	for _, apk := range be.Cfg.Admins {
-		if ssh.KeysEqual(pk, apk) {
+		if be.PublicKeysEqual(pk, apk) {
 			return true
 		}
 	}

@@ -5,7 +5,6 @@ go 1.25
 require (
 	github.com/alecthomas/chroma/v2 v2.23.1
 	github.com/bluekeyes/go-gitdiff v0.8.0
-	github.com/charmbracelet/ssh v0.0.0-20240301204039-e79ff702f5b3
 	github.com/gkampitakis/go-snaps v0.5.15
 	github.com/gorilla/feeds v1.2.0
 	github.com/jmoiron/sqlx v1.4.0
@@ -22,14 +21,10 @@ require (
 )
 
 require (
-	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
 	github.com/antoniomika/syncmap v1.0.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/charmbracelet/x/errors v0.0.0-20240117030013-d31dba354651 // indirect
-	github.com/charmbracelet/x/exp/term v0.0.0-20240229115032-4b79243a3516 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
-	github.com/creack/pty v1.1.21 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect

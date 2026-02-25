@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/ssh"
 	"github.com/knadh/koanf/parsers/toml"
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
+	"golang.org/x/crypto/ssh"
 )
 
 var k = koanf.New(".")

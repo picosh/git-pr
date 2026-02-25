@@ -6,6 +6,7 @@ Use spec: https://common-changelog.org/
 
 ### Changed
 
+- Upgraded to `go1.25`
 - Removed charm's `wish` with pico's `pssh`
 
 ## v2026-02-24

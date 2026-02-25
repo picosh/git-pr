@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/bluekeyes/go-gitdiff/gitdiff"
-	"github.com/charmbracelet/ssh"
+	"golang.org/x/crypto/ssh"
 )
 
 var (
