@@ -2,10 +2,6 @@
 
 Use spec: https://common-changelog.org/
 
-## Staged
-
-### Changed
-
 ## v2026-02-25
 
 ### Added
@@ -17,6 +13,10 @@ Use spec: https://common-changelog.org/
 - Replaced `--comment` flag which was a string into a bool and now require comment to be provided by stdin for commands `accept`, `close`, and `reopen`
   - `echo "lgtm!" | ssh pr.pico.sh pr accept --comment 100`
   - If no `--comment` flag provided then you don't need to provide stdin
+
+### Fixed
+
+- Mangled formatting for `ssh pr.pico.sh` help text
 
 ## v2026-02-24
 

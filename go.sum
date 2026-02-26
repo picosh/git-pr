@@ -135,8 +135,8 @@ github.com/oddg/hungarian-algorithm v0.0.0-20170809162819-9567cbc363de h1:kuqx+Z
 github.com/oddg/hungarian-algorithm v0.0.0-20170809162819-9567cbc363de/go.mod h1:dv3Q0yoeN8DwXGhZiv8Vi6/rr9mPtf4ylV60eLTGjUo=
 github.com/pelletier/go-toml v1.9.5 h1:4yBQzkHv+7BHq2PQUZF3Mx0IYxG7LsP222s7Agd3ve8=
 github.com/pelletier/go-toml v1.9.5/go.mod h1:u1nR/EPcESfeI/szUZKdtJ0xRNbUoANCkoOuaOx1Y+c=
-github.com/picosh/pico v1.13.2-0.20260225015203-1f6cc61d65a3 h1:L315467SH4O1IlTmd/pjjvsD7IX9vnsY4pQw9WKnf1M=
-github.com/picosh/pico v1.13.2-0.20260225015203-1f6cc61d65a3/go.mod h1:1Xml9JbPlipITzar/eu8/kcrfgXqXvx/XxL/xBj0xE8=
+github.com/picosh/pico v1.13.2-0.20260226034118-391c4f989caa h1:yZGD5iMf3o1HYW1xB0+UOiypPWUVd9KSAEB0hi88UgY=
+github.com/picosh/pico v1.13.2-0.20260226034118-391c4f989caa/go.mod h1:1Xml9JbPlipITzar/eu8/kcrfgXqXvx/XxL/xBj0xE8=
 github.com/picosh/utils v0.0.0-20260125160622-5c3a9e231ec6 h1:9KfCtfcx7vrSyGU1K9whdE1crll9Aq+nAZ6c0FzuzvE=
 github.com/picosh/utils v0.0.0-20260125160622-5c3a9e231ec6/go.mod h1:HogYEyJ43IGXrOa3D/kjM1pkzNAyh+pejRyv8Eo//pk=
 github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e/go.mod h1:pJLUxLENpZxwdsKMEsNbx1VGcRFpLqf3715MtcvvzbA=

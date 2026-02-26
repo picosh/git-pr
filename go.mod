@@ -13,7 +13,7 @@ require (
 	github.com/knadh/koanf/providers/file v1.0.0
 	github.com/knadh/koanf/v2 v2.1.1
 	github.com/oddg/hungarian-algorithm v0.0.0-20170809162819-9567cbc363de
-	github.com/picosh/pico v1.13.2-0.20260225015203-1f6cc61d65a3
+	github.com/picosh/pico v1.13.2-0.20260226034118-391c4f989caa
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3
 	github.com/urfave/cli/v2 v2.27.2
 	golang.org/x/crypto v0.47.0
