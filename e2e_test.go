@@ -137,6 +137,14 @@ func testMultiTenantE2E(t *testing.T) {
 	actual, err = suite.userKey.Cmd(nil, "logs --repo admin/ai")
 	bail(err)
 	snaps.MatchSnapshot(t, actual)
+
+	t.Log("Delete repo")
+	suite.userKey.MustCmd(nil, "repo rm --write ai")
+
+	t.Log("Snapshot test ls command with ai prs removed")
+	actual, err = suite.userKey.Cmd(nil, "pr ls")
+	bail(err)
+	snaps.MatchSnapshot(t, actual)
 }
 
 type TestSuite struct {

@@ -52,3 +52,17 @@ admin/ai 9    ps-13      pr_created
 admin/ai 9               pr_status_changed         {"status":"accepted","comment":"nice work"}
 
 ---
+
+[TestE2E - 5]
+ID RepoID           Name                       Status     Patchsets User        Date
+10 contributor/bin  feat: lets build an rnn    [open]     1         contributor 
+9  admin/ai         feat: lets build an rnn    [accepted] 1         contributor 
+8  admin/ai         feat: lets build an rnn    [accepted] 2         contributor 
+6  contributor/test Closed patch with review   [closed]   2         contributor 
+5  contributor/test Accepted patch with review [accepted] 2         contributor 
+4  contributor/test Reviewed patch             [open]     2         contributor 
+3  contributor/test Closed patch (contributor) [closed]   1         contributor 
+2  contributor/test Closed patch (admin)       [closed]   1         contributor 
+1  admin/test       Accepted patch             [accepted] 1         contributor 
+
+---

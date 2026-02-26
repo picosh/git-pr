@@ -388,7 +388,52 @@ To get started, submit a new patch request:
 								}
 							}
 
-							sesh.Printf("repo created: %s/%s", user.Name, repo.Name)
+							sesh.Printf("repo created: %s/%s\n", user.Name, repo.Name)
+							return nil
+						},
+					},
+					{
+						Name:      "rm",
+						Usage:     "Delete repo and associated patch requests",
+						Args:      true,
+						ArgsUsage: "[repoName]",
+						Flags: []cli.Flag{
+							&cli.BoolFlag{
+								Name:  "write",
+								Usage: "Are you sure you want to delete the repo and all patch requests?",
+							},
+						},
+						Action: func(cCtx *cli.Context) error {
+							user, err := pr.GetUserByPubkey(pubkey)
+							if err != nil {
+								return errNotExist(be.Cfg.Host, pubkey)
+							}
+
+							args := cCtx.Args()
+							if !args.Present() {
+								return fmt.Errorf("need repo name argument")
+							}
+							rawRepoNs := args.First()
+							_, repoName := be.SplitRepoNs(rawRepoNs)
+							repo, _ := pr.GetRepoByName(user, repoName)
+							if repo == nil {
+								return fmt.Errorf("repo does not exist: %s/%s", user.Name, repoName)
+							}
+							err = be.CanCreateRepo(repo, user)
+							if err != nil {
+								return err
+							}
+
+							if cCtx.Bool("write") {
+								err = pr.DeleteRepo(user, repoName)
+								if err != nil {
+									return err
+								}
+							} else {
+								sesh.Println("Must provide `--write` flag to persist changes")
+							}
+
+							sesh.Printf("repo deleted: %s/%s\n", user.Name, repo.Name)
 							return nil
 						},
 					},

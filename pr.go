@@ -31,6 +31,7 @@ type GitPatchRequest interface {
 	GetRepoByID(repoID int64) (*Repo, error)
 	GetRepoByName(user *User, repoName string) (*Repo, error)
 	CreateRepo(user *User, repoName string) (*Repo, error)
+	DeleteRepo(user *User, repoName string) error
 	RegisterUser(pubkey, name string) (*User, error)
 	IsBanned(pubkey, ipAddress string) error
 	SubmitPatchRequest(repoID int64, userID int64, patchset io.Reader) (*PatchRequest, error)
@@ -124,6 +125,15 @@ func (pr PrCmd) CreateRepo(user *User, repoName string) (*Repo, error) {
 	}
 
 	return pr.GetRepoByID(repoID)
+}
+
+func (pr PrCmd) DeleteRepo(user *User, repoName string) error {
+	_, err := pr.Backend.DB.Exec(
+		"DELETE FROM repos WHERE user_id=? AND name=?",
+		user.ID,
+		repoName,
+	)
+	return err
 }
 
 func (pr PrCmd) GetRepoByID(repoID int64) (*Repo, error) {

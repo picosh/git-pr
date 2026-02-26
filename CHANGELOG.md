@@ -8,6 +8,10 @@ Use spec: https://common-changelog.org/
 
 ## v2026-02-25
 
+### Added
+
+- Ability to delete repo `ssh pr.pico.sh repo rm {name}`, must provide `--write` to persist
+
 ### Changed
 
 - Replaced `--comment` flag which was a string into a bool and now require comment to be provided by stdin for commands `accept`, `close`, and `reopen`
