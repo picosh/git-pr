@@ -18,3 +18,4 @@ review.patch
 .aider*
 git_src/
 .beads/
+git-pr
