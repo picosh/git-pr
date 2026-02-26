@@ -621,9 +621,9 @@ To get started, submit a new patch request:
 						Args:      true,
 						ArgsUsage: "[prID], [prID]...",
 						Flags: []cli.Flag{
-							&cli.StringFlag{
+							&cli.BoolFlag{
 								Name:  "comment",
-								Usage: "add a comment to the patchset(s)",
+								Usage: "If this flag is provided, pass comment through stdin",
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
@@ -667,7 +667,16 @@ To get started, submit a new patch request:
 									return fmt.Errorf("PR has already been accepted")
 								}
 
-								err = pr.UpdatePatchRequestStatus(prID, user.ID, StatusAccepted, cCtx.String("comment"))
+								comment := cCtx.Bool("comment")
+								var commentTxt []byte
+								if comment {
+									commentTxt, err = io.ReadAll(sesh)
+									if err != nil {
+										return fmt.Errorf("when comment flag enabled must provide it from stdin")
+									}
+								}
+
+								err = pr.UpdatePatchRequestStatus(prID, user.ID, StatusAccepted, string(commentTxt))
 								if err != nil {
 									return err
 								}
@@ -688,9 +697,9 @@ To get started, submit a new patch request:
 						Args:      true,
 						ArgsUsage: "[prID], [prID]...",
 						Flags: []cli.Flag{
-							&cli.StringFlag{
+							&cli.BoolFlag{
 								Name:  "comment",
-								Usage: "add a comment to the patchset(s)",
+								Usage: "If this flag is provided, pass comment through stdin",
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
@@ -739,7 +748,16 @@ To get started, submit a new patch request:
 									return errNotExist(be.Cfg.Host, pubkey)
 								}
 
-								err = pr.UpdatePatchRequestStatus(prID, user.ID, StatusClosed, cCtx.String("comment"))
+								comment := cCtx.Bool("comment")
+								var commentTxt []byte
+								if comment {
+									commentTxt, err = io.ReadAll(sesh)
+									if err != nil {
+										return fmt.Errorf("when comment flag enabled must provide it from stdin")
+									}
+								}
+
+								err = pr.UpdatePatchRequestStatus(prID, user.ID, StatusClosed, string(commentTxt))
 								if err != nil {
 									return err
 								}
@@ -759,9 +777,9 @@ To get started, submit a new patch request:
 						Args:      true,
 						ArgsUsage: "[prID]",
 						Flags: []cli.Flag{
-							&cli.StringFlag{
+							&cli.BoolFlag{
 								Name:  "comment",
-								Usage: "add a comment to the patchset",
+								Usage: "If this flag is provided, pass comment through stdin",
 							},
 						},
 						Action: func(cCtx *cli.Context) error {
@@ -804,7 +822,15 @@ To get started, submit a new patch request:
 								return errNotExist(be.Cfg.Host, pubkey)
 							}
 
-							err = pr.UpdatePatchRequestStatus(prID, user.ID, StatusOpen, cCtx.String("comment"))
+							comment := cCtx.Bool("comment")
+							var commentTxt []byte
+							if comment {
+								commentTxt, err = io.ReadAll(sesh)
+								if err != nil {
+									return fmt.Errorf("when comment flag enabled must provide it from stdin")
+								}
+							}
+							err = pr.UpdatePatchRequestStatus(prID, user.ID, StatusOpen, string(commentTxt))
 							if err == nil {
 								sesh.Printf("Reopened PR %s (#%d)\n", prq.Name, prq.ID)
 							}

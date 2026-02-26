@@ -121,7 +121,7 @@ func testMultiTenantE2E(t *testing.T) {
 	t.Log("Create pr with admin repo and user can accept with comment")
 	suite.adminKey.MustCmd(nil, "repo create ai")
 	suite.userKey.MustCmd(suite.patch, "pr create admin/ai")
-	suite.adminKey.MustCmd(suite.otherPatch, "pr accept --comment 'nice work' 9")
+	suite.adminKey.MustCmd([]byte("nice work"), "pr accept --comment 9")
 
 	t.Log("Create pr with default `bin` repo")
 	actual, err := suite.userKey.Cmd(suite.patch, "pr create")
